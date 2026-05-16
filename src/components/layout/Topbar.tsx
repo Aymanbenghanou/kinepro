@@ -4,17 +4,12 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { Bell, Search, Clock, Users, MessageSquare, CheckCheck } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import { usePathname } from 'next/navigation'
+import ProfileDropdown from '@/components/ui/ProfileDropdown'
+// useSession is kept — used inside NotificationBell for subscription status
 
 interface TopbarProps {
   title: string
   subtitle?: string
-}
-
-// ─── Avatar color system (same as Sidebar) ────────────────────────────────────
-const AVATAR_COLORS = ['#2563EB', '#7C3AED', '#0D9488', '#D97706', '#DC2626', '#16A34A']
-function getAvatarColor(name: string): string {
-  if (!name) return AVATAR_COLORS[0]
-  return AVATAR_COLORS[name.charCodeAt(0) % AVATAR_COLORS.length]
 }
 
 // ─── Notification types ───────────────────────────────────────────────────────
@@ -284,14 +279,6 @@ function NotificationBell() {
 
 // ─── Topbar ───────────────────────────────────────────────────────────────────
 export default function Topbar({ title, subtitle }: TopbarProps) {
-  const { data: session } = useSession()
-  const user        = session?.user
-  const fullName    = user ? `${user.prenom ?? ''} ${user.nom ?? ''}`.trim() : ''
-  const initials    = fullName
-    ? `${(user?.prenom?.[0] ?? '').toUpperCase()}${(user?.nom?.[0] ?? '').toUpperCase()}`
-    : 'KP'
-  const avatarColor = getAvatarColor(fullName)
-
   return (
     <div className="topbar">
       {/* Title */}
@@ -315,18 +302,8 @@ export default function Topbar({ title, subtitle }: TopbarProps) {
         {/* Notification bell with dropdown */}
         <NotificationBell />
 
-        {/* Avatar — decorative, real menu is in sidebar */}
-        <div
-          title={fullName || undefined}
-          style={{
-            width: 34, height: 34, borderRadius: '50%',
-            background: avatarColor, flexShrink: 0,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: `0 0 0 2px ${avatarColor}35`,
-          }}
-        >
-          <span style={{ color: 'white', fontSize: 12, fontWeight: 800 }}>{initials}</span>
-        </div>
+        {/* Avatar — interactive dropdown, opens downward */}
+        <ProfileDropdown direction="down" avatarSize={34} />
       </div>
     </div>
   )
