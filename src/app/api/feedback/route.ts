@@ -1,12 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { auth } from '@/auth'
 
 export async function GET(request: NextRequest) {
+  const session = await auth()
+  if (!session?.user?.cabinetId) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  const { cabinetId } = session.user
+
   try {
     const { searchParams } = new URL(request.url)
     const patientId = searchParams.get('patientId')
     const feedbacks = await prisma.feedback.findMany({
-      where: patientId ? { patientId } : {},
+      where: {
+        cabinetId,
+        ...(patientId ? { patientId } : {}),
+      },
       include: {
         patient: { select: { id: true, nom: true, prenom: true } },
       },
@@ -21,6 +29,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const session = await auth()
+  if (!session?.user?.cabinetId) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  const { cabinetId } = session.user
+
   try {
     const body = await request.json()
     const feedback = await prisma.feedback.create({
@@ -28,6 +40,7 @@ export async function POST(request: NextRequest) {
         score: body.score,
         commentaire: body.commentaire || null,
         typeMessage: body.typeMessage || 'post_seance',
+        cabinetId,
         patientId: body.patientId,
         seanceId: body.seanceId || null,
       },

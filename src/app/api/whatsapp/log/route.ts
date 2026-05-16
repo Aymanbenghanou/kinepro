@@ -1,12 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { auth } from '@/auth'
 
 export async function GET(request: NextRequest) {
+  const session = await auth()
+  if (!session?.user?.cabinetId) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  const { cabinetId } = session.user
+
   try {
     const { searchParams } = new URL(request.url)
     const patientId = searchParams.get('patientId')
     const logs = await prisma.whatsAppLog.findMany({
-      where: patientId ? { patientId } : {},
+      where: {
+        cabinetId,
+        ...(patientId ? { patientId } : {}),
+      },
       include: {
         patient: { select: { id: true, nom: true, prenom: true, telephone: true } },
       },
@@ -21,11 +29,16 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const session = await auth()
+  if (!session?.user?.cabinetId) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  const { cabinetId } = session.user
+
   try {
     const body = await request.json()
     const log = await prisma.whatsAppLog.create({
       data: {
         type: body.type,
+        cabinetId,
         patientId: body.patientId,
         patientNom: body.patientNom,
         telephone: body.telephone,
