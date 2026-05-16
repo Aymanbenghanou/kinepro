@@ -1,8 +1,9 @@
 import { PrismaClient } from '@prisma/client'
-import { PrismaBetterSqlite3 } from '@prisma/adapter-better-sqlite3'
-import path from 'path'
+import { PrismaPg } from '@prisma/adapter-pg'
+import { Pool } from 'pg'
 
-const adapter = new PrismaBetterSqlite3({ url: `file:${path.resolve(process.cwd(), 'dev.db')}` })
+const pool = new Pool({ connectionString: process.env.POSTGRES_PRISMA_URL })
+const adapter = new PrismaPg(pool)
 const prisma = new PrismaClient({ adapter })
 
 async function main() {
