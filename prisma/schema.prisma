@@ -74,6 +74,7 @@ model SeanceType {
   tarifDefaut  Float        @default(300)
   couleur      String       @default("#2563EB")
   actif        Boolean      @default(true)
+  isDefault    Boolean      @default(false)
   cabinetId    String?
   cabinet      Cabinet?     @relation(fields: [cabinetId], references: [id])
   praticienId  String?

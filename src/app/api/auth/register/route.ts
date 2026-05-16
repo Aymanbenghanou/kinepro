@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
+import { DEFAULT_SEANCE_TYPES } from '@/lib/default-seance-types'
 
 function errMsg(e: unknown) {
   return e instanceof Error ? e.message : 'Erreur inconnue'
@@ -23,7 +24,7 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await bcrypt.hash(admin.password, 12)
     const trialEndsAt    = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
 
-    // Create cabinet + subscription + user in a transaction
+    // Create cabinet + subscription + user + default session types in a single transaction
     const result = await prisma.$transaction(async (tx) => {
       const newCabinet = await tx.cabinet.create({
         data: {
@@ -57,6 +58,16 @@ export async function POST(request: NextRequest) {
       await tx.cabinet.update({
         where: { id: newCabinet.id },
         data:  { ownerId: newUser.id },
+      })
+
+      // Seed 10 default session types for the new cabinet
+      await tx.seanceType.createMany({
+        data: DEFAULT_SEANCE_TYPES.map(t => ({
+          ...t,
+          cabinetId: newCabinet.id,
+          isDefault: true,
+          actif:     true,
+        })),
       })
 
       return { cabinetId: newCabinet.id, userId: newUser.id }

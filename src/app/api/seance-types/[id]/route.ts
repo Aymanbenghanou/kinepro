@@ -58,6 +58,20 @@ export async function DELETE(
     const existing = await prisma.seanceType.findFirst({ where: { id, cabinetId } })
     if (!existing) return NextResponse.json({ error: 'Type de séance non trouvé' }, { status: 404 })
 
+    // Block deletion if séances or RDV reference this type
+    const [seanceCount, rdvCount] = await Promise.all([
+      prisma.seance.count({ where: { seanceTypeId: id } }),
+      prisma.rendezVous.count({ where: { seanceTypeId: id } }),
+    ])
+    const usageCount = seanceCount + rdvCount
+    if (usageCount > 0) {
+      return NextResponse.json({
+        error: `Ce type est utilisé par ${usageCount} séance${usageCount > 1 ? 's' : ''} ou RDV. Désactivez-le plutôt que le supprimer.`,
+        inUse: true,
+        usageCount,
+      }, { status: 409 })
+    }
+
     await prisma.seanceType.delete({ where: { id } })
     return NextResponse.json({ success: true })
   } catch (error) {
