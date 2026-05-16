@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { auth } from '@/auth'
 
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : 'Erreur inconnue'
@@ -7,8 +8,14 @@ function errMsg(e: unknown): string {
 
 export async function GET() {
   try {
+    const session = await auth()
+    if (!session?.user?.cabinetId) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+    }
+    const { cabinetId } = session.user
+
     const praticiens = await prisma.praticien.findMany({
-      where: { actif: true },
+      where: { cabinetId, actif: true },
       orderBy: { nom: 'asc' },
     })
     return NextResponse.json(praticiens)
@@ -20,18 +27,25 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await auth()
+    if (!session?.user?.cabinetId) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+    }
+    const { cabinetId } = session.user
+
     const body = await request.json()
     if (!body.nom?.trim() || !body.prenom?.trim()) {
       return NextResponse.json({ error: 'Nom et prénom sont obligatoires' }, { status: 400 })
     }
     const praticien = await prisma.praticien.create({
       data: {
-        nom: body.nom.trim(),
-        prenom: body.prenom.trim(),
+        cabinetId,
+        nom:        body.nom.trim(),
+        prenom:     body.prenom.trim(),
         specialite: body.specialite || null,
-        telephone: body.telephone || null,
-        email: body.email || null,
-        couleur: body.couleur || '#2563EB',
+        telephone:  body.telephone  || null,
+        email:      body.email      || null,
+        couleur:    body.couleur    || '#2563EB',
       },
     })
     return NextResponse.json(praticien, { status: 201 })

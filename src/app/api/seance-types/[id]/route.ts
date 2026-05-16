@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { auth } from '@/auth'
 
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : 'Erreur inconnue'
@@ -10,9 +11,17 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await auth()
+    if (!session?.user?.cabinetId) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+    }
+    const { cabinetId } = session.user
     const { id } = await params
-    const body = await request.json()
 
+    const existing = await prisma.seanceType.findFirst({ where: { id, cabinetId } })
+    if (!existing) return NextResponse.json({ error: 'Type de séance non trouvé' }, { status: 404 })
+
+    const body = await request.json()
     const data: Record<string, unknown> = {}
     if (body.nom         !== undefined) data.nom         = body.nom.trim()
     if (body.description !== undefined) data.description = body.description || null
@@ -35,11 +44,20 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await auth()
+    if (!session?.user?.cabinetId) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+    }
+    const { cabinetId } = session.user
     const { id } = await params
+
+    const existing = await prisma.seanceType.findFirst({ where: { id, cabinetId } })
+    if (!existing) return NextResponse.json({ error: 'Type de séance non trouvé' }, { status: 404 })
+
     await prisma.seanceType.delete({ where: { id } })
     return NextResponse.json({ success: true })
   } catch (error) {

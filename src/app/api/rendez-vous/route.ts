@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { auth } from '@/auth'
 
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : 'Erreur inconnue'
@@ -7,12 +8,19 @@ function errMsg(e: unknown): string {
 
 export async function GET(request: NextRequest) {
   try {
+    const session = await auth()
+    if (!session?.user?.cabinetId) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+    }
+    const { cabinetId } = session.user
+
     const { searchParams } = new URL(request.url)
-    const date = searchParams.get('date')
+    const date        = searchParams.get('date')
     const praticienId = searchParams.get('praticienId')
 
     const rendezVous = await prisma.rendezVous.findMany({
       where: {
+        cabinetId,
         ...(date ? {
           date: {
             gte: new Date(date + 'T00:00:00'),
@@ -22,7 +30,7 @@ export async function GET(request: NextRequest) {
         ...(praticienId ? { praticienId } : {}),
       },
       include: {
-        patient: { select: { id: true, nom: true, prenom: true } },
+        patient:   { select: { id: true, nom: true, prenom: true } },
         praticien: { select: { id: true, nom: true, prenom: true, couleur: true } },
       },
       orderBy: { date: 'asc' },
@@ -36,20 +44,27 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await auth()
+    if (!session?.user?.cabinetId) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+    }
+    const { cabinetId } = session.user
+
     const body = await request.json()
     const rdv = await prisma.rendezVous.create({
       data: {
-        date: new Date(body.date),
-        duree: body.duree || 45,
-        typeSeance: body.typeSeance,
-        salle: body.salle || null,
-        notes: body.notes || null,
-        statut: body.statut || 'confirme',
-        patientId: body.patientId,
+        cabinetId,
+        date:        new Date(body.date),
+        duree:       body.duree || 45,
+        typeSeance:  body.typeSeance,
+        salle:       body.salle      || null,
+        notes:       body.notes      || null,
+        statut:      body.statut     || 'confirme',
+        patientId:   body.patientId,
         praticienId: body.praticienId,
       },
       include: {
-        patient: { select: { id: true, nom: true, prenom: true } },
+        patient:   { select: { id: true, nom: true, prenom: true } },
         praticien: { select: { id: true, nom: true, prenom: true, couleur: true } },
       },
     })

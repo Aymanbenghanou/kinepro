@@ -1,23 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { auth } from '@/auth'
+
+function errMsg(e: unknown): string {
+  return e instanceof Error ? e.message : 'Erreur inconnue'
+}
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await auth()
+    if (!session?.user?.cabinetId) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+    }
+    const { cabinetId } = session.user
     const { id } = await params
-    const seance = await prisma.seance.findUnique({
-      where: { id },
+
+    const seance = await prisma.seance.findFirst({
+      where: { id, cabinetId },
       include: {
-        patient: { select: { id: true, nom: true, prenom: true, telephone: true } },
+        patient:   { select: { id: true, nom: true, prenom: true, telephone: true } },
         praticien: { select: { id: true, nom: true, prenom: true } },
       },
     })
     if (!seance) return NextResponse.json({ error: 'Séance non trouvée' }, { status: 404 })
     return NextResponse.json(seance)
   } catch (error) {
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
+    console.error('[GET /api/seances/[id]]', error)
+    return NextResponse.json({ error: errMsg(error) }, { status: 500 })
   }
 }
 
@@ -26,7 +38,16 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const session = await auth()
+    if (!session?.user?.cabinetId) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+    }
+    const { cabinetId } = session.user
     const { id } = await params
+
+    const existing = await prisma.seance.findFirst({ where: { id, cabinetId } })
+    if (!existing) return NextResponse.json({ error: 'Séance non trouvée' }, { status: 404 })
+
     const body = await request.json()
     const seance = await prisma.seance.update({
       where: { id },
@@ -39,13 +60,13 @@ export async function PATCH(
         notes:          body.notes          !== undefined ? body.notes          : undefined,
       },
       include: {
-        patient: { select: { id: true, nom: true, prenom: true, telephone: true } },
+        patient:   { select: { id: true, nom: true, prenom: true, telephone: true } },
         praticien: { select: { id: true, nom: true, prenom: true } },
       },
     })
     return NextResponse.json(seance)
   } catch (error) {
-    console.error(error)
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
+    console.error('[PATCH /api/seances/[id]]', error)
+    return NextResponse.json({ error: errMsg(error) }, { status: 500 })
   }
 }

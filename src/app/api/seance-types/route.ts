@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { auth } from '@/auth'
 
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : 'Erreur inconnue'
@@ -7,12 +8,19 @@ function errMsg(e: unknown): string {
 
 export async function GET(request: NextRequest) {
   try {
+    const session = await auth()
+    if (!session?.user?.cabinetId) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+    }
+    const { cabinetId } = session.user
+
     const { searchParams } = new URL(request.url)
-    const all          = searchParams.get('all') === 'true'   // include inactive
-    const praticienId  = searchParams.get('praticienId')      // scope to kiné
+    const all         = searchParams.get('all') === 'true'   // include inactive
+    const praticienId = searchParams.get('praticienId')      // scope to kiné
 
     const types = await prisma.seanceType.findMany({
       where: {
+        cabinetId,
         ...(all ? {} : { actif: true }),
         ...(praticienId ? {
           OR: [
@@ -33,12 +41,19 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await auth()
+    if (!session?.user?.cabinetId) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+    }
+    const { cabinetId } = session.user
+
     const body = await request.json()
     if (!body.nom?.trim()) {
       return NextResponse.json({ error: 'Le nom est obligatoire' }, { status: 400 })
     }
     const type = await prisma.seanceType.create({
       data: {
+        cabinetId,
         nom:         body.nom.trim(),
         description: body.description  || null,
         dureeDefaut: body.dureeDefaut  ? parseInt(body.dureeDefaut)   : 45,

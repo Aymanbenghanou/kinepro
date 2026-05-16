@@ -1,27 +1,46 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { auth } from '@/auth'
+
+function errMsg(e: unknown): string {
+  return e instanceof Error ? e.message : 'Erreur inconnue'
+}
 
 export async function GET() {
   try {
-    const now = new Date()
-    const factures = await prisma.facture.findMany({
-      where: {
-        statut: 'paye',
-        dateEmise: {
-          gte: new Date(now.getFullYear(), now.getMonth() - 11, 1),
-        },
-      },
-      select: { montant: true, dateEmise: true },
-    })
+    const session = await auth()
+    if (!session?.user?.cabinetId) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+    }
+    const { cabinetId } = session.user
 
-    const seances = await prisma.seance.findMany({
-      where: {
-        date: {
-          gte: new Date(now.getFullYear(), now.getMonth() - 11, 1),
+    const now = new Date()
+    const since12Months = new Date(now.getFullYear(), now.getMonth() - 11, 1)
+
+    const [factures, seances, totalPatients, nouveauxPatients] = await Promise.all([
+      prisma.facture.findMany({
+        where: {
+          cabinetId,
+          statut: 'paye',
+          dateEmise: { gte: since12Months },
         },
-      },
-      select: { date: true, statut: true },
-    })
+        select: { montant: true, dateEmise: true },
+      }),
+      prisma.seance.findMany({
+        where: {
+          cabinetId,
+          date: { gte: since12Months },
+        },
+        select: { date: true, statut: true },
+      }),
+      prisma.patient.count({ where: { cabinetId, actif: true } }),
+      prisma.patient.count({
+        where: {
+          cabinetId,
+          createdAt: { gte: new Date(now.getFullYear(), now.getMonth(), 1) },
+        },
+      }),
+    ])
 
     // Grouper par mois
     const moisMap: Record<string, { revenus: number; seances: number; noShow: number }> = {}
@@ -32,13 +51,13 @@ export async function GET() {
     }
 
     factures.forEach(f => {
-      const d = new Date(f.dateEmise)
+      const d   = new Date(f.dateEmise)
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
       if (moisMap[key]) moisMap[key].revenus += f.montant
     })
 
     seances.forEach(s => {
-      const d = new Date(s.date)
+      const d   = new Date(s.date)
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
       if (moisMap[key]) {
         moisMap[key].seances += 1
@@ -56,16 +75,9 @@ export async function GET() {
       }
     })
 
-    const totalPatients = await prisma.patient.count({ where: { actif: true } })
-    const nouveauxPatients = await prisma.patient.count({
-      where: {
-        createdAt: { gte: new Date(now.getFullYear(), now.getMonth(), 1) },
-      },
-    })
-
     return NextResponse.json({ data, totalPatients, nouveauxPatients })
   } catch (error) {
-    console.error(error)
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
+    console.error('[GET /api/rapports/revenus]', error)
+    return NextResponse.json({ error: errMsg(error) }, { status: 500 })
   }
 }

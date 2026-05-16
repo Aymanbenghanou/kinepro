@@ -1,8 +1,9 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
+import { useSession, signOut } from 'next-auth/react'
 import {
   LayoutDashboard,
   Calendar,
@@ -12,6 +13,9 @@ import {
   UserCheck,
   BarChart3,
   Settings,
+  LogOut,
+  User,
+  Crown,
 } from 'lucide-react'
 
 const navItems = [
@@ -29,7 +33,7 @@ const parametresSubItems = [
   { label: 'Types de séances', href: '/parametres/types-seances' },
 ]
 
-// WhatsApp SVG icon (inline, no external dep)
+// WhatsApp SVG icon
 function WhatsAppIcon({ size = 18 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
@@ -39,11 +43,12 @@ function WhatsAppIcon({ size = 18 }: { size?: number }) {
 }
 
 export default function Sidebar() {
-  const pathname = usePathname()
+  const pathname  = usePathname()
+  const router    = useRouter()
+  const { data: session } = useSession()
   const [pendingFeedbacks, setPendingFeedbacks] = useState(0)
 
   useEffect(() => {
-    // Fetch pending feedback count (séances réalisées sans score)
     fetch('/api/seances?statut=realisee')
       .then(r => r.json())
       .then((data: any[]) => {
@@ -53,10 +58,24 @@ export default function Sidebar() {
         }
       })
       .catch(() => {})
-  }, [pathname]) // refresh on route change
+  }, [pathname])
 
-  const isWhatsAppActive  = pathname === '/whatsapp' || pathname.startsWith('/whatsapp')
-  const isParametresActive = pathname === '/parametres' || pathname.startsWith('/parametres')
+  const isWhatsAppActive   = pathname.startsWith('/whatsapp')
+  const isParametresActive = pathname.startsWith('/parametres')
+  const isAbonnementActive = pathname.startsWith('/abonnement')
+  const isCompteActive     = pathname.startsWith('/compte')
+
+  const user = session?.user
+  const initials = user
+    ? `${(user.prenom?.[0] || '').toUpperCase()}${(user.nom?.[0] || '').toUpperCase()}`
+    : 'KP'
+  const fullName = user ? `${user.prenom} ${user.nom}` : ''
+  const roleLabel = user?.role === 'CABINET_OWNER' ? 'Propriétaire' : user?.role === 'EMPLOYEE' ? 'Employé' : 'Admin'
+
+  async function handleLogout() {
+    await signOut({ redirect: false })
+    router.push('/login')
+  }
 
   return (
     <aside className="sidebar">
@@ -69,7 +88,7 @@ export default function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-1">
+      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
           const Icon = item.icon
           const isActive =
@@ -91,43 +110,6 @@ export default function Sidebar() {
             </Link>
           )
         })}
-
-        {/* Paramètres with submenu */}
-        <div>
-          <Link
-            href="/parametres"
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-              isParametresActive
-                ? 'bg-blue-600 text-white'
-                : 'text-blue-200 hover:bg-blue-800 hover:text-white'
-            }`}
-          >
-            <Settings size={18} />
-            <span style={{ flex: 1 }}>Paramètres</span>
-          </Link>
-          {/* Submenu — always visible when on a /parametres route */}
-          {isParametresActive && (
-            <div style={{ marginLeft: 14, marginTop: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
-              {parametresSubItems.map(item => {
-                const isSubActive = pathname === item.href
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                      isSubActive
-                        ? 'bg-blue-500 text-white'
-                        : 'text-blue-300 hover:bg-blue-800 hover:text-white'
-                    }`}
-                  >
-                    <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'currentColor', flexShrink: 0 }} />
-                    {item.label}
-                  </Link>
-                )
-              })}
-            </div>
-          )}
-        </div>
 
         {/* WhatsApp entry */}
         <Link
@@ -151,17 +133,95 @@ export default function Sidebar() {
             </span>
           )}
         </Link>
+
+        {/* Paramètres with submenu */}
+        <div>
+          <Link
+            href="/parametres"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              isParametresActive
+                ? 'bg-blue-600 text-white'
+                : 'text-blue-200 hover:bg-blue-800 hover:text-white'
+            }`}
+          >
+            <Settings size={18} />
+            <span style={{ flex: 1 }}>Paramètres</span>
+          </Link>
+          {isParametresActive && (
+            <div style={{ marginLeft: 14, marginTop: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
+              {parametresSubItems.map(item => {
+                const isSubActive = pathname === item.href
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                      isSubActive
+                        ? 'bg-blue-500 text-white'
+                        : 'text-blue-300 hover:bg-blue-800 hover:text-white'
+                    }`}
+                  >
+                    <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'currentColor', flexShrink: 0 }} />
+                    {item.label}
+                  </Link>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Abonnement */}
+        <Link
+          href="/abonnement"
+          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+            isAbonnementActive
+              ? 'bg-blue-600 text-white'
+              : 'text-blue-200 hover:bg-blue-800 hover:text-white'
+          }`}
+        >
+          <Crown size={18} />
+          Abonnement
+        </Link>
       </nav>
 
-      {/* Footer */}
-      <div className="px-5 py-4 border-t border-blue-800">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-            <span className="text-white text-xs font-bold">RA</span>
+      {/* Footer — user info + links */}
+      <div className="px-3 py-4 border-t border-blue-800 space-y-1">
+        {/* Mon compte */}
+        <Link
+          href="/compte"
+          className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+            isCompteActive
+              ? 'bg-blue-600 text-white'
+              : 'text-blue-200 hover:bg-blue-800 hover:text-white'
+          }`}
+        >
+          <User size={16} />
+          Mon compte
+        </Link>
+
+        {/* Déconnexion */}
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-blue-300 hover:bg-red-900 hover:text-red-200 transition-colors"
+        >
+          <LogOut size={16} />
+          Déconnexion
+        </button>
+
+        {/* User avatar + info */}
+        <div className="flex items-center gap-3 px-3 pt-3 mt-2 border-t border-blue-800">
+          <div style={{
+            width: 32, height: 32, background: '#3B82F6',
+            borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0,
+          }}>
+            <span style={{ color: 'white', fontSize: 11, fontWeight: 700 }}>{initials}</span>
           </div>
-          <div>
-            <p className="text-white text-xs font-medium">Dr. Amrani</p>
-            <p className="text-blue-300 text-xs">Admin</p>
+          <div style={{ overflow: 'hidden', flex: 1 }}>
+            <p style={{ color: 'white', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {fullName || 'Utilisateur'}
+            </p>
+            <p style={{ color: '#93C5FD', fontSize: 11 }}>{roleLabel}</p>
           </div>
         </div>
       </div>

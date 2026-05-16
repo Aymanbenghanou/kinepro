@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { auth } from '@/auth'
 
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : 'Erreur inconnue'
@@ -7,7 +8,13 @@ function errMsg(e: unknown): string {
 
 export async function GET() {
   try {
-    const cabinet = await prisma.cabinet.findFirst()
+    const session = await auth()
+    if (!session?.user?.cabinetId) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+    }
+    const { cabinetId } = session.user
+
+    const cabinet = await prisma.cabinet.findUnique({ where: { id: cabinetId } })
     return NextResponse.json(cabinet || {})
   } catch (error) {
     console.error('[GET /api/cabinet]', error)
@@ -18,11 +25,16 @@ export async function GET() {
 // PATCH — partial update of cabinet settings
 export async function PATCH(request: NextRequest) {
   try {
-    const body = await request.json()
-    const existing = await prisma.cabinet.findFirst()
+    const session = await auth()
+    if (!session?.user?.cabinetId) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+    }
+    const { cabinetId } = session.user
 
+    const body = await request.json()
     const data = {
       ...(body.nom              !== undefined && { nom: body.nom }),
+      ...(body.ville            !== undefined && { ville: body.ville }),
       ...(body.adresse          !== undefined && { adresse: body.adresse }),
       ...(body.telephone        !== undefined && { telephone: body.telephone }),
       ...(body.email            !== undefined && { email: body.email }),
@@ -31,14 +43,10 @@ export async function PATCH(request: NextRequest) {
       ...(body.googleReviewLink !== undefined && { googleReviewLink: body.googleReviewLink }),
     }
 
-    const cabinet = existing
-      ? await prisma.cabinet.update({ where: { id: existing.id }, data })
-      : await prisma.cabinet.create({
-          data: {
-            nom: body.nom || 'Mon Cabinet',
-            ...data,
-          },
-        })
+    const cabinet = await prisma.cabinet.update({
+      where: { id: cabinetId },
+      data,
+    })
 
     return NextResponse.json(cabinet)
   } catch (error) {

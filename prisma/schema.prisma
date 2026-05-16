@@ -6,26 +6,76 @@ datasource db {
   provider = "postgresql"
 }
 
+// ─── Auth ────────────────────────────────────────────────────────────────────
+
+model User {
+  id               String     @id @default(cuid())
+  email            String     @unique
+  password         String
+  role             String     @default("CABINET_OWNER") // SUPER_ADMIN | CABINET_OWNER | EMPLOYEE
+  nom              String
+  prenom           String
+  telephone        String?
+  twoFactorEnabled Boolean    @default(false)
+  twoFactorSecret  String?
+  cabinetId        String?
+  cabinet          Cabinet?   @relation("CabinetUsers", fields: [cabinetId], references: [id])
+  ownedCabinet     Cabinet?   @relation("CabinetOwner")
+  praticienId      String?    @unique
+  praticien        Praticien? @relation(fields: [praticienId], references: [id])
+  createdAt        DateTime   @default(now())
+  lastLoginAt      DateTime?
+  isActive         Boolean    @default(true)
+}
+
+model Subscription {
+  id               String    @id @default(cuid())
+  cabinetId        String    @unique
+  cabinet          Cabinet   @relation(fields: [cabinetId], references: [id])
+  plan             String    @default("TRIAL") // TRIAL | MONTHLY | ANNUAL | SUSPENDED
+  trialEndsAt      DateTime
+  currentPeriodEnd DateTime?
+  price            Float?
+  currency         String    @default("MAD")
+  createdAt        DateTime  @default(now())
+}
+
+// ─── Cabinet ─────────────────────────────────────────────────────────────────
+
 model Cabinet {
-  id               String   @id @default(cuid())
+  id               String        @id @default(cuid())
   nom              String
   adresse          String?
+  ville            String?
   telephone        String?
   email            String?
   googleMapsLink   String?
   whatsappNumber   String?
   googleReviewLink String?
-  createdAt        DateTime @default(now())
+  ownerId          String?       @unique
+  subdomain        String?       @unique
+  logoUrl          String?
+  owner            User?         @relation("CabinetOwner", fields: [ownerId], references: [id])
+  users            User[]        @relation("CabinetUsers")
+  praticiens       Praticien[]
+  patients         Patient[]
+  seanceTypes      SeanceType[]
+  subscription     Subscription?
+  createdAt        DateTime      @default(now())
 }
+
+// ─── Domain models ───────────────────────────────────────────────────────────
 
 model SeanceType {
   id           String       @id @default(cuid())
   nom          String
   description  String?
   dureeDefaut  Int          @default(45)
-  tarifDefaut  Float        @default(250)
+  tarifDefaut  Float        @default(300)
   couleur      String       @default("#2563EB")
   actif        Boolean      @default(true)
+  cabinetId    String?
+  cabinet      Cabinet?     @relation(fields: [cabinetId], references: [id])
   praticienId  String?
   praticien    Praticien?   @relation(fields: [praticienId], references: [id])
   seances      Seance[]
@@ -34,14 +84,17 @@ model SeanceType {
 }
 
 model Praticien {
-  id         String       @id @default(cuid())
-  nom        String
-  prenom     String
-  specialite String?
-  telephone  String?
-  email      String?
+  id           String       @id @default(cuid())
+  nom          String
+  prenom       String
+  specialite   String?
+  telephone    String?
+  email        String?
   couleur      String       @default("#2563EB")
   actif        Boolean      @default(true)
+  cabinetId    String?
+  cabinet      Cabinet?     @relation(fields: [cabinetId], references: [id])
+  user         User?
   rendezVous   RendezVous[]
   seances      Seance[]
   seanceTypes  SeanceType[]
@@ -76,6 +129,8 @@ model Patient {
   objectifsTraitement  String?
   dateDebutSouhaite    DateTime?
   actif                Boolean       @default(true)
+  cabinetId            String?
+  cabinet              Cabinet?      @relation(fields: [cabinetId], references: [id])
   rendezVous           RendezVous[]
   seances              Seance[]
   factures             Facture[]
@@ -85,13 +140,14 @@ model Patient {
 }
 
 model RendezVous {
-  id          String    @id @default(cuid())
-  date        DateTime
-  duree       Int       @default(45)
-  typeSeance  String
-  salle       String?
-  notes       String?
-  statut      String    @default("confirme")
+  id           String      @id @default(cuid())
+  date         DateTime
+  duree        Int         @default(45)
+  typeSeance   String
+  salle        String?
+  notes        String?
+  statut       String      @default("confirme")
+  cabinetId    String?
   patientId    String
   praticienId  String
   seanceTypeId String?
@@ -102,24 +158,25 @@ model RendezVous {
 }
 
 model Seance {
-  id              String    @id @default(cuid())
-  date            DateTime
-  duree           Int
-  typeSeance      String
-  notes           String?
-  statut          String    @default("realisee")
-  scorePatient    Int?
-  notesInternes   String?
-  feedbackEnvoye  Boolean   @default(false)
-  dateFeedback    DateTime?
-  patientId       String
-  praticienId     String
-  seanceTypeId    String?
-  patient         Patient     @relation(fields: [patientId], references: [id])
-  praticien       Praticien   @relation(fields: [praticienId], references: [id])
-  seanceType      SeanceType? @relation(fields: [seanceTypeId], references: [id])
-  facture         Facture?
-  createdAt       DateTime    @default(now())
+  id             String      @id @default(cuid())
+  date           DateTime
+  duree          Int
+  typeSeance     String
+  notes          String?
+  statut         String      @default("realisee")
+  scorePatient   Int?
+  notesInternes  String?
+  feedbackEnvoye Boolean     @default(false)
+  dateFeedback   DateTime?
+  cabinetId      String?
+  patientId      String
+  praticienId    String
+  seanceTypeId   String?
+  patient        Patient     @relation(fields: [patientId], references: [id])
+  praticien      Praticien   @relation(fields: [praticienId], references: [id])
+  seanceType     SeanceType? @relation(fields: [seanceTypeId], references: [id])
+  facture        Facture?
+  createdAt      DateTime    @default(now())
 }
 
 model Facture {
@@ -128,6 +185,7 @@ model Facture {
   statut       String    @default("en_attente")
   dateEmise    DateTime  @default(now())
   datePaiement DateTime?
+  cabinetId    String?
   patientId    String
   seanceId     String?   @unique
   patient      Patient   @relation(fields: [patientId], references: [id])
@@ -140,6 +198,7 @@ model Feedback {
   score       Int
   commentaire String?
   typeMessage String   @default("post_seance")
+  cabinetId   String?
   patientId   String
   seanceId    String?
   patient     Patient  @relation(fields: [patientId], references: [id])
@@ -149,10 +208,24 @@ model Feedback {
 model WhatsAppLog {
   id         String   @id @default(cuid())
   type       String
+  cabinetId  String?
   patientId  String
   patientNom String
   telephone  String
   message    String
   patient    Patient  @relation(fields: [patientId], references: [id])
   createdAt  DateTime @default(now())
+}
+
+// ─── Global system config (one row, key = "global") ──────────────────────────
+
+model SystemConfig {
+  id             String @id @default("global")
+  whatsappNumber String @default("")
+  rib            String @default("")
+  banque         String @default("")
+  titulaire      String @default("")
+  prixMensuel    Float  @default(299)
+  prixAnnuel     Float  @default(2499)
+  updatedAt      DateTime @updatedAt
 }
