@@ -119,26 +119,18 @@ export default function HeroSection() {
       display: 'flex',
       alignItems: 'center',
       padding: '100px 20px 80px',
+      background: 'linear-gradient(135deg, #0F2747 0%, #1E3A5F 40%, #1D4ED8 100%)',
     }}>
-      {/* Real physiotherapy photo — full cover background */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="https://res.cloudinary.com/djouneyaq/image/upload/v1778974291/cover-kinestherapie-sport-paris-institut-kinesitherapieV2.jpg_atyja5.webp"
-        alt=""
-        aria-hidden="true"
-        style={{
-          position: 'absolute', inset: 0,
-          width: '100%', height: '100%',
-          objectFit: 'cover', objectPosition: 'center',
-          pointerEvents: 'none',
-        }}
-      />
-      {/* Dark blue overlay for text readability */}
-      <div style={{
-        position: 'absolute', inset: 0,
-        background: 'rgba(15, 31, 61, 0.78)',
-        pointerEvents: 'none',
-      }} />
+      {/* Decorative SVG waves */}
+      <svg style={{ position: 'absolute', top: 0, right: 0, opacity: 0.06, pointerEvents: 'none' }} width="600" height="600" viewBox="0 0 600 600" fill="none">
+        <circle cx="400" cy="100" r="300" stroke="white" strokeWidth="1.5"/>
+        <circle cx="400" cy="100" r="220" stroke="white" strokeWidth="1.5"/>
+        <circle cx="400" cy="100" r="140" stroke="white" strokeWidth="1.5"/>
+      </svg>
+      <svg style={{ position: 'absolute', bottom: -80, left: -60, opacity: 0.06, pointerEvents: 'none' }} width="500" height="500" viewBox="0 0 500 500" fill="none">
+        <circle cx="100" cy="400" r="260" stroke="white" strokeWidth="1.5"/>
+        <circle cx="100" cy="400" r="180" stroke="white" strokeWidth="1.5"/>
+      </svg>
 
       <div className="hero-inner" style={{ maxWidth: 1180, margin: '0 auto', width: '100%', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 60, alignItems: 'center' }}>
 
