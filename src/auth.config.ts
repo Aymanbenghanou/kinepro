@@ -11,8 +11,14 @@ export const authConfig: NextAuthConfig = {
   session: { strategy: 'jwt' },
 
   callbacks: {
-    authorized({ auth }) {
-      // Called by the middleware: just check if a session token exists
+    authorized({ auth, request }) {
+      const { pathname } = request.nextUrl
+      // Public routes — always allow through so middleware handles them
+      const publicPaths = ['/', '/login', '/register']
+      if (publicPaths.some(p => pathname === p || pathname.startsWith('/feedback'))) {
+        return true
+      }
+      // Everything else requires a valid session
       return !!auth
     },
     async jwt({ token, user }) {

@@ -8,8 +8,11 @@ export default auth(function middleware(req) {
   const session = req.auth
   const { pathname } = req.nextUrl
 
+  // Root landing page — always public (no redirect even if logged in)
+  if (pathname === '/') return NextResponse.next()
+
   // Public routes — no auth needed
-  const publicPaths = ['/login', '/register']
+  const publicPaths = ['/login', '/register', '/feedback']
   if (publicPaths.some(p => pathname.startsWith(p))) {
     // Redirect logged-in users away from auth pages
     if (session) {
