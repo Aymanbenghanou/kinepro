@@ -1,0 +1,564 @@
+'use client'
+
+import { useState, useEffect, useCallback } from 'react'
+import { useParams, useRouter } from 'next/navigation'
+import { formatDate, formatTime, formatMoney } from '@/lib/utils'
+import Topbar from '@/components/layout/Topbar'
+import {
+  ArrowLeft, Phone, Mail, MapPin, Activity, FileText,
+  Calendar, Plus, X, User, CreditCard, Target, Clock,
+} from 'lucide-react'
+import ExercicesModal from '@/components/whatsapp/ExercicesModal'
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+type TabId = 'informations' | 'seances' | 'plan' | 'facturation' | 'documents'
+
+const TABS: { id: TabId; label: string; icon: any }[] = [
+  { id: 'informations', label: 'Informations', icon: User },
+  { id: 'seances', label: 'Séances', icon: Clock },
+  { id: 'plan', label: 'Plan de traitement', icon: Target },
+  { id: 'facturation', label: 'Facturation', icon: CreditCard },
+  { id: 'documents', label: 'Documents', icon: FileText },
+]
+
+function Badge({ label, bg, color }: { label: string; bg: string; color: string }) {
+  return <span style={{ background: bg, color, padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 500 }}>{label}</span>
+}
+
+function statutSeance(s: string) {
+  const m: Record<string, { label: string; bg: string; color: string }> = {
+    realisee: { label: 'Réalisée', bg: '#DCFCE7', color: '#16A34A' },
+    annulee: { label: 'Annulée', bg: '#FEE2E2', color: '#DC2626' },
+    no_show: { label: 'Absent', bg: '#FEF3C7', color: '#D97706' },
+  }
+  return m[s] || { label: s, bg: '#F1F5F9', color: '#64748B' }
+}
+function statutFacture(s: string) {
+  const m: Record<string, { label: string; bg: string; color: string }> = {
+    paye: { label: 'Payé', bg: '#DCFCE7', color: '#16A34A' },
+    en_attente: { label: 'En attente', bg: '#FEF3C7', color: '#D97706' },
+    en_retard: { label: 'En retard', bg: '#FEE2E2', color: '#DC2626' },
+  }
+  return m[s] || { label: s, bg: '#F1F5F9', color: '#64748B' }
+}
+
+function InfoRow({ label, value }: { label: string; value?: string | null }) {
+  if (!value) return null
+  return (
+    <div style={{ display: 'flex', gap: 0, padding: '10px 0', borderBottom: '1px solid #F1F5F9' }}>
+      <span style={{ fontSize: 13, color: '#64748B', minWidth: 200, fontWeight: 500 }}>{label}</span>
+      <span style={{ fontSize: 13, color: '#0F172A', flex: 1 }}>{value}</span>
+    </div>
+  )
+}
+
+// ─── Modal Planifier Séance ───────────────────────────────────────────────────
+function PlanifierModal({ patientId, onClose, onSuccess }: {
+  patientId: string; onClose: () => void; onSuccess: () => void
+}) {
+  const [praticiens, setPraticiens] = useState<any[]>([])
+  const [seanceTypes, setSeanceTypes] = useState<any[]>([])
+  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState({
+    date: '', heure: '09:00', praticienId: '', typeSeance: '',
+    salle: 'Salle 1', duree: '45', notes: '',
+  })
+
+  useEffect(() => {
+    fetch('/api/praticiens').then(r => r.json()).then(d => setPraticiens(Array.isArray(d) ? d : []))
+    fetch('/api/seance-types').then(r => r.json()).then(d => setSeanceTypes(Array.isArray(d) ? d : []))
+  }, [])
+
+  // Auto-fill duree from seanceType
+  useEffect(() => {
+    const found = seanceTypes.find(t => t.nom === form.typeSeance)
+    if (found) setForm(f => ({ ...f, duree: String(found.dureeDefaut) }))
+  }, [form.typeSeance, seanceTypes])
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!form.date || !form.praticienId || !form.typeSeance) return
+    setSaving(true)
+    try {
+      await fetch('/api/rendez-vous', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          date: `${form.date}T${form.heure}:00`,
+          duree: parseInt(form.duree),
+          typeSeance: form.typeSeance,
+          salle: form.salle,
+          notes: form.notes,
+          patientId,
+          praticienId: form.praticienId,
+        }),
+      })
+      onSuccess()
+      onClose()
+    } catch {}
+    setSaving(false)
+  }
+
+  const inp: React.CSSProperties = { width: '100%', padding: '10px 12px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 14, background: 'white', boxSizing: 'border-box' }
+  const lbl: React.CSSProperties = { fontSize: 13, fontWeight: 500, color: '#374151', display: 'block', marginBottom: 6 }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300, backdropFilter: 'blur(2px)' }}>
+      <div style={{ background: 'white', borderRadius: 16, padding: 28, width: 520, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.18)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: '#0F172A', margin: 0 }}>Planifier une séance</h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B' }}><X size={20} /></button>
+        </div>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            <label style={lbl}>Type de séance *</label>
+            <select value={form.typeSeance} onChange={e => setForm(f => ({ ...f, typeSeance: e.target.value }))} required style={inp}>
+              <option value="">Sélectionner...</option>
+              {seanceTypes.map((t: any) => (
+                <option key={t.id} value={t.nom}>{t.nom} — {t.dureeDefaut} min — {t.tarifDefaut} MAD</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label style={lbl}>Praticien *</label>
+            <select value={form.praticienId} onChange={e => setForm(f => ({ ...f, praticienId: e.target.value }))} required style={inp}>
+              <option value="">Sélectionner...</option>
+              {praticiens.map((p: any) => <option key={p.id} value={p.id}>Dr. {p.prenom} {p.nom}</option>)}
+            </select>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={lbl}>Date *</label>
+              <input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} required style={inp} />
+            </div>
+            <div>
+              <label style={lbl}>Heure *</label>
+              <input type="time" value={form.heure} onChange={e => setForm(f => ({ ...f, heure: e.target.value }))} required style={inp} />
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={lbl}>Salle</label>
+              <select value={form.salle} onChange={e => setForm(f => ({ ...f, salle: e.target.value }))} style={inp}>
+                {['Salle 1', 'Salle 2', 'Salle 3'].map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={lbl}>Durée (min)</label>
+              <input type="number" value={form.duree} onChange={e => setForm(f => ({ ...f, duree: e.target.value }))} style={inp} min="15" step="5" />
+            </div>
+          </div>
+          <div>
+            <label style={lbl}>Notes</label>
+            <textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} rows={3}
+              style={{ ...inp, resize: 'vertical' }} placeholder="Instructions ou observations..." />
+          </div>
+          <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+            <button type="button" onClick={onClose}
+              style={{ flex: 1, padding: '11px', border: '1px solid #E2E8F0', borderRadius: 10, background: 'white', cursor: 'pointer', fontWeight: 500, color: '#64748B' }}>
+              Annuler
+            </button>
+            <button type="submit" disabled={saving}
+              style={{ flex: 1, padding: '11px', border: 'none', borderRadius: 10, background: '#2563EB', color: 'white', cursor: saving ? 'not-allowed' : 'pointer', fontWeight: 600 }}>
+              {saving ? 'Planification...' : 'Planifier la séance'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ─── Page principale ──────────────────────────────────────────────────────────
+export default function PatientDetailPage() {
+  const params = useParams()
+  const router = useRouter()
+  const id = params.id as string
+
+  const [patient, setPatient] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState<TabId>('informations')
+  const [showPlanifier, setShowPlanifier] = useState(false)
+  const [showExercices, setShowExercices] = useState(false)
+
+  const fetchPatient = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/patients/${id}`)
+      if (!res.ok) { setLoading(false); return }
+      const data = await res.json()
+      setPatient(data)
+    } catch {}
+    setLoading(false)
+  }, [id])
+
+  useEffect(() => { fetchPatient() }, [fetchPatient])
+
+  if (loading) return (
+    <div>
+      <Topbar title="Chargement..." />
+      <div style={{ padding: 40, textAlign: 'center', color: '#64748B' }}>Chargement du dossier...</div>
+    </div>
+  )
+
+  if (!patient) return (
+    <div>
+      <Topbar title="Patient introuvable" />
+      <div style={{ padding: 24 }}>
+        <button onClick={() => router.push('/patients')} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: '#2563EB', cursor: 'pointer', fontSize: 14, fontWeight: 500 }}>
+          <ArrowLeft size={14} /> Retour aux patients
+        </button>
+      </div>
+    </div>
+  )
+
+  const seancesRealisees = patient.seances?.filter((s: any) => s.statut === 'realisee') || []
+  const pct = patient.nbSeancesPrescrites
+    ? Math.min(100, Math.round((seancesRealisees.length / patient.nbSeancesPrescrites) * 100))
+    : null
+
+  // Calcul âge
+  let age: number | null = null
+  if (patient.dateNaissance) {
+    const birth = new Date(patient.dateNaissance)
+    const today = new Date()
+    age = today.getFullYear() - birth.getFullYear()
+    if (today.getMonth() < birth.getMonth() || (today.getMonth() === birth.getMonth() && today.getDate() < birth.getDate())) age--
+  }
+
+  return (
+    <div>
+      <Topbar title={`${patient.prenom} ${patient.nom}`} subtitle="Dossier patient" />
+      <div style={{ padding: 24 }}>
+
+        {/* Breadcrumb */}
+        <button onClick={() => router.push('/patients')}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: '#64748B', cursor: 'pointer', fontSize: 14, marginBottom: 20, padding: 0 }}>
+          <ArrowLeft size={14} /> Retour aux patients
+        </button>
+
+        {/* Header card */}
+        <div style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: 16, padding: 24, marginBottom: 20 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div style={{ display: 'flex', gap: 18, alignItems: 'center' }}>
+              {/* Avatar */}
+              <div style={{
+                width: 80, height: 80, borderRadius: '50%', background: 'linear-gradient(135deg, #2563EB, #1E3A5F)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              }}>
+                <span style={{ color: 'white', fontSize: 26, fontWeight: 700 }}>{patient.prenom?.[0]}{patient.nom?.[0]}</span>
+              </div>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                  <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0F172A', margin: 0 }}>{patient.prenom} {patient.nom}</h1>
+                  <span style={{ background: patient.actif ? '#DCFCE7' : '#F1F5F9', color: patient.actif ? '#16A34A' : '#64748B', padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 500 }}>
+                    {patient.actif ? '● Actif' : '● Inactif'}
+                  </span>
+                  {patient.sexe && (
+                    <span style={{ background: '#EFF6FF', color: '#2563EB', padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 500 }}>
+                      {patient.sexe}
+                    </span>
+                  )}
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+                  {age !== null && <span style={{ fontSize: 13, color: '#64748B', display: 'flex', alignItems: 'center', gap: 4 }}><User size={13} /> {age} ans</span>}
+                  {patient.telephone && <span style={{ fontSize: 13, color: '#64748B', display: 'flex', alignItems: 'center', gap: 4 }}><Phone size={13} /> {patient.telephone}</span>}
+                  {patient.email && <span style={{ fontSize: 13, color: '#64748B', display: 'flex', alignItems: 'center', gap: 4 }}><Mail size={13} /> {patient.email}</span>}
+                  {patient.ville && <span style={{ fontSize: 13, color: '#64748B', display: 'flex', alignItems: 'center', gap: 4 }}><MapPin size={13} /> {patient.ville}</span>}
+                </div>
+                {patient.pathologie && (
+                  <div style={{ marginTop: 8 }}>
+                    <span style={{ background: '#FEF3C7', color: '#92400E', padding: '4px 12px', borderRadius: 999, fontSize: 12, fontWeight: 500 }}>
+                      🩺 {patient.pathologie}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
+              {patient.telephone && (
+                <button onClick={() => setShowExercices(true)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#7C3AED', color: 'white', border: 'none', borderRadius: 10, padding: '10px 18px', cursor: 'pointer', fontWeight: 600, fontSize: 14, boxShadow: '0 2px 8px rgba(124,58,237,0.25)' }}>
+                  💪 Exercices
+                </button>
+              )}
+              <button onClick={() => setShowPlanifier(true)}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#2563EB', color: 'white', border: 'none', borderRadius: 10, padding: '10px 18px', cursor: 'pointer', fontWeight: 600, fontSize: 14, boxShadow: '0 2px 8px rgba(37,99,235,0.25)' }}>
+                <Calendar size={16} /> Planifier séance
+              </button>
+            </div>
+          </div>
+
+          {/* Quick stats */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginTop: 20, paddingTop: 20, borderTop: '1px solid #F1F5F9' }}>
+            {[
+              { label: 'Séances réalisées', value: seancesRealisees.length, color: '#2563EB' },
+              { label: 'Total séances', value: patient.seances?.length || 0, color: '#0F172A' },
+              { label: 'Prescrites', value: patient.nbSeancesPrescrites || '—', color: '#16A34A' },
+              { label: 'Factures', value: patient.factures?.length || 0, color: '#F59E0B' },
+            ].map(({ label, value, color }) => (
+              <div key={label} style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 26, fontWeight: 700, color }}>{value}</div>
+                <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>{label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div style={{ display: 'flex', gap: 2, marginBottom: 20, background: 'white', border: '1px solid #E2E8F0', borderRadius: 10, padding: 4 }}>
+          {TABS.map(tab => {
+            const Icon = tab.icon
+            const active = activeTab === tab.id
+            return (
+              <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                style={{
+                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  padding: '9px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: active ? 600 : 400,
+                  background: active ? '#2563EB' : 'transparent',
+                  color: active ? 'white' : '#64748B',
+                  transition: 'all 0.15s',
+                }}>
+                <Icon size={14} /> {tab.label}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* ── Tab: Informations ── */}
+        {activeTab === 'informations' && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+            {/* Infos personnelles */}
+            <div style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, padding: 24 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 600, color: '#0F172A', marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid #E2E8F0' }}>
+                👤 Informations personnelles
+              </h3>
+              <InfoRow label="Prénom" value={patient.prenom} />
+              <InfoRow label="Nom" value={patient.nom} />
+              <InfoRow label="Date de naissance" value={patient.dateNaissance ? `${formatDate(patient.dateNaissance)}${age !== null ? ` (${age} ans)` : ''}` : undefined} />
+              <InfoRow label="Sexe" value={patient.sexe} />
+              <InfoRow label="Téléphone" value={patient.telephone} />
+              <InfoRow label="Email" value={patient.email} />
+              <InfoRow label="Adresse" value={patient.adresse} />
+              <InfoRow label="Ville" value={patient.ville} />
+              <InfoRow label="CIN" value={patient.cin} />
+            </div>
+            {/* Infos médicales */}
+            <div style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, padding: 24 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 600, color: '#0F172A', marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid #E2E8F0' }}>
+                🩺 Informations médicales
+              </h3>
+              <InfoRow label="Pathologie" value={patient.pathologie} />
+              <InfoRow label="Médecin référent" value={patient.medecinReferent} />
+              <InfoRow label="Tél. médecin" value={patient.medecinTelephone} />
+              <InfoRow label="Mutuelle" value={patient.mutuelle} />
+              <InfoRow label="N° police" value={patient.numeroPolice} />
+              <InfoRow label="Mode paiement" value={patient.modePaiement} />
+              <InfoRow label="Tarif séance" value={patient.tarifSeance ? `${patient.tarifSeance} MAD` : undefined} />
+              {patient.antecedents && (
+                <div style={{ marginTop: 12 }}>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: '#64748B', marginBottom: 6 }}>ANTÉCÉDENTS</p>
+                  <p style={{ fontSize: 13, color: '#374151', background: '#F8FAFC', padding: 10, borderRadius: 8, margin: 0 }}>{patient.antecedents}</p>
+                </div>
+              )}
+              {patient.allergies && (
+                <div style={{ marginTop: 12 }}>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: '#DC2626', marginBottom: 6 }}>⚠ ALLERGIES</p>
+                  <p style={{ fontSize: 13, color: '#374151', background: '#FEF2F2', padding: 10, borderRadius: 8, margin: 0 }}>{patient.allergies}</p>
+                </div>
+              )}
+              {patient.medicaments && (
+                <div style={{ marginTop: 12 }}>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: '#64748B', marginBottom: 6 }}>MÉDICAMENTS EN COURS</p>
+                  <p style={{ fontSize: 13, color: '#374151', background: '#F8FAFC', padding: 10, borderRadius: 8, margin: 0 }}>{patient.medicaments}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── Tab: Séances ── */}
+        {activeTab === 'seances' && (
+          <div style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, overflow: 'hidden' }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid #E2E8F0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ fontSize: 15, fontWeight: 600, color: '#0F172A', margin: 0 }}>Historique des séances ({patient.seances?.length || 0})</h3>
+              <button onClick={() => setShowPlanifier(true)}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#2563EB', color: 'white', border: 'none', borderRadius: 8, padding: '8px 14px', cursor: 'pointer', fontWeight: 500, fontSize: 13 }}>
+                <Plus size={14} /> Planifier séance
+              </button>
+            </div>
+            {patient.seances?.length === 0 ? (
+              <div style={{ padding: 40, textAlign: 'center', color: '#64748B', fontSize: 14 }}>Aucune séance enregistrée</div>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+                    {['Date', 'Type', 'Durée', 'Praticien', 'Statut', 'Notes'].map(h => (
+                      <th key={h} style={{ padding: '10px 16px', fontSize: 12, fontWeight: 600, color: '#64748B', textAlign: 'left' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {patient.seances?.map((s: any, i: number) => {
+                    const st = statutSeance(s.statut)
+                    return (
+                      <tr key={s.id} style={{ borderBottom: '1px solid #F1F5F9', background: i % 2 === 0 ? 'white' : '#FAFAFA' }}>
+                        <td style={{ padding: '12px 16px' }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: '#0F172A' }}>{formatDate(s.date)}</div>
+                          <div style={{ fontSize: 12, color: '#64748B' }}>{formatTime(s.date)}</div>
+                        </td>
+                        <td style={{ padding: '12px 16px', fontSize: 13, color: '#374151' }}>{s.typeSeance}</td>
+                        <td style={{ padding: '12px 16px', fontSize: 13, color: '#374151' }}>{s.duree} min</td>
+                        <td style={{ padding: '12px 16px', fontSize: 13, color: '#374151' }}>Dr. {s.praticien?.nom}</td>
+                        <td style={{ padding: '12px 16px' }}><Badge {...st} /></td>
+                        <td style={{ padding: '12px 16px', fontSize: 12, color: '#64748B', maxWidth: 200 }}>
+                          <span style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                            {s.notes || '—'}
+                          </span>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
+
+        {/* ── Tab: Plan de traitement ── */}
+        {activeTab === 'plan' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            {/* Progression */}
+            <div style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, padding: 24 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 600, color: '#0F172A', marginBottom: 20 }}>📈 Progression du traitement</h3>
+              {pct !== null ? (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <span style={{ fontSize: 14, color: '#374151', fontWeight: 500 }}>
+                      {seancesRealisees.length} séances réalisées sur {patient.nbSeancesPrescrites} prescrites
+                    </span>
+                    <span style={{ fontSize: 16, fontWeight: 700, color: pct >= 80 ? '#16A34A' : '#2563EB' }}>{pct}%</span>
+                  </div>
+                  <div style={{ height: 12, background: '#E2E8F0', borderRadius: 999, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${pct}%`, background: pct >= 80 ? '#16A34A' : '#2563EB', borderRadius: 999, transition: 'width 0.5s ease' }} />
+                  </div>
+                  {pct >= 100 && (
+                    <p style={{ marginTop: 10, fontSize: 13, color: '#16A34A', fontWeight: 500 }}>✅ Traitement complété !</p>
+                  )}
+                </div>
+              ) : (
+                <p style={{ color: '#64748B', fontSize: 14 }}>Aucun plan de traitement défini pour ce patient.</p>
+              )}
+            </div>
+
+            {/* Détails du plan */}
+            <div style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, padding: 24 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 600, color: '#0F172A', marginBottom: 16 }}>📋 Détails du plan</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                {[
+                  { label: 'Séances prescrites', value: patient.nbSeancesPrescrites ? `${patient.nbSeancesPrescrites} séances` : null },
+                  { label: 'Fréquence', value: patient.frequence },
+                  { label: 'Types de séances', value: patient.typesSeances },
+                  { label: 'Date de début', value: patient.dateDebutSouhaite ? formatDate(patient.dateDebutSouhaite) : null },
+                ].map(({ label, value }) => (
+                  <div key={label} style={{ padding: 14, background: '#F8FAFC', borderRadius: 10 }}>
+                    <div style={{ fontSize: 12, color: '#64748B', fontWeight: 600, marginBottom: 4 }}>{label.toUpperCase()}</div>
+                    <div style={{ fontSize: 14, color: '#0F172A', fontWeight: 500 }}>{value || '—'}</div>
+                  </div>
+                ))}
+              </div>
+              {patient.objectifsTraitement && (
+                <div style={{ marginTop: 16 }}>
+                  <div style={{ fontSize: 12, color: '#64748B', fontWeight: 600, marginBottom: 8 }}>OBJECTIFS DU TRAITEMENT</div>
+                  <div style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 10, padding: 16, fontSize: 14, color: '#1E40AF', lineHeight: 1.6 }}>
+                    {patient.objectifsTraitement}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── Tab: Facturation ── */}
+        {activeTab === 'facturation' && (
+          <div style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, overflow: 'hidden' }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid #E2E8F0' }}>
+              <h3 style={{ fontSize: 15, fontWeight: 600, color: '#0F172A', margin: 0 }}>Factures ({patient.factures?.length || 0})</h3>
+            </div>
+            {patient.factures?.length === 0 ? (
+              <div style={{ padding: 40, textAlign: 'center', color: '#64748B', fontSize: 14 }}>Aucune facture</div>
+            ) : (
+              <>
+                {/* Résumé financier */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1, borderBottom: '1px solid #E2E8F0' }}>
+                  {[
+                    { label: 'Total encaissé', value: formatMoney(patient.factures?.filter((f: any) => f.statut === 'paye').reduce((s: number, f: any) => s + f.montant, 0) || 0), color: '#16A34A' },
+                    { label: 'En attente', value: formatMoney(patient.factures?.filter((f: any) => f.statut !== 'paye').reduce((s: number, f: any) => s + f.montant, 0) || 0), color: '#D97706' },
+                    { label: 'Tarif séance', value: patient.tarifSeance ? `${patient.tarifSeance} MAD` : '—', color: '#2563EB' },
+                  ].map(({ label, value, color }) => (
+                    <div key={label} style={{ padding: 16, textAlign: 'center' }}>
+                      <div style={{ fontSize: 18, fontWeight: 700, color }}>{value}</div>
+                      <div style={{ fontSize: 12, color: '#64748B' }}>{label}</div>
+                    </div>
+                  ))}
+                </div>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+                      {['Date', 'Montant', 'Statut', 'Date paiement'].map(h => (
+                        <th key={h} style={{ padding: '10px 16px', fontSize: 12, fontWeight: 600, color: '#64748B', textAlign: 'left' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {patient.factures?.map((f: any, i: number) => {
+                      const st = statutFacture(f.statut)
+                      return (
+                        <tr key={f.id} style={{ borderBottom: '1px solid #F1F5F9', background: i % 2 === 0 ? 'white' : '#FAFAFA' }}>
+                          <td style={{ padding: '12px 16px', fontSize: 13, color: '#374151' }}>{formatDate(f.dateEmise)}</td>
+                          <td style={{ padding: '12px 16px', fontSize: 14, fontWeight: 700, color: '#0F172A' }}>{formatMoney(f.montant)}</td>
+                          <td style={{ padding: '12px 16px' }}><Badge {...st} /></td>
+                          <td style={{ padding: '12px 16px', fontSize: 13, color: '#64748B' }}>{f.datePaiement ? formatDate(f.datePaiement) : '—'}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ── Tab: Documents ── */}
+        {activeTab === 'documents' && (
+          <div style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, padding: 40, textAlign: 'center' }}>
+            <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+              <FileText size={28} color="#94A3B8" />
+            </div>
+            <h3 style={{ fontSize: 16, fontWeight: 600, color: '#0F172A', marginBottom: 8 }}>Espace documents</h3>
+            <p style={{ fontSize: 14, color: '#64748B', marginBottom: 24 }}>
+              Ordonnances, comptes-rendus, bilans — bientôt disponible.
+            </p>
+            <button style={{ padding: '10px 20px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 8, color: '#64748B', cursor: 'pointer', fontSize: 14 }}>
+              + Ajouter un document
+            </button>
+          </div>
+        )}
+
+      </div>
+
+      {showPlanifier && (
+        <PlanifierModal
+          patientId={id}
+          onClose={() => setShowPlanifier(false)}
+          onSuccess={fetchPatient}
+        />
+      )}
+      {showExercices && patient && (
+        <ExercicesModal
+          patient={{ id: patient.id, prenom: patient.prenom, nom: patient.nom, telephone: patient.telephone }}
+          onClose={() => setShowExercices(false)}
+        />
+      )}
+    </div>
+  )
+}

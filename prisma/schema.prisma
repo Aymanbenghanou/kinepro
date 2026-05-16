@@ -1,0 +1,147 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Cabinet {
+  id             String   @id @default(cuid())
+  nom            String
+  adresse        String?
+  telephone      String?
+  email          String?
+  googleMapsLink String?
+  createdAt      DateTime @default(now())
+}
+
+model SeanceType {
+  id           String   @id @default(cuid())
+  nom          String   @unique
+  description  String?
+  dureeDefaut  Int      @default(45)
+  tarifDefaut  Float    @default(250)
+  couleur      String   @default("#2563EB")
+  actif        Boolean  @default(true)
+  createdAt    DateTime @default(now())
+}
+
+model Praticien {
+  id         String       @id @default(cuid())
+  nom        String
+  prenom     String
+  specialite String?
+  telephone  String?
+  email      String?
+  couleur    String       @default("#2563EB")
+  actif      Boolean      @default(true)
+  rendezVous RendezVous[]
+  seances    Seance[]
+  createdAt  DateTime     @default(now())
+}
+
+model Patient {
+  id                   String        @id @default(cuid())
+  nom                  String
+  prenom               String
+  dateNaissance        DateTime?
+  sexe                 String?
+  telephone            String?
+  email                String?
+  adresse              String?
+  ville                String?
+  cin                  String?
+  pathologie           String?
+  antecedents          String?
+  allergies            String?
+  medicaments          String?
+  medecinReferent      String?
+  medecinTelephone     String?
+  mutuelle             String?
+  numeroPolice         String?
+  tarifSeance          Float?
+  modePaiement         String?
+  nbSeancesPrescrites  Int?
+  frequence            String?
+  praticienAssigneId   String?
+  typesSeances         String?
+  objectifsTraitement  String?
+  dateDebutSouhaite    DateTime?
+  actif                Boolean       @default(true)
+  rendezVous           RendezVous[]
+  seances              Seance[]
+  factures             Facture[]
+  feedbacks            Feedback[]
+  whatsappLogs         WhatsAppLog[]
+  createdAt            DateTime      @default(now())
+}
+
+model RendezVous {
+  id          String    @id @default(cuid())
+  date        DateTime
+  duree       Int       @default(45)
+  typeSeance  String
+  salle       String?
+  notes       String?
+  statut      String    @default("confirme")
+  patientId   String
+  praticienId String
+  patient     Patient   @relation(fields: [patientId], references: [id])
+  praticien   Praticien @relation(fields: [praticienId], references: [id])
+  createdAt   DateTime  @default(now())
+}
+
+model Seance {
+  id              String    @id @default(cuid())
+  date            DateTime
+  duree           Int
+  typeSeance      String
+  notes           String?
+  statut          String    @default("realisee")
+  scorePatient    Int?
+  notesInternes   String?
+  feedbackEnvoye  Boolean   @default(false)
+  dateFeedback    DateTime?
+  patientId       String
+  praticienId     String
+  patient         Patient   @relation(fields: [patientId], references: [id])
+  praticien       Praticien @relation(fields: [praticienId], references: [id])
+  facture         Facture?
+  createdAt       DateTime  @default(now())
+}
+
+model Facture {
+  id           String    @id @default(cuid())
+  montant      Float
+  statut       String    @default("en_attente")
+  dateEmise    DateTime  @default(now())
+  datePaiement DateTime?
+  patientId    String
+  seanceId     String?   @unique
+  patient      Patient   @relation(fields: [patientId], references: [id])
+  seance       Seance?   @relation(fields: [seanceId], references: [id])
+  createdAt    DateTime  @default(now())
+}
+
+model Feedback {
+  id          String   @id @default(cuid())
+  score       Int
+  commentaire String?
+  typeMessage String   @default("post_seance")
+  patientId   String
+  seanceId    String?
+  patient     Patient  @relation(fields: [patientId], references: [id])
+  createdAt   DateTime @default(now())
+}
+
+model WhatsAppLog {
+  id         String   @id @default(cuid())
+  type       String
+  patientId  String
+  patientNom String
+  telephone  String
+  message    String
+  patient    Patient  @relation(fields: [patientId], references: [id])
+  createdAt  DateTime @default(now())
+}
