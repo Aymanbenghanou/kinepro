@@ -119,7 +119,7 @@ export default function HeroSection() {
       overflow: 'hidden',
       display: 'flex',
       alignItems: 'center',
-      padding: '100px 24px 80px',
+      padding: '100px 20px 80px',
     }}>
       {/* Background decorative waves */}
       <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.06, pointerEvents: 'none' }} viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice">
@@ -130,72 +130,74 @@ export default function HeroSection() {
         <circle cx="1300" cy="700" r="180" fill="white" />
       </svg>
 
-      <div style={{ maxWidth: 1180, margin: '0 auto', width: '100%', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 60, alignItems: 'center' }}>
+      <div className="hero-inner" style={{ maxWidth: 1180, margin: '0 auto', width: '100%', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 60, alignItems: 'center' }}>
 
         {/* Left — copy */}
         <div>
           {/* Badge */}
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 999, padding: '6px 16px', marginBottom: 28 }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 999, padding: '6px 16px', marginBottom: 24 }}>
             <span style={{ fontSize: 16 }}>🇲🇦</span>
             <span style={{ fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.9)' }}>Conçu pour les kinés marocains</span>
           </div>
 
-          <h1 style={{ fontSize: 'clamp(36px, 5vw, 60px)', fontWeight: 900, color: 'white', lineHeight: 1.1, margin: '0 0 24px', letterSpacing: '-1.5px' }}>
+          <h1 style={{ fontSize: 'clamp(32px, 5vw, 60px)', fontWeight: 900, color: 'white', lineHeight: 1.1, margin: '0 0 20px', letterSpacing: '-1px' }}>
             Votre cabinet,<br />
             <span style={{ background: 'linear-gradient(90deg, #60A5FA, #A78BFA)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
               géré intelligemment.
             </span>
           </h1>
 
-          <p style={{ fontSize: 18, lineHeight: 1.7, color: 'rgba(255,255,255,0.78)', margin: '0 0 36px', maxWidth: 480 }}>
+          <p style={{ fontSize: 'clamp(15px, 2vw, 18px)', lineHeight: 1.7, color: 'rgba(255,255,255,0.78)', margin: '0 0 32px', maxWidth: 480 }}>
             KinéPro centralise vos patients, automatise vos rappels WhatsApp et booste votre réputation Google — en une seule plateforme.
           </p>
 
-          {/* CTAs */}
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 32 }}>
+          {/* CTAs — always horizontal, wrap gracefully */}
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 28 }}>
             <a href="/register" style={{
               display: 'inline-flex', alignItems: 'center', gap: 8,
-              padding: '14px 28px', borderRadius: 12, fontSize: 16, fontWeight: 700,
+              padding: '13px 24px', borderRadius: 12, fontSize: 15, fontWeight: 700,
               background: 'white', color: '#1E3A5F', textDecoration: 'none',
               boxShadow: '0 4px 24px rgba(255,255,255,0.25)',
               transition: 'transform 0.2s, box-shadow 0.2s',
+              whiteSpace: 'nowrap',
             }}
               onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.transform = 'translateY(-2px)'; el.style.boxShadow = '0 8px 32px rgba(255,255,255,0.35)' }}
               onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.transform = 'translateY(0)'; el.style.boxShadow = '0 4px 24px rgba(255,255,255,0.25)' }}
             >
-              Commencer gratuitement <span>→</span>
+              Commencer gratuitement →
             </a>
             <a href="#features" onClick={e => { e.preventDefault(); document.querySelector('#features')?.scrollIntoView({ behavior: 'smooth' }) }}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 8,
-                padding: '14px 28px', borderRadius: 12, fontSize: 16, fontWeight: 600,
+                padding: '13px 24px', borderRadius: 12, fontSize: 15, fontWeight: 600,
                 background: 'transparent', color: 'white', textDecoration: 'none',
                 border: '1.5px solid rgba(255,255,255,0.4)',
                 transition: 'background 0.2s, border-color 0.2s',
+                whiteSpace: 'nowrap',
               }}
               onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.background = 'rgba(255,255,255,0.1)'; el.style.borderColor = 'rgba(255,255,255,0.7)' }}
               onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.background = 'transparent'; el.style.borderColor = 'rgba(255,255,255,0.4)' }}
             >
-              Voir une démo
+              Voir les fonctionnalités
             </a>
           </div>
 
-          {/* Trust badges */}
-          <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+          {/* Trust badges — horizontal row, no wrap */}
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
             {['✓ 7 jours gratuits', '✓ Sans carte bancaire', '✓ Support FR / عربي'].map(t => (
-              <span key={t} style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', fontWeight: 500 }}>{t}</span>
+              <span key={t} style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', fontWeight: 500, whiteSpace: 'nowrap' }}>{t}</span>
             ))}
           </div>
         </div>
 
         {/* Right — Dashboard mockup */}
-        <div style={{ display: 'flex', justifyContent: 'center', paddingRight: 24 }}>
+        <div className="hero-mockup" style={{ display: 'flex', justifyContent: 'center' }}>
           <DashboardMockup />
         </div>
       </div>
 
       {/* Scroll indicator */}
-      <div style={{ position: 'absolute', bottom: 28, left: '50%', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, opacity: 0.5 }}>
+      <div className="hero-scroll-hint" style={{ position: 'absolute', bottom: 28, left: '50%', transform: 'translateX(-50%)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, opacity: 0.5 }}>
         <span style={{ fontSize: 11, color: 'white', fontWeight: 500, letterSpacing: 1 }}>DÉFILER</span>
         <div style={{ width: 1, height: 32, background: 'white', animation: 'scrollPulse 2s ease-in-out infinite' }} />
         <style>{`@keyframes scrollPulse { 0%,100% { opacity: 0.3; } 50% { opacity: 1; } }`}</style>
@@ -203,8 +205,32 @@ export default function HeroSection() {
 
       <style>{`
         @media (max-width: 768px) {
-          #hero > div > div { grid-template-columns: 1fr !important; gap: 48px !important; }
-          #hero > div > div > div:last-child { display: none !important; }
+          .hero-inner {
+            grid-template-columns: 1fr !important;
+            gap: 40px !important;
+            text-align: center;
+          }
+          .hero-inner > div:first-child {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+          }
+          .hero-inner > div:first-child p {
+            text-align: center;
+          }
+          .hero-inner > div:first-child > div:last-child {
+            justify-content: center;
+          }
+          .hero-mockup {
+            display: flex !important;
+            padding-right: 0 !important;
+            transform: scale(0.82);
+            transform-origin: top center;
+            margin-bottom: -40px;
+          }
+          .hero-scroll-hint {
+            display: none !important;
+          }
         }
       `}</style>
     </section>

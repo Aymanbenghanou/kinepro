@@ -5,9 +5,10 @@ import { usePathname } from 'next/navigation'
 import { useState, useEffect, useCallback } from 'react'
 import {
   LayoutDashboard, Calendar, Users, Clock, CreditCard,
-  UserCheck, BarChart3, Settings, Crown,
+  UserCheck, BarChart3, Settings, Crown, X,
 } from 'lucide-react'
 import ProfileDropdown from '@/components/ui/ProfileDropdown'
+import { useSidebar } from '@/lib/sidebar-context'
 
 // ─── Nav items ────────────────────────────────────────────────────────────────
 const navItems = [
@@ -26,7 +27,6 @@ const parametresSubItems = [
   { label: 'Types de séances', href: '/parametres/types-seances' },
 ]
 
-// ─── WhatsApp icon ────────────────────────────────────────────────────────────
 function WhatsAppIcon({ size = 18 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
@@ -35,9 +35,9 @@ function WhatsAppIcon({ size = 18 }: { size?: number }) {
   )
 }
 
-// ─── Sidebar ─────────────────────────────────────────────────────────────────
 export default function Sidebar() {
   const pathname = usePathname()
+  const { isOpen, close } = useSidebar()
   const [pendingFeedbacks, setPendingFeedbacks] = useState(0)
 
   const fetchPending = useCallback(async () => {
@@ -51,120 +51,166 @@ export default function Sidebar() {
 
   useEffect(() => { fetchPending() }, [fetchPending, pathname])
 
+  // Close sidebar on route change (mobile)
+  useEffect(() => { close() }, [pathname, close])
+
+  // Close on ESC
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) { if (e.key === 'Escape') close() }
+    if (isOpen) document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [isOpen, close])
+
+  // Prevent body scroll when drawer is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => { document.body.style.overflow = '' }
+  }, [isOpen])
+
   const isWhatsAppActive   = pathname.startsWith('/whatsapp')
   const isParametresActive = pathname.startsWith('/parametres')
   const isAbonnementActive = pathname.startsWith('/abonnement')
 
   return (
-    <aside className="sidebar" style={{ display: 'flex', flexDirection: 'column' }}>
-      {/* Logo */}
-      <div className="flex items-center gap-2 px-5 py-5 border-b border-blue-800">
-        <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
-          <span className="text-white font-bold text-sm">K</span>
+    <>
+      {/* Backdrop — only visible on mobile when open */}
+      {isOpen && (
+        <div
+          className="sidebar-backdrop"
+          onClick={close}
+          aria-hidden="true"
+        />
+      )}
+
+      <aside className={`sidebar${isOpen ? ' sidebar-mobile-open' : ''}`} style={{ display: 'flex', flexDirection: 'column' }}>
+        {/* Logo + mobile close button */}
+        <div className="flex items-center gap-2 px-5 py-5 border-b border-blue-800">
+          <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+            <span className="text-white font-bold text-sm">K</span>
+          </div>
+          <span className="text-white font-bold text-lg flex-1">KinéPro</span>
+          {/* Close button — only meaningful on mobile */}
+          <button
+            onClick={close}
+            className="md:hidden"
+            style={{
+              background: 'rgba(255,255,255,0.1)',
+              border: 'none', cursor: 'pointer',
+              borderRadius: 8, padding: 6,
+              color: 'rgba(255,255,255,0.8)',
+              display: 'flex', alignItems: 'center',
+            }}
+            aria-label="Fermer le menu"
+          >
+            <X size={18} />
+          </button>
         </div>
-        <span className="text-white font-bold text-lg">KinéPro</span>
-      </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        {navItems.map((item) => {
-          const Icon = item.icon
-          const isActive =
-            pathname === item.href ||
-            (item.href !== '/dashboard' && pathname.startsWith(item.href))
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                isActive
-                  ? 'bg-blue-600 text-white'
-                  : 'text-blue-200 hover:bg-blue-800 hover:text-white'
-              }`}
-            >
-              <Icon size={18} />
-              {item.label}
-            </Link>
-          )
-        })}
+        {/* Navigation */}
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+          {navItems.map((item) => {
+            const Icon = item.icon
+            const isActive =
+              pathname === item.href ||
+              (item.href !== '/dashboard' && pathname.startsWith(item.href))
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  isActive
+                    ? 'bg-blue-600 text-white'
+                    : 'text-blue-200 hover:bg-blue-800 hover:text-white'
+                }`}
+              >
+                <Icon size={18} />
+                {item.label}
+              </Link>
+            )
+          })}
 
-        {/* WhatsApp */}
-        <Link
-          href="/whatsapp"
-          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-            isWhatsAppActive
-              ? 'bg-blue-600 text-white'
-              : 'text-blue-200 hover:bg-blue-800 hover:text-white'
-          }`}
-        >
-          <WhatsAppIcon size={18} />
-          <span style={{ flex: 1 }}>WhatsApp</span>
-          {pendingFeedbacks > 0 && (
-            <span style={{
-              background: '#25D366', color: 'white',
-              fontSize: 11, fontWeight: 700,
-              padding: '1px 7px', borderRadius: 999,
-              minWidth: 20, textAlign: 'center',
-            }}>
-              {pendingFeedbacks}
-            </span>
-          )}
-        </Link>
-
-        {/* Paramètres with submenu */}
-        <div>
+          {/* WhatsApp */}
           <Link
-            href="/parametres"
+            href="/whatsapp"
             className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-              isParametresActive
+              isWhatsAppActive
                 ? 'bg-blue-600 text-white'
                 : 'text-blue-200 hover:bg-blue-800 hover:text-white'
             }`}
           >
-            <Settings size={18} />
-            <span style={{ flex: 1 }}>Paramètres</span>
+            <WhatsAppIcon size={18} />
+            <span style={{ flex: 1 }}>WhatsApp</span>
+            {pendingFeedbacks > 0 && (
+              <span style={{
+                background: '#25D366', color: 'white',
+                fontSize: 11, fontWeight: 700,
+                padding: '1px 7px', borderRadius: 999,
+                minWidth: 20, textAlign: 'center',
+              }}>
+                {pendingFeedbacks}
+              </span>
+            )}
           </Link>
-          {isParametresActive && (
-            <div style={{ marginLeft: 14, marginTop: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
-              {parametresSubItems.map(item => {
-                const isSubActive = pathname === item.href
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                      isSubActive
-                        ? 'bg-blue-500 text-white'
-                        : 'text-blue-300 hover:bg-blue-800 hover:text-white'
-                    }`}
-                  >
-                    <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'currentColor', flexShrink: 0 }} />
-                    {item.label}
-                  </Link>
-                )
-              })}
-            </div>
-          )}
+
+          {/* Paramètres with submenu */}
+          <div>
+            <Link
+              href="/parametres"
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                isParametresActive
+                  ? 'bg-blue-600 text-white'
+                  : 'text-blue-200 hover:bg-blue-800 hover:text-white'
+              }`}
+            >
+              <Settings size={18} />
+              <span style={{ flex: 1 }}>Paramètres</span>
+            </Link>
+            {isParametresActive && (
+              <div style={{ marginLeft: 14, marginTop: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                {parametresSubItems.map(item => {
+                  const isSubActive = pathname === item.href
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                        isSubActive
+                          ? 'bg-blue-500 text-white'
+                          : 'text-blue-300 hover:bg-blue-800 hover:text-white'
+                      }`}
+                    >
+                      <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'currentColor', flexShrink: 0 }} />
+                      {item.label}
+                    </Link>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Abonnement */}
+          <Link
+            href="/abonnement"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              isAbonnementActive
+                ? 'bg-blue-600 text-white'
+                : 'text-blue-200 hover:bg-blue-800 hover:text-white'
+            }`}
+          >
+            <Crown size={18} />
+            Abonnement
+          </Link>
+        </nav>
+
+        {/* Footer — profile dropdown */}
+        <div className="px-3 py-3 border-t border-blue-800">
+          <ProfileDropdown direction="up" avatarSize={34} />
         </div>
-
-        {/* Abonnement */}
-        <Link
-          href="/abonnement"
-          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-            isAbonnementActive
-              ? 'bg-blue-600 text-white'
-              : 'text-blue-200 hover:bg-blue-800 hover:text-white'
-          }`}
-        >
-          <Crown size={18} />
-          Abonnement
-        </Link>
-      </nav>
-
-      {/* Footer — profile dropdown (opens upward) */}
-      <div className="px-3 py-3 border-t border-blue-800">
-        <ProfileDropdown direction="up" avatarSize={34} />
-      </div>
-    </aside>
+      </aside>
+    </>
   )
 }

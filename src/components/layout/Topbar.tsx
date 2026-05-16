@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Bell, Search, Clock, Users, MessageSquare, CheckCheck } from 'lucide-react'
+import { Bell, Search, Clock, Users, MessageSquare, CheckCheck, Menu } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import { usePathname } from 'next/navigation'
 import ProfileDropdown from '@/components/ui/ProfileDropdown'
+import { useSidebar } from '@/lib/sidebar-context'
 // useSession is kept — used inside NotificationBell for subscription status
 
 interface TopbarProps {
@@ -279,17 +280,28 @@ function NotificationBell() {
 
 // ─── Topbar ───────────────────────────────────────────────────────────────────
 export default function Topbar({ title, subtitle }: TopbarProps) {
+  const { toggle } = useSidebar()
+
   return (
     <div className="topbar">
+      {/* Mobile hamburger */}
+      <button
+        className="topbar-hamburger"
+        onClick={toggle}
+        aria-label="Ouvrir le menu"
+      >
+        <Menu size={22} />
+      </button>
+
       {/* Title */}
-      <div className="flex-1">
-        <h1 className="text-lg font-semibold text-gray-900">{title}</h1>
-        {subtitle && <p className="text-xs text-gray-500">{subtitle}</p>}
+      <div className="flex-1 min-w-0">
+        <h1 className="text-lg font-semibold text-gray-900 truncate">{title}</h1>
+        {subtitle && <p className="text-xs text-gray-500 truncate">{subtitle}</p>}
       </div>
 
       {/* Right controls */}
-      <div className="flex items-center gap-2">
-        {/* Search */}
+      <div className="flex items-center gap-2 flex-shrink-0">
+        {/* Search — hidden on mobile */}
         <div className="relative hidden md:block">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
@@ -299,10 +311,10 @@ export default function Topbar({ title, subtitle }: TopbarProps) {
           />
         </div>
 
-        {/* Notification bell with dropdown */}
+        {/* Notification bell */}
         <NotificationBell />
 
-        {/* Avatar — interactive dropdown, opens downward */}
+        {/* Avatar dropdown */}
         <ProfileDropdown direction="down" avatarSize={34} />
       </div>
     </div>

@@ -1,16 +1,18 @@
 import Sidebar from '@/components/layout/Sidebar'
+import MobileBottomNav from '@/components/layout/MobileBottomNav'
+import { SidebarProvider } from '@/lib/sidebar-context'
 import { auth } from '@/auth'
 import Link from 'next/link'
 
 function TrialBanner({ daysLeft, status }: { daysLeft: number | null; status: string }) {
-  if (status === 'ACTIVE') return null  // Paying customer, no banner
+  if (status === 'ACTIVE') return null
   if (status === 'SUSPENDED') {
     return (
       <div style={{
         background: '#7F1D1D', color: 'white',
         padding: '10px 20px', fontSize: 13, fontWeight: 600,
         display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12,
-        textAlign: 'center',
+        textAlign: 'center', flexWrap: 'wrap',
       }}>
         <span>🔒 Votre accès est suspendu. Veuillez contacter le support.</span>
         <Link href="/abonnement" style={{ color: '#FCA5A5', textDecoration: 'underline', fontWeight: 700 }}>
@@ -20,9 +22,7 @@ function TrialBanner({ daysLeft, status }: { daysLeft: number | null; status: st
     )
   }
 
-  // TRIAL status
   if (daysLeft === null || daysLeft < 0) {
-    // Expired trial
     return (
       <div style={{
         background: '#991B1B', color: 'white',
@@ -43,7 +43,6 @@ function TrialBanner({ daysLeft, status }: { daysLeft: number | null; status: st
   }
 
   if (daysLeft <= 2) {
-    // Urgent — red
     return (
       <div style={{
         background: '#DC2626', color: 'white',
@@ -64,7 +63,6 @@ function TrialBanner({ daysLeft, status }: { daysLeft: number | null; status: st
   }
 
   if (daysLeft <= 4) {
-    // Warning — orange
     return (
       <div style={{
         background: '#D97706', color: 'white',
@@ -84,7 +82,6 @@ function TrialBanner({ daysLeft, status }: { daysLeft: number | null; status: st
     )
   }
 
-  // Days 5-7 — blue info
   return (
     <div style={{
       background: '#1D4ED8', color: 'white',
@@ -110,14 +107,17 @@ export default async function DashboardLayout({
   const daysLeft = session?.user?.trialDaysLeft ?? null
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      <TrialBanner daysLeft={daysLeft} status={status} />
-      <div className="flex flex-1">
-        <Sidebar />
-        <div className="main-content flex-1">
-          {children}
+    <SidebarProvider>
+      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+        <TrialBanner daysLeft={daysLeft} status={status} />
+        <div className="flex flex-1" style={{ position: 'relative' }}>
+          <Sidebar />
+          <div className="main-content flex-1">
+            {children}
+          </div>
         </div>
       </div>
-    </div>
+      <MobileBottomNav />
+    </SidebarProvider>
   )
 }

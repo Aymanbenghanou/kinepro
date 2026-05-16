@@ -25,7 +25,7 @@ export default function LandingFooter() {
     <footer style={{ background: '#0F172A', color: 'white', padding: '64px 24px 32px' }}>
       <div style={{ maxWidth: 1100, margin: '0 auto' }}>
         {/* Top grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 48, marginBottom: 56 }}>
+        <div className="footer-grid" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 48, marginBottom: 56 }}>
           {/* Brand */}
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
@@ -87,7 +87,7 @@ export default function LandingFooter() {
         <div style={{ height: 1, background: 'rgba(255,255,255,0.08)', marginBottom: 28 }} />
 
         {/* Bottom bar */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+        <div className="footer-bottom" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
           <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.35)', margin: 0 }}>
             © {new Date().getFullYear()} KinéPro · Tous droits réservés · Casablanca, Maroc 🇲🇦
           </p>
@@ -96,7 +96,12 @@ export default function LandingFooter() {
           </p>
         </div>
       </div>
-      <style>{`@media(max-width:768px){footer>div>div:first-child{grid-template-columns:1fr!important;gap:32px!important;}footer>div>div:last-child{flex-direction:column;align-items:flex-start!important;}}`}</style>
+      <style>{`
+        @media(max-width:768px){
+          .footer-grid{grid-template-columns:1fr!important;gap:32px!important;}
+          .footer-bottom{flex-direction:column;align-items:flex-start!important;gap:8px;}
+        }
+      `}</style>
     </footer>
   )
 }

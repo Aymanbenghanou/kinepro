@@ -23,6 +23,7 @@ body {
   color: #0F172A;
 }
 
+/* ─── Sidebar ────────────────────────────────────────────────────────────── */
 .sidebar {
   width: 220px;
   min-height: 100vh;
@@ -30,17 +31,20 @@ body {
   position: fixed;
   left: 0;
   top: 0;
-  z-index: 50;
+  z-index: 200;
   display: flex;
   flex-direction: column;
+  transition: transform 0.3s ease;
 }
 
+/* ─── Main content ───────────────────────────────────────────────────────── */
 .main-content {
   margin-left: 220px;
   min-height: 100vh;
   background-color: #F8FAFC;
 }
 
+/* ─── Topbar ─────────────────────────────────────────────────────────────── */
 .topbar {
   height: 64px;
   background: white;
@@ -53,6 +57,7 @@ body {
   z-index: 40;
 }
 
+/* ─── Stat cards ─────────────────────────────────────────────────────────── */
 .stat-card {
   background: white;
   border: 1px solid #E2E8F0;
@@ -65,6 +70,14 @@ body {
   box-shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
 
+/* Responsive stats grid utility */
+.stats-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+/* ─── Badges ─────────────────────────────────────────────────────────────── */
 .badge-success {
   background: #DCFCE7;
   color: #16A34A;
@@ -108,4 +121,143 @@ body {
   border-radius: 999px;
   font-size: 12px;
   font-weight: 500;
+}
+
+/* ─── Sidebar backdrop overlay ───────────────────────────────────────────── */
+.sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 150;
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* ─── Mobile bottom navigation ───────────────────────────────────────────── */
+.mobile-bottom-nav {
+  display: none;
+}
+
+/* ─── Hamburger button (hidden on desktop) ───────────────────────────────── */
+.topbar-hamburger {
+  display: none;
+}
+
+/* ─── Table scroll wrapper ───────────────────────────────────────────────── */
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ─── Mobile responsive ──────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+
+  /* Sidebar: hidden off-screen by default, slides in when .sidebar-mobile-open */
+  .sidebar {
+    transform: translateX(-220px);
+    z-index: 200;
+  }
+  .sidebar.sidebar-mobile-open {
+    transform: translateX(0);
+    box-shadow: 8px 0 40px rgba(0, 0, 0, 0.35);
+  }
+
+  /* Backdrop: show when sidebar is open */
+  .sidebar-backdrop {
+    display: block;
+  }
+
+  /* Main content: full width, leave room for bottom nav */
+  .main-content {
+    margin-left: 0 !important;
+    padding-bottom: 72px;
+  }
+
+  /* Topbar: tighter padding, hide search */
+  .topbar {
+    padding: 0 12px;
+    gap: 8px;
+  }
+
+  /* Show hamburger on mobile */
+  .topbar-hamburger {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    border-radius: 8px;
+    color: #64748B;
+    flex-shrink: 0;
+  }
+  .topbar-hamburger:hover {
+    background: #F1F5F9;
+    color: #0F172A;
+  }
+
+  /* Bottom nav: show on mobile */
+  .mobile-bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 64px;
+    background: white;
+    border-top: 1px solid #E2E8F0;
+    z-index: 100;
+    align-items: center;
+    justify-content: space-around;
+    padding: 0 4px;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+    box-shadow: 0 -2px 16px rgba(0, 0, 0, 0.06);
+  }
+
+  /* Stats grid: 2 columns on mobile */
+  .stats-grid-4 {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  /* Tables: horizontal scroll */
+  .main-content table {
+    min-width: 560px;
+  }
+
+  /* Modal: full-screen bottom sheet on mobile */
+  .modal-overlay {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+  .modal-sheet {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 20px 20px 0 0 !important;
+    max-height: 92dvh !important;
+    overflow-y: auto;
+  }
+
+  /* Touch-friendly inputs */
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  select,
+  textarea {
+    min-height: 44px;
+    font-size: 16px !important; /* prevents iOS auto-zoom */
+  }
+
+  button {
+    min-height: 44px;
+  }
+
+  /* Page padding on mobile */
+  .main-content > div {
+    padding: 16px !important;
+  }
 }
