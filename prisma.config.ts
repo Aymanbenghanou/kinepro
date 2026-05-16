@@ -13,8 +13,9 @@ export default defineConfig({
     seed: "tsx prisma/seed.ts",
   },
   datasource: {
-    // Used by Prisma Migrate and seed — reads real URL from .env.development.local locally,
-    // or from Vercel env vars in production.
-    url: process.env.DATABASE_URL,
+    // Prisma Migrate (db push / migrate deploy) must use the DIRECT connection
+    // (port 5432, no PgBouncer) — PgBouncer transaction mode doesn't support
+    // the DDL statements that migrations issue.
+    url: process.env.DIRECT_URL ?? process.env.DATABASE_URL,
   },
 });
