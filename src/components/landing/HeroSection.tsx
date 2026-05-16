@@ -114,21 +114,31 @@ export default function HeroSection() {
   return (
     <section id="hero" style={{
       minHeight: '100vh',
-      background: 'linear-gradient(135deg, #0F2747 0%, #1E3A5F 40%, #1D4ED8 100%)',
       position: 'relative',
       overflow: 'hidden',
       display: 'flex',
       alignItems: 'center',
       padding: '100px 20px 80px',
     }}>
-      {/* Background decorative waves */}
-      <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.06, pointerEvents: 'none' }} viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice">
-        <path d="M-100 200 Q200 100 500 250 T1100 200 T1600 250" stroke="white" strokeWidth="80" fill="none"/>
-        <path d="M-100 500 Q300 350 700 500 T1500 450" stroke="white" strokeWidth="60" fill="none"/>
-        <path d="M-100 750 Q400 600 800 750 T1600 700" stroke="white" strokeWidth="50" fill="none"/>
-        <circle cx="200" cy="150" r="120" fill="white" />
-        <circle cx="1300" cy="700" r="180" fill="white" />
-      </svg>
+      {/* Real physiotherapy photo — full cover background */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="https://res.cloudinary.com/djouneyaq/image/upload/v1778974291/cover-kinestherapie-sport-paris-institut-kinesitherapieV2.jpg_atyja5.webp"
+        alt=""
+        aria-hidden="true"
+        style={{
+          position: 'absolute', inset: 0,
+          width: '100%', height: '100%',
+          objectFit: 'cover', objectPosition: 'center',
+          pointerEvents: 'none',
+        }}
+      />
+      {/* Dark blue overlay for text readability */}
+      <div style={{
+        position: 'absolute', inset: 0,
+        background: 'rgba(15, 31, 61, 0.78)',
+        pointerEvents: 'none',
+      }} />
 
       <div className="hero-inner" style={{ maxWidth: 1180, margin: '0 auto', width: '100%', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 60, alignItems: 'center' }}>
 

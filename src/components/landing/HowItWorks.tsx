@@ -42,12 +42,17 @@ const steps = [
   },
 ]
 
+const PHOTO_URL = 'https://res.cloudinary.com/djouneyaq/image/upload/v1778974291/POL_6607-950x600_b8jayx.jpg'
+
 export default function HowItWorks() {
   const { ref: headerRef, visible: headerVisible } = useReveal()
+  const { ref: photoRef, visible: photoVisible }   = useReveal(200)
 
   return (
     <section id="how" style={{ padding: '96px 24px', background: '#F8FAFC' }}>
-      <div style={{ maxWidth: 1000, margin: '0 auto' }}>
+      <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+
+        {/* Header */}
         <div ref={headerRef} style={{ textAlign: 'center', marginBottom: 64, opacity: headerVisible ? 1 : 0, transform: headerVisible ? 'translateY(0)' : 'translateY(24px)', transition: 'all 0.6s ease' }}>
           <p style={{ fontSize: 13, fontWeight: 700, color: '#2563EB', textTransform: 'uppercase', letterSpacing: 1.5, marginBottom: 12 }}>Démarrage rapide</p>
           <h2 style={{ fontSize: 'clamp(28px, 4vw, 42px)', fontWeight: 900, color: '#0F172A', margin: '0 auto 16px', letterSpacing: '-0.5px', lineHeight: 1.2 }}>
@@ -58,49 +63,116 @@ export default function HowItWorks() {
           </p>
         </div>
 
-        <div className="how-grid">
-          {/* Connector line */}
-          <div className="how-connector" style={{ position: 'absolute', top: 48, left: '16.5%', right: '16.5%', height: 2, background: 'linear-gradient(90deg, #2563EB, #7C3AED, #059669)', opacity: 0.25, zIndex: 0 }} />
+        {/* Two-column layout: steps left, photo right */}
+        <div className="how-layout">
 
-          {steps.map((step, i) => {
-            const { ref, visible } = useReveal(i * 120)
-            return (
-              <div key={step.num} ref={ref} style={{ textAlign: 'center', position: 'relative', zIndex: 1, opacity: visible ? 1 : 0, transform: visible ? 'translateY(0)' : 'translateY(28px)', transition: 'all 0.6s ease' }}>
-                {/* Number badge */}
-                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
-                  <div style={{ width: 80, height: 80, borderRadius: '50%', background: step.bg, border: `3px solid ${step.color}25`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', boxShadow: `0 0 0 6px ${step.color}08` }}>
-                    <span style={{ fontSize: 28 }}>{step.emoji}</span>
+          {/* Steps column */}
+          <div className="how-steps">
+            {steps.map((step, i) => {
+              const { ref, visible } = useReveal(i * 120)
+              return (
+                <div key={step.num} ref={ref} style={{
+                  display: 'flex', gap: 20, alignItems: 'flex-start',
+                  opacity: visible ? 1 : 0,
+                  transform: visible ? 'translateX(0)' : 'translateX(-24px)',
+                  transition: 'all 0.6s ease',
+                }}>
+                  {/* Circle + connector */}
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
+                    <div style={{
+                      width: 64, height: 64, borderRadius: '50%',
+                      background: step.bg, border: `2px solid ${step.color}30`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      boxShadow: `0 0 0 5px ${step.color}08`,
+                    }}>
+                      <span style={{ fontSize: 26 }}>{step.emoji}</span>
+                    </div>
+                    {i < steps.length - 1 && (
+                      <div style={{ width: 2, flex: 1, minHeight: 32, background: `linear-gradient(${step.color}, ${steps[i + 1].color})`, opacity: 0.2, margin: '6px 0' }} />
+                    )}
+                  </div>
+
+                  {/* Text */}
+                  <div style={{ paddingBottom: i < steps.length - 1 ? 32 : 0 }}>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: step.color, letterSpacing: 2, marginBottom: 6 }}>ÉTAPE {step.num}</div>
+                    <h3 style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', margin: '0 0 8px' }}>{step.title}</h3>
+                    <p style={{ fontSize: 14, color: '#64748B', lineHeight: 1.65, margin: 0 }}>{step.desc}</p>
                   </div>
                 </div>
-                <div style={{ fontSize: 11, fontWeight: 800, color: step.color, letterSpacing: 2, marginBottom: 8 }}>ÉTAPE {step.num}</div>
-                <h3 style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', margin: '0 0 12px' }}>{step.title}</h3>
-                <p style={{ fontSize: 14, color: '#64748B', lineHeight: 1.65, margin: 0 }}>{step.desc}</p>
-              </div>
-            )
-          })}
-        </div>
+              )
+            })}
 
-        {/* CTA */}
-        <div style={{ textAlign: 'center', marginTop: 56 }}>
-          <a href="/register" style={{
-            display: 'inline-flex', alignItems: 'center', gap: 10,
-            padding: '14px 32px', borderRadius: 12, fontSize: 16, fontWeight: 700,
-            background: '#2563EB', color: 'white', textDecoration: 'none',
-            boxShadow: '0 4px 24px rgba(37,99,235,0.3)',
-            transition: 'transform 0.2s, box-shadow 0.2s',
-          }}
-            onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.transform = 'translateY(-2px)'; el.style.boxShadow = '0 8px 32px rgba(37,99,235,0.4)' }}
-            onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.transform = 'translateY(0)'; el.style.boxShadow = '0 4px 24px rgba(37,99,235,0.3)' }}
+            {/* CTA */}
+            <div style={{ marginTop: 40 }}>
+              <a href="/register" style={{
+                display: 'inline-flex', alignItems: 'center', gap: 10,
+                padding: '14px 28px', borderRadius: 12, fontSize: 15, fontWeight: 700,
+                background: '#2563EB', color: 'white', textDecoration: 'none',
+                boxShadow: '0 4px 24px rgba(37,99,235,0.3)',
+                transition: 'transform 0.2s, box-shadow 0.2s',
+              }}
+                onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.transform = 'translateY(-2px)'; el.style.boxShadow = '0 8px 32px rgba(37,99,235,0.4)' }}
+                onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.transform = 'translateY(0)'; el.style.boxShadow = '0 4px 24px rgba(37,99,235,0.3)' }}
+              >
+                Commencer maintenant — c'est gratuit <span>→</span>
+              </a>
+            </div>
+          </div>
+
+          {/* Photo column */}
+          <div
+            ref={photoRef}
+            className="how-photo"
+            style={{
+              opacity: photoVisible ? 1 : 0,
+              transform: photoVisible ? 'translateX(0) scale(1)' : 'translateX(32px) scale(0.97)',
+              transition: 'all 0.8s ease',
+            }}
           >
-            Commencer maintenant — c'est gratuit <span>→</span>
-          </a>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={PHOTO_URL}
+              alt="Séance de kinésithérapie — praticien et patient"
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                objectPosition: 'center',
+                display: 'block',
+                borderRadius: 16,
+                boxShadow: '0 16px 48px rgba(0,0,0,0.14)',
+              }}
+            />
+            {/* Subtle caption */}
+            <p style={{ fontSize: 12, color: '#94A3B8', textAlign: 'center', marginTop: 12, fontStyle: 'italic' }}>
+              Séance de kinésithérapie — suivi personnalisé
+            </p>
+          </div>
+
         </div>
       </div>
+
       <style>{`
-        .how-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; position: relative; }
-        @media(max-width:700px){
-          .how-grid { grid-template-columns: 1fr !important; gap: 32px !important; }
-          .how-connector { display: none !important; }
+        .how-layout {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 64px;
+          align-items: center;
+        }
+        .how-photo {
+          height: 420px;
+          border-radius: 16px;
+          overflow: hidden;
+        }
+        @media (max-width: 768px) {
+          .how-layout {
+            grid-template-columns: 1fr !important;
+            gap: 48px !important;
+          }
+          .how-photo {
+            height: 260px;
+            order: -1;
+          }
         }
       `}</style>
     </section>
