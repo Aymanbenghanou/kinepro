@@ -2,9 +2,6 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// Prisma 7: url/directUrl are no longer set in the schema.
-// • PRISMA_DATABASE_URL  → PrismaClient constructor (pooled, runtime)
-// • DATABASE_URL         → prisma.config.ts datasource (direct, migrations)
 datasource db {
   provider = "postgresql"
 }

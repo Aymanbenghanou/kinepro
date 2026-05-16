@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { X, ChevronRight, ChevronLeft, Check, User, Heart, CreditCard, ClipboardList } from 'lucide-react'
+import Toast from '@/components/ui/Toast'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface SeanceType {
@@ -426,6 +427,7 @@ export default function NewPatientWizard({ onClose, onSuccess }: Props) {
   const [praticiens, setPraticiens] = useState<Praticien[]>([])
   const [saving, setSaving] = useState(false)
   const [done, setDone] = useState<{ patientId: string; patientName: string } | null>(null)
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
   useEffect(() => {
     fetch('/api/seance-types').then(r => r.json()).then(d => setSeanceTypes(Array.isArray(d) ? d : []))
@@ -485,10 +487,11 @@ export default function NewPatientWizard({ onClose, onSuccess }: Props) {
         }),
       })
       const patient = await res.json()
-      if (res.ok && patient.id) {
-        setDone({ patientId: patient.id, patientName: `${data.prenom} ${data.nom}` })
-      }
-    } catch {}
+      if (!res.ok) throw new Error(patient.error || 'Erreur serveur')
+      setDone({ patientId: patient.id, patientName: `${data.prenom} ${data.nom}` })
+    } catch (err) {
+      setToast({ message: err instanceof Error ? err.message : 'Erreur serveur', type: 'error' })
+    }
     setSaving(false)
   }
 
@@ -539,6 +542,7 @@ export default function NewPatientWizard({ onClose, onSuccess }: Props) {
 
   return (
     <div style={overlay}>
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <div style={modal}>
         {/* ── Header ── */}
         <div style={{ padding: '24px 28px 0', borderBottom: '1px solid #E2E8F0', paddingBottom: 20 }}>

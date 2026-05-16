@@ -10,7 +10,7 @@ function createPrismaClient(): PrismaClient {
   // Use the pooled URL at runtime (PgBouncer-compatible for Vercel Postgres).
   // The non-pooled directUrl is only used by Prisma Migrate (via prisma.config.ts).
   const pool = new Pool({
-    connectionString: process.env.PRISMA_DATABASE_URL,
+    connectionString: process.env.DATABASE_URL,
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
   })
   const adapter = new PrismaPg(pool)

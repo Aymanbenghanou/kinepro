@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Topbar from '@/components/layout/Topbar'
+import Toast from '@/components/ui/Toast'
 import { Plus, X, Phone, Mail } from 'lucide-react'
 
 const COULEURS = ['#2563EB', '#16A34A', '#F59E0B', '#EC4899', '#8B5CF6', '#06B6D4']
@@ -12,6 +13,11 @@ export default function PersonnelPage() {
   const [showModal, setShowModal] = useState(false)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({ nom: '', prenom: '', specialite: '', telephone: '', email: '', couleur: '#2563EB' })
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+
+  function showToast(message: string, type: 'success' | 'error') {
+    setToast({ message, type })
+  }
 
   async function fetchPraticiens() {
     setLoading(true)
@@ -29,21 +35,27 @@ export default function PersonnelPage() {
     e.preventDefault()
     setSaving(true)
     try {
-      await fetch('/api/praticiens', {
+      const res = await fetch('/api/praticiens', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Erreur serveur')
       setShowModal(false)
       setForm({ nom: '', prenom: '', specialite: '', telephone: '', email: '', couleur: '#2563EB' })
       fetchPraticiens()
-    } catch {}
+      showToast('Praticien ajouté avec succès ✓', 'success')
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Erreur serveur', 'error')
+    }
     setSaving(false)
   }
 
   return (
     <div>
       <Topbar title="Personnel" subtitle={`${praticiens.length} praticiens`} />
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <div style={{ padding: 24 }}>
 
         {/* Header */}

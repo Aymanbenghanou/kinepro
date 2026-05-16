@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+function errMsg(e: unknown): string {
+  return e instanceof Error ? e.message : 'Erreur inconnue'
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -25,8 +29,8 @@ export async function GET(request: NextRequest) {
     })
     return NextResponse.json(rendezVous)
   } catch (error) {
-    console.error(error)
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
+    console.error('[GET /api/rendez-vous]', error)
+    return NextResponse.json({ error: errMsg(error) }, { status: 500 })
   }
 }
 
@@ -51,7 +55,7 @@ export async function POST(request: NextRequest) {
     })
     return NextResponse.json(rdv, { status: 201 })
   } catch (error) {
-    console.error(error)
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
+    console.error('[POST /api/rendez-vous]', error)
+    return NextResponse.json({ error: errMsg(error) }, { status: 500 })
   }
 }

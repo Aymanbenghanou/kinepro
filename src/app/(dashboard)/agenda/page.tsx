@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Topbar from '@/components/layout/Topbar'
+import Toast from '@/components/ui/Toast'
 import { formatTime } from '@/lib/utils'
 import { Plus, ChevronLeft, ChevronRight, X, Check } from 'lucide-react'
 import WhatsAppButton from '@/components/whatsapp/WhatsAppButton'
@@ -94,6 +95,7 @@ export default function AgendaPage() {
   const [showModal, setShowModal] = useState(false)
   const [loading, setLoading] = useState(false)
   const [confirmationRdv, setConfirmationRdv] = useState<any>(null)
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   const [form, setForm] = useState({
     patientId: '', praticienId: '', typeSeance: TYPES_SEANCE[0],
     date: '', heure: '09:00', duree: '45', salle: 'Salle 1', notes: ''
@@ -149,14 +151,17 @@ export default function AgendaPage() {
           praticienId: form.praticienId,
         }),
       })
-      const rdv = await res.json()
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Erreur serveur')
       const patient = patients.find(p => p.id === form.patientId)
       const praticien = praticiens.find(p => p.id === form.praticienId)
       setShowModal(false)
       fetchRdv()
       // Show WhatsApp confirmation panel
-      setConfirmationRdv({ rdv, patient, praticien })
-    } catch {}
+      setConfirmationRdv({ rdv: data, patient, praticien })
+    } catch (err) {
+      setToast({ message: err instanceof Error ? err.message : 'Erreur serveur', type: 'error' })
+    }
     setLoading(false)
   }
 
@@ -165,6 +170,7 @@ export default function AgendaPage() {
   return (
     <div>
       <Topbar title="Agenda" subtitle="Calendrier hebdomadaire" />
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <div style={{ padding: 24 }}>
 
         {/* Header */}
