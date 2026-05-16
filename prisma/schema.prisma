@@ -7,13 +7,15 @@ datasource db {
 }
 
 model Cabinet {
-  id             String   @id @default(cuid())
-  nom            String
-  adresse        String?
-  telephone      String?
-  email          String?
-  googleMapsLink String?
-  createdAt      DateTime @default(now())
+  id               String   @id @default(cuid())
+  nom              String
+  adresse          String?
+  telephone        String?
+  email            String?
+  googleMapsLink   String?
+  whatsappNumber   String?
+  googleReviewLink String?
+  createdAt        DateTime @default(now())
 }
 
 model SeanceType {
