@@ -7,7 +7,8 @@ import { Plus, X } from 'lucide-react'
 import FeedbackModal from '@/components/whatsapp/FeedbackWidget'
 import { scoreColor, scoreBadge } from '@/lib/whatsapp'
 
-const TYPES = ['Rééducation', 'Massage thérapeutique', 'Électrothérapie', 'Ultrasons', 'Cryothérapie', 'Kinésithérapie respiratoire']
+// Fallback if API fails
+const TYPES_FALLBACK = ['Rééducation fonctionnelle', 'Massage thérapeutique', 'Électrothérapie', 'Balnéothérapie']
 
 function StatutBadge({ statut }: { statut: string }) {
   const map: Record<string, { label: string; bg: string; color: string }> = {
@@ -55,19 +56,20 @@ function FeedbackBadge({ seance, onClick }: { seance: any; onClick: () => void }
 }
 
 export default function SeancesPage() {
-  const [seances, setSeances] = useState<any[]>([])
-  const [patients, setPatients] = useState<any[]>([])
+  const [seances, setSeances]     = useState<any[]>([])
+  const [patients, setPatients]   = useState<any[]>([])
   const [praticiens, setPraticiens] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const [seanceTypes, setSeanceTypes] = useState<any[]>([])
+  const [loading, setLoading]     = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [selectedSeance, setSelectedSeance] = useState<any>(null)
   const [feedbackTarget, setFeedbackTarget] = useState<{ seance: any; patient: any } | null>(null)
-  const [filterPatient, setFilterPatient] = useState('')
+  const [filterPatient, setFilterPatient]   = useState('')
   const [filterPraticien, setFilterPraticien] = useState('')
-  const [filterStatut, setFilterStatut] = useState('')
+  const [filterStatut, setFilterStatut]     = useState('')
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
-    patientId: '', praticienId: '', typeSeance: TYPES[0],
+    patientId: '', praticienId: '', typeSeance: '',
     date: '', heure: '09:00', duree: '45', notes: '', statut: 'realisee',
   })
 
@@ -75,9 +77,9 @@ export default function SeancesPage() {
     setLoading(true)
     try {
       const params = new URLSearchParams()
-      if (filterPatient) params.append('patientId', filterPatient)
+      if (filterPatient)   params.append('patientId', filterPatient)
       if (filterPraticien) params.append('praticienId', filterPraticien)
-      if (filterStatut) params.append('statut', filterStatut)
+      if (filterStatut)    params.append('statut', filterStatut)
       const res = await fetch(`/api/seances?${params}`)
       const data = await res.json()
       setSeances(Array.isArray(data) ? data : [])
@@ -89,7 +91,23 @@ export default function SeancesPage() {
   useEffect(() => {
     fetch('/api/patients').then(r => r.json()).then(d => setPatients(Array.isArray(d) ? d : []))
     fetch('/api/praticiens').then(r => r.json()).then(d => setPraticiens(Array.isArray(d) ? d : []))
+    fetch('/api/seance-types').then(r => r.json()).then(d => {
+      const types = Array.isArray(d) ? d : TYPES_FALLBACK.map(n => ({ nom: n, dureeDefaut: 45, tarifDefaut: 300 }))
+      setSeanceTypes(types)
+      // Set initial form type
+      if (types.length > 0) setForm(f => ({ ...f, typeSeance: types[0].nom, duree: String(types[0].dureeDefaut) }))
+    })
   }, [])
+
+  // Auto-fill duration when type changes
+  function handleTypeChange(nom: string) {
+    const found = seanceTypes.find(t => t.nom === nom)
+    setForm(f => ({
+      ...f,
+      typeSeance: nom,
+      duree: found ? String(found.dureeDefaut) : f.duree,
+    }))
+  }
 
   const pendingCount = seances.filter(
     s => s.statut === 'realisee' && (s.scorePatient === null || s.scorePatient === undefined)
@@ -113,7 +131,8 @@ export default function SeancesPage() {
         }),
       })
       setShowModal(false)
-      setForm({ patientId: '', praticienId: '', typeSeance: TYPES[0], date: '', heure: '09:00', duree: '45', notes: '', statut: 'realisee' })
+      const firstType = seanceTypes[0]
+      setForm({ patientId: '', praticienId: '', typeSeance: firstType?.nom || '', date: '', heure: '09:00', duree: String(firstType?.dureeDefaut || 45), notes: '', statut: 'realisee' })
       fetchData()
     } catch {}
     setSaving(false)
@@ -316,10 +335,14 @@ export default function SeancesPage() {
                 </select>
               </div>
               <div>
-                <label style={{ fontSize: 13, fontWeight: 500, color: '#374151', display: 'block', marginBottom: 6 }}>Type</label>
-                <select value={form.typeSeance} onChange={e => setForm(f => ({...f, typeSeance: e.target.value}))}
+                <label style={{ fontSize: 13, fontWeight: 500, color: '#374151', display: 'block', marginBottom: 6 }}>Type de séance</label>
+                <select value={form.typeSeance} onChange={e => handleTypeChange(e.target.value)}
                   style={{ width: '100%', padding: '10px 12px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 14, background: 'white' }}>
-                  {TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                  {seanceTypes.map((t: any) => (
+                    <option key={t.id || t.nom} value={t.nom}>
+                      {t.nom}{t.dureeDefaut ? ` (${t.dureeDefaut} min — ${t.tarifDefaut} MAD)` : ''}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>

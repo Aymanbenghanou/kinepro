@@ -11,16 +11,10 @@ import {
   buildWhatsAppUrl, formatPhoneForWhatsApp,
 } from '@/lib/whatsapp'
 
-const TYPES_SEANCE = ['Rééducation', 'Massage thérapeutique', 'Électrothérapie', 'Ultrasons', 'Cryothérapie', 'Kinésithérapie respiratoire']
+// Fallback colours until API types load
+const TYPES_SEANCE_FALLBACK = ['Rééducation fonctionnelle', 'Massage thérapeutique', 'Électrothérapie', 'Balnéothérapie']
 const SALLES = ['Salle 1', 'Salle 2', 'Salle 3']
-const COULEURS_TYPE: Record<string, string> = {
-  'Rééducation': '#2563EB',
-  'Massage thérapeutique': '#16A34A',
-  'Électrothérapie': '#F59E0B',
-  'Ultrasons': '#8B5CF6',
-  'Cryothérapie': '#06B6D4',
-  'Kinésithérapie respiratoire': '#EC4899',
-}
+// Colour map is now built dynamically from API types (couleurMap in component state)
 
 function getWeekDates(startDate: Date) {
   const dates = []
@@ -89,19 +83,24 @@ function RappelBtn({ rdv }: { rdv: any }) {
 
 export default function AgendaPage() {
   const [currentDate, setCurrentDate] = useState(new Date())
-  const [rdvList, setRdvList] = useState<any[]>([])
-  const [patients, setPatients] = useState<any[]>([])
-  const [praticiens, setPraticiens] = useState<any[]>([])
-  const [showModal, setShowModal] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const [rdvList, setRdvList]         = useState<any[]>([])
+  const [patients, setPatients]       = useState<any[]>([])
+  const [praticiens, setPraticiens]   = useState<any[]>([])
+  const [seanceTypes, setSeanceTypes] = useState<any[]>([])
+  const [showModal, setShowModal]     = useState(false)
+  const [loading, setLoading]         = useState(false)
   const [confirmationRdv, setConfirmationRdv] = useState<any>(null)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   const [form, setForm] = useState({
-    patientId: '', praticienId: '', typeSeance: TYPES_SEANCE[0],
+    patientId: '', praticienId: '', typeSeance: '',
     date: '', heure: '09:00', duree: '45', salle: 'Salle 1', notes: ''
   })
 
   const weekDates = getWeekDates(currentDate)
+
+  // Build a colour map from loaded types
+  const couleurMap: Record<string, string> = {}
+  seanceTypes.forEach((t: any) => { couleurMap[t.nom] = t.couleur || '#2563EB' })
 
   const fetchRdv = useCallback(async () => {
     try {
@@ -115,7 +114,21 @@ export default function AgendaPage() {
     fetchRdv()
     fetch('/api/patients').then(r => r.json()).then(d => setPatients(Array.isArray(d) ? d : []))
     fetch('/api/praticiens').then(r => r.json()).then(d => setPraticiens(Array.isArray(d) ? d : []))
+    fetch('/api/seance-types').then(r => r.json()).then(d => {
+      const types = Array.isArray(d) ? d : TYPES_SEANCE_FALLBACK.map(n => ({ nom: n, dureeDefaut: 45, couleur: '#2563EB' }))
+      setSeanceTypes(types)
+      if (types.length > 0) setForm(f => ({ ...f, typeSeance: types[0].nom, duree: String(types[0].dureeDefaut) }))
+    })
   }, [fetchRdv])
+
+  function handleTypeChange(nom: string) {
+    const found = seanceTypes.find((t: any) => t.nom === nom)
+    setForm(f => ({
+      ...f,
+      typeSeance: nom,
+      duree: found ? String(found.dureeDefaut) : f.duree,
+    }))
+  }
 
   function getRdvForSlot(date: Date, hour: number) {
     return rdvList.filter(rdv => {
@@ -200,10 +213,10 @@ export default function AgendaPage() {
 
         {/* Légende */}
         <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-          {TYPES_SEANCE.map(t => (
-            <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <div style={{ width: 10, height: 10, borderRadius: '50%', background: COULEURS_TYPE[t] }} />
-              <span style={{ fontSize: 12, color: '#64748B' }}>{t}</span>
+          {seanceTypes.map((t: any) => (
+            <div key={t.id || t.nom} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ width: 10, height: 10, borderRadius: '50%', background: t.couleur || '#2563EB' }} />
+              <span style={{ fontSize: 12, color: '#64748B' }}>{t.nom}</span>
             </div>
           ))}
         </div>
@@ -241,7 +254,7 @@ export default function AgendaPage() {
                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                     {rdvs.map(rdv => (
                       <div key={rdv.id} onClick={e => e.stopPropagation()}
-                        style={{ background: COULEURS_TYPE[rdv.typeSeance] || '#2563EB', color: 'white', borderRadius: 6, padding: '4px 6px', fontSize: 11, marginBottom: 2 }}>
+                        style={{ background: couleurMap[rdv.typeSeance] || '#2563EB', color: 'white', borderRadius: 6, padding: '4px 6px', fontSize: 11, marginBottom: 2 }}>
                         <div style={{ fontWeight: 600 }}>{rdv.patient?.prenom} {rdv.patient?.nom}</div>
                         <div style={{ opacity: 0.85 }}>{rdv.typeSeance} · {rdv.duree}min</div>
                         <RappelBtn rdv={rdv} />
@@ -279,9 +292,11 @@ export default function AgendaPage() {
               ))}
               <div>
                 <label style={{ fontSize: 13, fontWeight: 500, color: '#374151', display: 'block', marginBottom: 6 }}>Type de séance</label>
-                <select value={form.typeSeance} onChange={e => setForm(f => ({...f, typeSeance: e.target.value}))}
+                <select value={form.typeSeance} onChange={e => handleTypeChange(e.target.value)}
                   style={{ width: '100%', padding: '10px 12px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 14, background: 'white' }}>
-                  {TYPES_SEANCE.map(t => <option key={t} value={t}>{t}</option>)}
+                  {seanceTypes.map((t: any) => (
+                    <option key={t.id || t.nom} value={t.nom}>{t.nom} ({t.dureeDefaut}min)</option>
+                  ))}
                 </select>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>

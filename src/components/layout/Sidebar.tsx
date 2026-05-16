@@ -22,7 +22,11 @@ const navItems = [
   { icon: CreditCard,      label: 'Facturation',      href: '/facturation' },
   { icon: UserCheck,       label: 'Personnel',        href: '/personnel' },
   { icon: BarChart3,       label: 'Rapports',         href: '/rapports' },
-  { icon: Settings,        label: 'Paramètres',       href: '/parametres' },
+]
+
+const parametresSubItems = [
+  { label: 'Configuration',    href: '/parametres' },
+  { label: 'Types de séances', href: '/parametres/types-seances' },
 ]
 
 // WhatsApp SVG icon (inline, no external dep)
@@ -51,7 +55,8 @@ export default function Sidebar() {
       .catch(() => {})
   }, [pathname]) // refresh on route change
 
-  const isWhatsAppActive = pathname === '/whatsapp' || pathname.startsWith('/whatsapp')
+  const isWhatsAppActive  = pathname === '/whatsapp' || pathname.startsWith('/whatsapp')
+  const isParametresActive = pathname === '/parametres' || pathname.startsWith('/parametres')
 
   return (
     <aside className="sidebar">
@@ -86,6 +91,43 @@ export default function Sidebar() {
             </Link>
           )
         })}
+
+        {/* Paramètres with submenu */}
+        <div>
+          <Link
+            href="/parametres"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+              isParametresActive
+                ? 'bg-blue-600 text-white'
+                : 'text-blue-200 hover:bg-blue-800 hover:text-white'
+            }`}
+          >
+            <Settings size={18} />
+            <span style={{ flex: 1 }}>Paramètres</span>
+          </Link>
+          {/* Submenu — always visible when on a /parametres route */}
+          {isParametresActive && (
+            <div style={{ marginLeft: 14, marginTop: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
+              {parametresSubItems.map(item => {
+                const isSubActive = pathname === item.href
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                      isSubActive
+                        ? 'bg-blue-500 text-white'
+                        : 'text-blue-300 hover:bg-blue-800 hover:text-white'
+                    }`}
+                  >
+                    <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'currentColor', flexShrink: 0 }} />
+                    {item.label}
+                  </Link>
+                )
+              })}
+            </div>
+          )}
+        </div>
 
         {/* WhatsApp entry */}
         <Link

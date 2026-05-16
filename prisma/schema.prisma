@@ -19,14 +19,18 @@ model Cabinet {
 }
 
 model SeanceType {
-  id           String   @id @default(cuid())
-  nom          String   @unique
+  id           String       @id @default(cuid())
+  nom          String
   description  String?
-  dureeDefaut  Int      @default(45)
-  tarifDefaut  Float    @default(250)
-  couleur      String   @default("#2563EB")
-  actif        Boolean  @default(true)
-  createdAt    DateTime @default(now())
+  dureeDefaut  Int          @default(45)
+  tarifDefaut  Float        @default(250)
+  couleur      String       @default("#2563EB")
+  actif        Boolean      @default(true)
+  praticienId  String?
+  praticien    Praticien?   @relation(fields: [praticienId], references: [id])
+  seances      Seance[]
+  rendezVous   RendezVous[]
+  createdAt    DateTime     @default(now())
 }
 
 model Praticien {
@@ -36,11 +40,12 @@ model Praticien {
   specialite String?
   telephone  String?
   email      String?
-  couleur    String       @default("#2563EB")
-  actif      Boolean      @default(true)
-  rendezVous RendezVous[]
-  seances    Seance[]
-  createdAt  DateTime     @default(now())
+  couleur      String       @default("#2563EB")
+  actif        Boolean      @default(true)
+  rendezVous   RendezVous[]
+  seances      Seance[]
+  seanceTypes  SeanceType[]
+  createdAt    DateTime     @default(now())
 }
 
 model Patient {
@@ -87,11 +92,13 @@ model RendezVous {
   salle       String?
   notes       String?
   statut      String    @default("confirme")
-  patientId   String
-  praticienId String
-  patient     Patient   @relation(fields: [patientId], references: [id])
-  praticien   Praticien @relation(fields: [praticienId], references: [id])
-  createdAt   DateTime  @default(now())
+  patientId    String
+  praticienId  String
+  seanceTypeId String?
+  patient      Patient     @relation(fields: [patientId], references: [id])
+  praticien    Praticien   @relation(fields: [praticienId], references: [id])
+  seanceType   SeanceType? @relation(fields: [seanceTypeId], references: [id])
+  createdAt    DateTime    @default(now())
 }
 
 model Seance {
@@ -107,10 +114,12 @@ model Seance {
   dateFeedback    DateTime?
   patientId       String
   praticienId     String
-  patient         Patient   @relation(fields: [patientId], references: [id])
-  praticien       Praticien @relation(fields: [praticienId], references: [id])
+  seanceTypeId    String?
+  patient         Patient     @relation(fields: [patientId], references: [id])
+  praticien       Praticien   @relation(fields: [praticienId], references: [id])
+  seanceType      SeanceType? @relation(fields: [seanceTypeId], references: [id])
   facture         Facture?
-  createdAt       DateTime  @default(now())
+  createdAt       DateTime    @default(now())
 }
 
 model Facture {
