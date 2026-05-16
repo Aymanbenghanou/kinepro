@@ -141,14 +141,14 @@ export default function HeroSection() {
           </div>
 
           <h1 style={{ fontSize: 'clamp(36px, 5vw, 60px)', fontWeight: 900, color: 'white', lineHeight: 1.1, margin: '0 0 24px', letterSpacing: '-1.5px' }}>
-            La gestion intelligente<br />
+            Votre cabinet,<br />
             <span style={{ background: 'linear-gradient(90deg, #60A5FA, #A78BFA)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              de votre cabinet
+              géré intelligemment.
             </span>
           </h1>
 
           <p style={{ fontSize: 18, lineHeight: 1.7, color: 'rgba(255,255,255,0.78)', margin: '0 0 36px', maxWidth: 480 }}>
-            Le partenaire digital des thérapeutes marocains.
+            KinéPro centralise vos patients, automatise vos rappels WhatsApp et booste votre réputation Google — en une seule plateforme.
           </p>
 
           {/* CTAs */}
