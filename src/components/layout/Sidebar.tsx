@@ -30,6 +30,7 @@ const navItems = [
 
 const parametresSubItems = [
   { label: 'Configuration',    href: '/parametres' },
+  { label: 'Cabinet',          href: '/parametres/cabinet' },
   { label: 'Types de séances', href: '/parametres/types-seances' },
 ]
 

@@ -1,8 +1,8 @@
 'use client'
 
 import { useSession } from 'next-auth/react'
-import { useState } from 'react'
-import { User, Shield, Lock, Eye, EyeOff } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { User, Shield, Lock, Eye, EyeOff, Phone, Clock, Mail } from 'lucide-react'
 
 const inputStyle: React.CSSProperties = {
   width: '100%', padding: '10px 14px',
@@ -21,8 +21,19 @@ export default function ComptePage() {
   const [pwLoading, setPwLoading] = useState(false)
   const [pwMsg, setPwMsg] = useState<{ text: string; ok: boolean } | null>(null)
 
-  // Profile
-  const [profile, setProfile] = useState({ nom: user?.nom ?? '', prenom: user?.prenom ?? '', email: user?.email ?? '' })
+  // Profile — also fetch from API to get telephone + lastLoginAt
+  const [profile, setProfile] = useState({ nom: user?.nom ?? '', prenom: user?.prenom ?? '', email: user?.email ?? '', telephone: '' })
+  const [lastLoginAt, setLastLoginAt] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch('/api/compte/profile')
+      .then(r => r.json())
+      .then(data => {
+        if (data?.telephone !== undefined) setProfile(p => ({ ...p, telephone: data.telephone ?? '' }))
+        if (data?.lastLoginAt) setLastLoginAt(data.lastLoginAt)
+      })
+      .catch(() => {})
+  }, [])
   const [profileLoading, setProfileLoading] = useState(false)
   const [profileMsg, setProfileMsg] = useState<{ text: string; ok: boolean } | null>(null)
 
@@ -63,7 +74,7 @@ export default function ComptePage() {
       const res = await fetch('/api/compte/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(profile),
+        body: JSON.stringify({ nom: profile.nom, prenom: profile.prenom, email: profile.email, telephone: profile.telephone }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Erreur')
@@ -147,6 +158,12 @@ export default function ComptePage() {
               {user?.prenom} {user?.nom}
             </h1>
             <p style={{ fontSize: 13, color: '#64748B', margin: 0 }}>{user?.email}</p>
+            {lastLoginAt && (
+              <p style={{ fontSize: 12, color: '#94A3B8', margin: '3px 0 0', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Clock size={11} />
+                Dernière connexion : {new Date(lastLoginAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              </p>
+            )}
           </div>
         </div>
 
@@ -167,9 +184,19 @@ export default function ComptePage() {
                 <input value={profile.nom} onChange={e => setProfile(s => ({ ...s, nom: e.target.value }))} style={inputStyle} />
               </div>
             </div>
-            <div>
-              <label style={{ fontSize: 13, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>Email</label>
-              <input type="email" value={profile.email} onChange={e => setProfile(s => ({ ...s, email: e.target.value }))} style={inputStyle} />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><Mail size={12} /> Email</span>
+                </label>
+                <input type="email" value={profile.email} onChange={e => setProfile(s => ({ ...s, email: e.target.value }))} style={inputStyle} />
+              </div>
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}><Phone size={12} /> Téléphone</span>
+                </label>
+                <input type="tel" value={profile.telephone} onChange={e => setProfile(s => ({ ...s, telephone: e.target.value }))} placeholder="0600000000" style={inputStyle} />
+              </div>
             </div>
             {profileMsg && (
               <div style={{

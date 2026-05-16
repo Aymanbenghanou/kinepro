@@ -6,7 +6,7 @@ function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : 'Erreur inconnue'
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const session = await auth()
     if (!session?.user?.cabinetId) {
@@ -14,8 +14,20 @@ export async function GET() {
     }
     const { cabinetId } = session.user
 
+    const { searchParams } = new URL(request.url)
+    // Pass ?actif=true to get only active praticiens (e.g. for dropdowns/agendas)
+    const actifOnly = searchParams.get('actif') === 'true'
+
     const praticiens = await prisma.praticien.findMany({
-      where: { cabinetId, actif: true },
+      where: {
+        cabinetId,
+        ...(actifOnly ? { actif: true } : {}),
+      },
+      include: {
+        user: {
+          select: { id: true, email: true, isActive: true, role: true, lastLoginAt: true },
+        },
+      },
       orderBy: { nom: 'asc' },
     })
     return NextResponse.json(praticiens)
@@ -46,6 +58,9 @@ export async function POST(request: NextRequest) {
         telephone:  body.telephone  || null,
         email:      body.email      || null,
         couleur:    body.couleur    || '#2563EB',
+      },
+      include: {
+        user: { select: { id: true, email: true, isActive: true, role: true } },
       },
     })
     return NextResponse.json(praticien, { status: 201 })
