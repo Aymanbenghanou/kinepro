@@ -10,8 +10,8 @@ export default defineConfig({
     seed: "tsx prisma/seed.ts",
   },
   datasource: {
-    // Migrations must use the non-pooled direct connection.
-    // PgBouncer (pooled) blocks DDL/schema operations.
-    url: process.env["POSTGRES_URL_NON_POOLING"],
+    // Migrations use the direct (non-pooled) connection — DATABASE_URL.
+    // PgBouncer / Accelerate cannot process DDL statements.
+    url: process.env["DATABASE_URL"],
   },
 });
