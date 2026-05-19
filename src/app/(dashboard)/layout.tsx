@@ -1,6 +1,7 @@
 import Sidebar from '@/components/layout/Sidebar'
 import MobileBottomNav from '@/components/layout/MobileBottomNav'
 import FeedbackNotificationBar from '@/components/layout/FeedbackNotificationBar'
+import InstallPrompt from '@/components/pwa/InstallPrompt'
 import { SidebarProvider } from '@/lib/sidebar-context'
 import { auth } from '@/auth'
 import Link from 'next/link'
@@ -120,6 +121,7 @@ export default async function DashboardLayout({
         </div>
       </div>
       <MobileBottomNav />
+      <InstallPrompt />
     </SidebarProvider>
   )
 }

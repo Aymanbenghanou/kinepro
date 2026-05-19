@@ -9,23 +9,35 @@ datasource db {
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
 model User {
-  id               String     @id @default(cuid())
-  email            String     @unique
+  id               String              @id @default(cuid())
+  email            String              @unique
   password         String
-  role             String     @default("CABINET_OWNER") // SUPER_ADMIN | CABINET_OWNER | EMPLOYEE
+  role             String              @default("CABINET_OWNER") // SUPER_ADMIN | CABINET_OWNER | EMPLOYEE
   nom              String
   prenom           String
   telephone        String?
-  twoFactorEnabled Boolean    @default(false)
+  twoFactorEnabled Boolean             @default(false)
   twoFactorSecret  String?
   cabinetId        String?
-  cabinet          Cabinet?   @relation("CabinetUsers", fields: [cabinetId], references: [id])
-  ownedCabinet     Cabinet?   @relation("CabinetOwner")
-  praticienId      String?    @unique
-  praticien        Praticien? @relation(fields: [praticienId], references: [id])
-  createdAt        DateTime   @default(now())
+  cabinet          Cabinet?            @relation("CabinetUsers", fields: [cabinetId], references: [id])
+  ownedCabinet     Cabinet?            @relation("CabinetOwner")
+  praticienId      String?             @unique
+  praticien        Praticien?          @relation(fields: [praticienId], references: [id])
+  pushSubscriptions PushSubscription[]
+  createdAt        DateTime            @default(now())
   lastLoginAt      DateTime?
-  isActive         Boolean    @default(true)
+  isActive         Boolean             @default(true)
+}
+
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  cabinetId String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
 }
 
 model Subscription {

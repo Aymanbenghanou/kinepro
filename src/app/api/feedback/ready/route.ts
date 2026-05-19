@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
+import { sendPushToCabinet } from '@/lib/push'
 import crypto from 'crypto'
 
 export const dynamic = 'force-dynamic'
@@ -17,18 +18,18 @@ export async function GET(_request: NextRequest) {
   try {
     const cutoff = new Date(Date.now() - DELAY_MS)
 
-    // Lazy promotion: find pending séances for this cabinet that have passed the delay
+    // Lazy promotion: pending séances for this cabinet that have passed the delay
     const toPromote = await prisma.seance.findMany({
       where: {
         cabinetId,
         feedbackStatus: 'pending',
         seanceEndTime: { lte: cutoff },
       },
-      select: { id: true },
+      include: { patient: { select: { prenom: true, nom: true } } },
     })
 
-    // Promote them to "ready" with unique tokens
     if (toPromote.length > 0) {
+      // Promote all to "ready" with unique tokens
       await Promise.all(
         toPromote.map((s) =>
           prisma.seance.update({
@@ -41,6 +42,24 @@ export async function GET(_request: NextRequest) {
           })
         )
       )
+
+      // Send push notification for the batch
+      const names = toPromote.map((s) => `${s.patient.prenom} ${s.patient.nom}`)
+      const body  = toPromote.length === 1
+        ? `${names[0]} — Séance terminée il y a 20 min`
+        : `${names.slice(0, 2).join(', ')}${toPromote.length > 2 ? ` +${toPromote.length - 2}` : ''}`
+
+      await sendPushToCabinet(cabinetId, {
+        title:              '⏰ Feedback prêt à envoyer',
+        body,
+        tag:                'feedback-ready',
+        requireInteraction: true,
+        data:               { url: '/whatsapp?tab=ready' },
+        actions: [
+          { action: 'open_whatsapp', title: '📱 Ouvrir WhatsApp' },
+          { action: 'dismiss',       title: 'Plus tard' },
+        ],
+      }).catch(() => {}) // don't fail if push fails (no subscriptions yet)
     }
 
     // Return all ready séances for this cabinet

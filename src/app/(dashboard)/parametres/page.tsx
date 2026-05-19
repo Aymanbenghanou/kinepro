@@ -4,6 +4,12 @@ import { useState, useEffect } from 'react'
 import Topbar from '@/components/layout/Topbar'
 import Toast from '@/components/ui/Toast'
 import { Save, CheckCircle, AlertTriangle, Phone, Star, Info } from 'lucide-react'
+import dynamic from 'next/dynamic'
+
+const NotificationSettings = dynamic(
+  () => import('@/components/pwa/NotificationSettings'),
+  { ssr: false }
+)
 
 const TYPES_SEANCE_DEFAULT = [
   { nom: 'Rééducation', duree: 45, tarif: 250 },
@@ -16,7 +22,7 @@ const TYPES_SEANCE_DEFAULT = [
 
 const SALLES_DEFAULT = ['Salle 1', 'Salle 2', 'Salle 3']
 
-type Tab = 'cabinet' | 'communications' | 'seances' | 'salles'
+type Tab = 'cabinet' | 'communications' | 'seances' | 'salles' | 'notifications'
 
 const inputStyle: React.CSSProperties = {
   width: '100%', padding: '10px 12px',
@@ -118,6 +124,7 @@ export default function ParametresPage() {
     { key: 'communications', label: '📱 WhatsApp & Avis' },
     { key: 'seances',        label: '⚡ Types de séances' },
     { key: 'salles',         label: '🚪 Salles' },
+    { key: 'notifications',  label: '🔔 Notifications' },
   ]
 
   if (loading) {
@@ -383,6 +390,36 @@ Merci pour votre confiance !
                   <span style={{ marginLeft: 'auto', background: '#DCFCE7', color: '#16A34A', padding: '2px 8px', borderRadius: 999, fontSize: 12, fontWeight: 500 }}>Active</span>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Tab: Notifications ── */}
+        {activeTab === 'notifications' && (
+          <div style={{ maxWidth: 560 }}>
+            <div style={{ background: 'white', border: '1px solid #E2E8F0', borderLeft: '4px solid #7C3AED', borderRadius: 12, padding: 28 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#F5F3FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <span style={{ fontSize: 18 }}>🔔</span>
+                </div>
+                <h2 style={{ fontSize: 16, fontWeight: 700, color: '#0F172A', margin: 0 }}>Notifications Push</h2>
+              </div>
+              <p style={{ fontSize: 13, color: '#64748B', marginBottom: 20 }}>
+                Recevez des alertes en temps réel sur cet appareil — même quand le navigateur est fermé.
+              </p>
+              <NotificationSettings />
+            </div>
+
+            {/* PWA install info */}
+            <div style={{ marginTop: 16, background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 12, padding: 20 }}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: '#1D4ED8', margin: '0 0 8px' }}>
+                📱 Installer KinéPro comme application
+              </p>
+              <p style={{ fontSize: 13, color: '#374151', margin: 0, lineHeight: 1.6 }}>
+                Sur mobile : ouvrez ce site dans votre navigateur, appuyez sur le menu puis
+                <strong> "Ajouter à l'écran d'accueil"</strong>.
+                Vous obtiendrez une icône native et les notifications fonctionneront en arrière-plan.
+              </p>
             </div>
           </div>
         )}
