@@ -1,12 +1,15 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Bell, Search, Clock, Users, MessageSquare, CheckCheck, Menu } from 'lucide-react'
+import { Bell, Search, Clock, Users, MessageSquare, CheckCheck, Menu, ScanLine } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import { usePathname } from 'next/navigation'
 import ProfileDropdown from '@/components/ui/ProfileDropdown'
 import { useSidebar } from '@/lib/sidebar-context'
+import dynamic from 'next/dynamic'
 // useSession is kept — used inside NotificationBell for subscription status
+
+const QrScannerModal = dynamic(() => import('@/components/qr/QrScannerModal'), { ssr: false })
 
 interface TopbarProps {
   title: string
@@ -281,6 +284,7 @@ function NotificationBell() {
 // ─── Topbar ───────────────────────────────────────────────────────────────────
 export default function Topbar({ title, subtitle }: TopbarProps) {
   const { toggle } = useSidebar()
+  const [showScanner, setShowScanner] = useState(false)
 
   return (
     <div className="topbar">
@@ -311,12 +315,32 @@ export default function Topbar({ title, subtitle }: TopbarProps) {
           />
         </div>
 
+        {/* QR Scanner — mobile only */}
+        <button
+          onClick={() => setShowScanner(true)}
+          className="md:hidden"
+          aria-label="Scanner QR patient"
+          style={{
+            padding: '7px 8px', border: 'none',
+            background: 'transparent', borderRadius: 8,
+            cursor: 'pointer', color: '#64748B',
+            display: 'flex', alignItems: 'center',
+          }}
+        >
+          <ScanLine size={20} />
+        </button>
+
         {/* Notification bell */}
         <NotificationBell />
 
         {/* Avatar dropdown */}
         <ProfileDropdown direction="down" avatarSize={34} />
       </div>
+
+      {/* QR Scanner modal */}
+      {showScanner && (
+        <QrScannerModal onClose={() => setShowScanner(false)} />
+      )}
     </div>
   )
 }

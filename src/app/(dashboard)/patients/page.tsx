@@ -1,11 +1,16 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react'
 import { useRouter } from 'next/navigation'
 import Topbar from '@/components/layout/Topbar'
 import { formatDate } from '@/lib/utils'
-import { Plus, Search } from 'lucide-react'
+import { Plus, Search, QrCode } from 'lucide-react'
 import NewPatientWizard from '@/components/patients/NewPatientWizard'
+import dynamic from 'next/dynamic'
+
+const QrCodeModal = dynamic(() => import('@/components/qr/QrCodeModal'), { ssr: false })
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://kinepro-omega.vercel.app'
 
 function StatusBadge({ actif }: { actif: boolean }) {
   return (
@@ -27,6 +32,22 @@ export default function PatientsPage() {
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
   const PER_PAGE = 10
+  const [qrTarget, setQrTarget] = useState<{ patientId: string; nom: string } | null>(null)
+  const [qrToken, setQrToken] = useState<string | null>(null)
+  const [qrLoading, setQrLoading] = useState(false)
+
+  async function openQr(e: React.MouseEvent, patientId: string, nom: string) {
+    e.stopPropagation()
+    setQrTarget({ patientId, nom })
+    setQrToken(null)
+    setQrLoading(true)
+    try {
+      const res = await fetch(`/api/patients/${patientId}/qr-token`)
+      const data = await res.json()
+      setQrToken(data.token)
+    } catch {}
+    setQrLoading(false)
+  }
 
   const fetchPatients = useCallback(async () => {
     setLoading(true)
@@ -134,7 +155,20 @@ export default function PatientsPage() {
                     {p.rendezVous?.[0] ? formatDate(p.rendezVous[0].date) : '—'}
                   </td>
                   <td style={{ padding: '14px 16px' }}>
-                    <span style={{ fontSize: 13, color: '#2563EB', fontWeight: 500 }}>Dossier →</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontSize: 13, color: '#2563EB', fontWeight: 500 }}>Dossier →</span>
+                      <button
+                        onClick={e => openQr(e, p.id, `${p.prenom} ${p.nom}`)}
+                        title="QR Code"
+                        style={{
+                          padding: '5px 7px', border: '1px solid #E2E8F0', borderRadius: 6,
+                          background: 'white', cursor: 'pointer', color: '#64748B',
+                          display: 'flex', alignItems: 'center', minHeight: 'unset',
+                        }}
+                      >
+                        <QrCode size={14} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -165,6 +199,24 @@ export default function PatientsPage() {
       <button className="fab-btn" onClick={() => setShowWizard(true)} aria-label="Nouveau patient">
         +
       </button>
+
+      {/* QR Code modal */}
+      {qrTarget && (
+        qrLoading ? (
+          <div className="modal-overlay" style={{ zIndex: 200 }}>
+            <div className="modal-sheet" style={{ padding: 40, width: 300, textAlign: 'center' }}>
+              <p style={{ color: '#64748B', margin: 0 }}>Génération du QR code...</p>
+            </div>
+          </div>
+        ) : qrToken ? (
+          <QrCodeModal
+            url={`${APP_URL}/patient-public/${qrToken}`}
+            title={qrTarget.nom}
+            subtitle={`Patient · ${qrToken.slice(0, 8)}...`}
+            onClose={() => { setQrTarget(null); setQrToken(null) }}
+          />
+        ) : null
+      )}
 
       {showWizard && (
         <NewPatientWizard

@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useState, useEffect, useCallback } from 'react'
 import {
   LayoutDashboard, Calendar, Users, Clock, CreditCard,
-  UserCheck, BarChart3, Settings, Crown, X,
+  UserCheck, BarChart3, Settings, Crown, X, QrCode,
 } from 'lucide-react'
 import ProfileDropdown from '@/components/ui/ProfileDropdown'
 import { useSidebar } from '@/lib/sidebar-context'
@@ -19,6 +19,7 @@ const navItems = [
   { icon: CreditCard,      label: 'Facturation',       href: '/facturation' },
   { icon: UserCheck,       label: 'Personnel',         href: '/personnel' },
   { icon: BarChart3,       label: 'Rapports',          href: '/rapports' },
+  { icon: QrCode,          label: 'QR Réception',      href: '/qr/cabinet' },
 ]
 
 const parametresSubItems = [

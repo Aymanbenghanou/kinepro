@@ -6,12 +6,17 @@ import { formatDate, formatTime, formatMoney } from '@/lib/utils'
 import Topbar from '@/components/layout/Topbar'
 import {
   ArrowLeft, Phone, Mail, MapPin, Activity, FileText,
-  Calendar, Plus, X, User, CreditCard, Target, Clock, Download, BarChart2,
+  Calendar, Plus, X, User, CreditCard, Target, Clock, Download, BarChart2, QrCode,
 } from 'lucide-react'
 import ExercicesModal from '@/components/whatsapp/ExercicesModal'
 import { generateDossierPatientPDF } from '@/lib/pdf-utils'
 import ProgressionTab from '@/components/patients/ProgressionTab'
 import DocumentsTab from '@/components/patients/DocumentsTab'
+import dynamic from 'next/dynamic'
+
+const QrCodeModal = dynamic(() => import('@/components/qr/QrCodeModal'), { ssr: false })
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://kinepro-omega.vercel.app'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type TabId = 'informations' | 'seances' | 'plan' | 'facturation' | 'progression' | 'documents'
@@ -185,6 +190,21 @@ export default function PatientDetailPage() {
   const [activeTab, setActiveTab] = useState<TabId>('informations')
   const [showPlanifier, setShowPlanifier] = useState(false)
   const [showExercices, setShowExercices] = useState(false)
+  const [showQr, setShowQr] = useState(false)
+  const [qrToken, setQrToken] = useState<string | null>(null)
+  const [qrLoading, setQrLoading] = useState(false)
+
+  async function openQr() {
+    setShowQr(true)
+    if (qrToken) return
+    setQrLoading(true)
+    try {
+      const res = await fetch(`/api/patients/${id}/qr-token`)
+      const data = await res.json()
+      setQrToken(data.token)
+    } catch {}
+    setQrLoading(false)
+  }
 
   const fetchPatient = useCallback(async () => {
     try {
@@ -282,7 +302,11 @@ export default function PatientDetailPage() {
                 )}
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
+            <div style={{ display: 'flex', gap: 10, flexShrink: 0, flexWrap: 'wrap' }}>
+              <button onClick={openQr}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'white', color: '#374151', border: '1px solid #E2E8F0', borderRadius: 10, padding: '10px 14px', cursor: 'pointer', fontWeight: 500, fontSize: 14 }}>
+                <QrCode size={15} /> QR Code
+              </button>
               <button onClick={() => generateDossierPatientPDF(patient, cabinet)}
                 style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'white', color: '#374151', border: '1px solid #E2E8F0', borderRadius: 10, padding: '10px 16px', cursor: 'pointer', fontWeight: 500, fontSize: 14 }}>
                 <Download size={15} /> Exporter PDF
@@ -564,6 +588,24 @@ export default function PatientDetailPage() {
           patient={{ id: patient.id, prenom: patient.prenom, nom: patient.nom, telephone: patient.telephone }}
           onClose={() => setShowExercices(false)}
         />
+      )}
+
+      {/* QR Code modal */}
+      {showQr && (
+        qrLoading ? (
+          <div className="modal-overlay" style={{ zIndex: 200 }}>
+            <div className="modal-sheet" style={{ padding: 40, width: 300, textAlign: 'center' }}>
+              <p style={{ color: '#64748B', margin: 0 }}>Génération du QR code...</p>
+            </div>
+          </div>
+        ) : qrToken && patient ? (
+          <QrCodeModal
+            url={`${APP_URL}/patient-public/${qrToken}`}
+            title={`${patient.prenom} ${patient.nom}`}
+            subtitle={`Patient · ${qrToken.slice(0, 8)}...`}
+            onClose={() => setShowQr(false)}
+          />
+        ) : null
       )}
     </div>
   )

@@ -67,6 +67,7 @@ model Cabinet {
   ownerId          String?       @unique
   subdomain        String?       @unique
   logoUrl          String?
+  publicToken      String?       @unique
   owner            User?         @relation("CabinetOwner", fields: [ownerId], references: [id])
   users            User[]        @relation("CabinetUsers")
   praticiens       Praticien[]
@@ -142,6 +143,7 @@ model Patient {
   objectifsTraitement  String?
   dateDebutSouhaite    DateTime?
   actif                Boolean       @default(true)
+  publicToken          String?       @unique
   cabinetId            String?
   cabinet              Cabinet?      @relation(fields: [cabinetId], references: [id])
   rendezVous           RendezVous[]
