@@ -54,6 +54,34 @@ model Subscription {
 
 // ─── Cabinet ─────────────────────────────────────────────────────────────────
 
+model CabinetSite {
+  id              String        @id @default(cuid())
+  cabinetId       String        @unique
+  cabinet         Cabinet       @relation(fields: [cabinetId], references: [id])
+  templateId      String        @default("medical")
+  published       Boolean       @default(false)
+  primaryColor    String        @default("#2563EB")
+  secondaryColor  String        @default("#1E3A5F")
+  heroTitle       String?
+  heroSubtitle    String?
+  heroImageUrl    String?
+  aboutText       String?
+  googleMapsEmbed String?
+  testimonials    Testimonial[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model Testimonial {
+  id            String      @id @default(cuid())
+  cabinetSiteId String
+  cabinetSite   CabinetSite @relation(fields: [cabinetSiteId], references: [id], onDelete: Cascade)
+  patientName   String
+  text          String
+  rating        Int         @default(5)
+  createdAt     DateTime    @default(now())
+}
+
 model Cabinet {
   id               String        @id @default(cuid())
   nom              String
@@ -84,6 +112,7 @@ model Cabinet {
   patients         Patient[]
   seanceTypes      SeanceType[]
   subscription     Subscription?
+  site             CabinetSite?
   createdAt        DateTime      @default(now())
 }
 

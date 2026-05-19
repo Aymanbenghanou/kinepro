@@ -30,6 +30,7 @@ export default async function SuperAdminLayout({ children }: { children: React.R
   const navItems = [
     { href: '/super-admin',            label: 'Vue d\'ensemble', icon: '📊' },
     { href: '/super-admin/cabinets',   label: 'Cabinets',        icon: '🏥' },
+    { href: '/super-admin/sites',      label: 'Sites vitrines',  icon: '🌐' },
     { href: '/super-admin/parametres', label: 'Paramètres',      icon: '⚙️' },
   ]
 
