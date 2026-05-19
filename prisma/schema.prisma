@@ -137,6 +137,7 @@ model Patient {
   factures             Facture[]
   feedbacks            Feedback[]
   whatsappLogs         WhatsAppLog[]
+  documents            Document[]
   createdAt            DateTime      @default(now())
 }
 
@@ -159,25 +160,29 @@ model RendezVous {
 }
 
 model Seance {
-  id             String      @id @default(cuid())
-  date           DateTime
-  duree          Int
-  typeSeance     String
-  notes          String?
-  statut         String      @default("realisee")
-  scorePatient   Int?
-  notesInternes  String?
-  feedbackEnvoye Boolean     @default(false)
-  dateFeedback   DateTime?
-  cabinetId      String?
-  patientId      String
-  praticienId    String
-  seanceTypeId   String?
-  patient        Patient     @relation(fields: [patientId], references: [id])
-  praticien      Praticien   @relation(fields: [praticienId], references: [id])
-  seanceType     SeanceType? @relation(fields: [seanceTypeId], references: [id])
-  facture        Facture?
-  createdAt      DateTime    @default(now())
+  id                String      @id @default(cuid())
+  date              DateTime
+  duree             Int
+  typeSeance        String
+  notes             String?
+  statut            String      @default("realisee")
+  scorePatient      Int?
+  notesInternes     String?
+  feedbackEnvoye    Boolean     @default(false)
+  dateFeedback      DateTime?
+  douleurScore      Int?
+  mobiliteScore     Int?
+  forceScore        Int?
+  notesProgression  String?
+  cabinetId         String?
+  patientId         String
+  praticienId       String
+  seanceTypeId      String?
+  patient           Patient     @relation(fields: [patientId], references: [id])
+  praticien         Praticien   @relation(fields: [praticienId], references: [id])
+  seanceType        SeanceType? @relation(fields: [seanceTypeId], references: [id])
+  facture           Facture?
+  createdAt         DateTime    @default(now())
 }
 
 model Facture {
@@ -216,6 +221,19 @@ model WhatsAppLog {
   message    String
   patient    Patient  @relation(fields: [patientId], references: [id])
   createdAt  DateTime @default(now())
+}
+
+model Document {
+  id          String   @id @default(cuid())
+  nom         String
+  type        String   @default("autre")
+  url         String
+  size        Int?
+  patientId   String
+  patient     Patient  @relation(fields: [patientId], references: [id])
+  cabinetId   String?
+  uploadedBy  String?
+  createdAt   DateTime @default(now())
 }
 
 // ─── Global system config (one row, key = "global") ──────────────────────────

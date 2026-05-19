@@ -6,20 +6,23 @@ import { formatDate, formatTime, formatMoney } from '@/lib/utils'
 import Topbar from '@/components/layout/Topbar'
 import {
   ArrowLeft, Phone, Mail, MapPin, Activity, FileText,
-  Calendar, Plus, X, User, CreditCard, Target, Clock, Download,
+  Calendar, Plus, X, User, CreditCard, Target, Clock, Download, BarChart2,
 } from 'lucide-react'
 import ExercicesModal from '@/components/whatsapp/ExercicesModal'
 import { generateDossierPatientPDF } from '@/lib/pdf-utils'
+import ProgressionTab from '@/components/patients/ProgressionTab'
+import DocumentsTab from '@/components/patients/DocumentsTab'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
-type TabId = 'informations' | 'seances' | 'plan' | 'facturation' | 'documents'
+type TabId = 'informations' | 'seances' | 'plan' | 'facturation' | 'progression' | 'documents'
 
 const TABS: { id: TabId; label: string; icon: any }[] = [
-  { id: 'informations', label: 'Informations', icon: User },
-  { id: 'seances', label: 'Séances', icon: Clock },
-  { id: 'plan', label: 'Plan de traitement', icon: Target },
-  { id: 'facturation', label: 'Facturation', icon: CreditCard },
-  { id: 'documents', label: 'Documents', icon: FileText },
+  { id: 'informations', label: 'Informations',       icon: User },
+  { id: 'seances',      label: 'Séances',            icon: Clock },
+  { id: 'plan',         label: 'Plan de traitement', icon: Target },
+  { id: 'facturation',  label: 'Facturation',        icon: CreditCard },
+  { id: 'progression',  label: 'Progression',        icon: BarChart2 },
+  { id: 'documents',    label: 'Documents',           icon: FileText },
 ]
 
 function Badge({ label, bg, color }: { label: string; bg: string; color: string }) {
@@ -537,20 +540,14 @@ export default function PatientDetailPage() {
           </div>
         )}
 
+        {/* ── Tab: Progression ── */}
+        {activeTab === 'progression' && (
+          <ProgressionTab patient={patient} onScoresSaved={fetchPatient} />
+        )}
+
         {/* ── Tab: Documents ── */}
         {activeTab === 'documents' && (
-          <div style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, padding: 40, textAlign: 'center' }}>
-            <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-              <FileText size={28} color="#94A3B8" />
-            </div>
-            <h3 style={{ fontSize: 16, fontWeight: 600, color: '#0F172A', marginBottom: 8 }}>Espace documents</h3>
-            <p style={{ fontSize: 14, color: '#64748B', marginBottom: 24 }}>
-              Ordonnances, comptes-rendus, bilans — bientôt disponible.
-            </p>
-            <button style={{ padding: '10px 20px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 8, color: '#64748B', cursor: 'pointer', fontSize: 14 }}>
-              + Ajouter un document
-            </button>
-          </div>
+          <DocumentsTab patientId={id} />
         )}
 
       </div>

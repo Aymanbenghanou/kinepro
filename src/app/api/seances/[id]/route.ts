@@ -52,12 +52,16 @@ export async function PATCH(
     const seance = await prisma.seance.update({
       where: { id },
       data: {
-        statut:         body.statut         !== undefined ? body.statut         : undefined,
-        scorePatient:   body.scorePatient   !== undefined ? body.scorePatient   : undefined,
-        notesInternes:  body.notesInternes  !== undefined ? body.notesInternes  : undefined,
-        feedbackEnvoye: body.feedbackEnvoye !== undefined ? body.feedbackEnvoye : undefined,
-        dateFeedback:   body.feedbackEnvoye ? new Date() : undefined,
-        notes:          body.notes          !== undefined ? body.notes          : undefined,
+        statut:            body.statut            !== undefined ? body.statut            : undefined,
+        scorePatient:      body.scorePatient      !== undefined ? body.scorePatient      : undefined,
+        notesInternes:     body.notesInternes     !== undefined ? body.notesInternes     : undefined,
+        feedbackEnvoye:    body.feedbackEnvoye    !== undefined ? body.feedbackEnvoye    : undefined,
+        dateFeedback:      body.feedbackEnvoye ? new Date() : undefined,
+        notes:             body.notes             !== undefined ? body.notes             : undefined,
+        douleurScore:      body.douleurScore      !== undefined ? body.douleurScore      : undefined,
+        mobiliteScore:     body.mobiliteScore     !== undefined ? body.mobiliteScore     : undefined,
+        forceScore:        body.forceScore        !== undefined ? body.forceScore        : undefined,
+        notesProgression:  body.notesProgression  !== undefined ? body.notesProgression  : undefined,
       },
       include: {
         patient:   { select: { id: true, nom: true, prenom: true, telephone: true } },

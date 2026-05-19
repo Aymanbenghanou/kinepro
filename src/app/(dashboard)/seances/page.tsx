@@ -64,6 +64,9 @@ export default function SeancesPage() {
   const [showModal, setShowModal] = useState(false)
   const [selectedSeance, setSelectedSeance] = useState<any>(null)
   const [feedbackTarget, setFeedbackTarget] = useState<{ seance: any; patient: any } | null>(null)
+  const [progScores, setProgScores] = useState({ douleur: 5, mobilite: 5, force: 5, notes: '' })
+  const [savingScores, setSavingScores] = useState(false)
+  const [scoresSaved, setScoresSaved] = useState(false)
   const [filterPatient, setFilterPatient]   = useState('')
   const [filterPraticien, setFilterPraticien] = useState('')
   const [filterStatut, setFilterStatut]     = useState('')
@@ -140,6 +143,39 @@ export default function SeancesPage() {
 
   function openFeedback(s: any) {
     setFeedbackTarget({ seance: s, patient: s.patient })
+  }
+
+  // Pre-fill progression scores when a seance is selected
+  useEffect(() => {
+    if (selectedSeance) {
+      setProgScores({
+        douleur:  selectedSeance.douleurScore  ?? 5,
+        mobilite: selectedSeance.mobiliteScore ?? 5,
+        force:    selectedSeance.forceScore    ?? 5,
+        notes:    selectedSeance.notesProgression ?? '',
+      })
+      setScoresSaved(false)
+    }
+  }, [selectedSeance])
+
+  async function saveProgScores() {
+    if (!selectedSeance) return
+    setSavingScores(true)
+    try {
+      await fetch(`/api/seances/${selectedSeance.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          douleurScore:     progScores.douleur,
+          mobiliteScore:    progScores.mobilite,
+          forceScore:       progScores.force,
+          notesProgression: progScores.notes || null,
+        }),
+      })
+      setScoresSaved(true)
+      fetchData()
+    } catch {}
+    setSavingScores(false)
   }
 
   return (
@@ -302,6 +338,43 @@ export default function SeancesPage() {
                 <div style={{ marginTop: 4, padding: 12, background: '#F8FAFC', borderRadius: 8 }}>
                   <div style={{ fontSize: 12, color: '#64748B', marginBottom: 6, fontWeight: 500 }}>NOTES</div>
                   <div style={{ fontSize: 14, color: '#374151', lineHeight: 1.5 }}>{selectedSeance.notes}</div>
+                </div>
+              )}
+
+              {/* Progression scores */}
+              {selectedSeance.statut === 'realisee' && (
+                <div style={{ marginTop: 8, padding: 14, background: '#F0FDF4', borderRadius: 10, borderLeft: '3px solid #16A34A' }}>
+                  <div style={{ fontSize: 12, color: '#166534', marginBottom: 12, fontWeight: 700 }}>📈 SCORES DE PROGRESSION</div>
+                  {(['douleur', 'mobilite', 'force'] as const).map(key => {
+                    const labels: Record<string, string> = { douleur: '🔴 Douleur', mobilite: '🔵 Mobilité', force: '🟢 Force' }
+                    const colors: Record<string, string> = { douleur: '#DC2626', mobilite: '#2563EB', force: '#16A34A' }
+                    return (
+                      <div key={key} style={{ marginBottom: 12 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>{labels[key]}</span>
+                          <span style={{ fontSize: 14, fontWeight: 800, color: colors[key] }}>{progScores[key]}<span style={{ fontSize: 10, color: '#94A3B8' }}>/10</span></span>
+                        </div>
+                        <input type="range" min={1} max={10} value={progScores[key]}
+                          onChange={e => setProgScores(s => ({ ...s, [key]: Number(e.target.value) }))}
+                          style={{ width: '100%', accentColor: colors[key] }}
+                        />
+                      </div>
+                    )
+                  })}
+                  <textarea
+                    value={progScores.notes}
+                    onChange={e => setProgScores(s => ({ ...s, notes: e.target.value }))}
+                    placeholder="Notes de progression..."
+                    rows={2}
+                    style={{ width: '100%', padding: '8px 10px', border: '1px solid #BBF7D0', borderRadius: 8, fontSize: 12, resize: 'vertical', marginBottom: 10, boxSizing: 'border-box' }}
+                  />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <button onClick={saveProgScores} disabled={savingScores}
+                      style={{ padding: '8px 16px', background: savingScores ? '#86EFAC' : '#16A34A', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 12 }}>
+                      {savingScores ? 'Enregistrement...' : 'Enregistrer scores'}
+                    </button>
+                    {scoresSaved && <span style={{ fontSize: 12, color: '#16A34A', fontWeight: 600 }}>✅ Enregistré</span>}
+                  </div>
                 </div>
               )}
             </div>
