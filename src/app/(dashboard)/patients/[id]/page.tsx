@@ -107,8 +107,8 @@ function PlanifierModal({ patientId, onClose, onSuccess }: {
   const lbl: React.CSSProperties = { fontSize: 13, fontWeight: 500, color: '#374151', display: 'block', marginBottom: 6 }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300, backdropFilter: 'blur(2px)' }}>
-      <div style={{ background: 'white', borderRadius: 16, padding: 28, width: 520, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 24px 64px rgba(0,0,0,0.18)' }}>
+    <div className="modal-overlay" style={{ zIndex: 300, backdropFilter: 'blur(2px)', background: 'rgba(15,23,42,0.55)' }}>
+      <div className="modal-sheet" style={{ padding: 28, width: 520, maxHeight: '90vh' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22 }}>
           <h2 style={{ fontSize: 18, fontWeight: 700, color: '#0F172A', margin: 0 }}>Planifier une séance</h2>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B' }}><X size={20} /></button>
@@ -246,8 +246,8 @@ export default function PatientDetailPage() {
 
         {/* Header card */}
         <div style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: 16, padding: 24, marginBottom: 20 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <div style={{ display: 'flex', gap: 18, alignItems: 'center' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
+            <div style={{ display: 'flex', gap: 18, alignItems: 'center', flex: 1, minWidth: 0 }}>
               {/* Avatar */}
               <div style={{
                 width: 80, height: 80, borderRadius: '50%', background: 'linear-gradient(135deg, #2563EB, #1E3A5F)',
@@ -301,7 +301,7 @@ export default function PatientDetailPage() {
           </div>
 
           {/* Quick stats */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginTop: 20, paddingTop: 20, borderTop: '1px solid #F1F5F9' }}>
+          <div className="stats-grid-4" style={{ gap: 12, marginTop: 20, paddingTop: 20, borderTop: '1px solid #F1F5F9' }}>
             {[
               { label: 'Séances réalisées', value: seancesRealisees.length, color: '#2563EB' },
               { label: 'Total séances', value: patient.seances?.length || 0, color: '#0F172A' },
@@ -317,18 +317,18 @@ export default function PatientDetailPage() {
         </div>
 
         {/* Tabs */}
-        <div style={{ display: 'flex', gap: 2, marginBottom: 20, background: 'white', border: '1px solid #E2E8F0', borderRadius: 10, padding: 4 }}>
+        <div className="patient-tabs" style={{ display: 'flex', gap: 2, marginBottom: 20, background: 'white', border: '1px solid #E2E8F0', borderRadius: 10, padding: 4, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           {TABS.map(tab => {
             const Icon = tab.icon
             const active = activeTab === tab.id
             return (
               <button key={tab.id} onClick={() => setActiveTab(tab.id)}
                 style={{
-                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
                   padding: '9px 14px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: active ? 600 : 400,
                   background: active ? '#2563EB' : 'transparent',
                   color: active ? 'white' : '#64748B',
-                  transition: 'all 0.15s',
+                  transition: 'all 0.15s', whiteSpace: 'nowrap',
                 }}>
                 <Icon size={14} /> {tab.label}
               </button>
@@ -338,7 +338,7 @@ export default function PatientDetailPage() {
 
         {/* ── Tab: Informations ── */}
         {activeTab === 'informations' && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+          <div className="dashboard-grid-2" style={{ gap: 20 }}>
             {/* Infos personnelles */}
             <div style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, padding: 24 }}>
               <h3 style={{ fontSize: 15, fontWeight: 600, color: '#0F172A', marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid #E2E8F0' }}>
@@ -390,7 +390,7 @@ export default function PatientDetailPage() {
 
         {/* ── Tab: Séances ── */}
         {activeTab === 'seances' && (
-          <div style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, overflow: 'hidden' }}>
+          <div className="table-container">
             <div style={{ padding: '16px 20px', borderBottom: '1px solid #E2E8F0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ fontSize: 15, fontWeight: 600, color: '#0F172A', margin: 0 }}>Historique des séances ({patient.seances?.length || 0})</h3>
               <button onClick={() => setShowPlanifier(true)}
@@ -401,7 +401,7 @@ export default function PatientDetailPage() {
             {patient.seances?.length === 0 ? (
               <div style={{ padding: 40, textAlign: 'center', color: '#64748B', fontSize: 14 }}>Aucune séance enregistrée</div>
             ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <div className="table-scroll"><table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
                     {['Date', 'Type', 'Durée', 'Praticien', 'Statut', 'Notes'].map(h => (
@@ -431,7 +431,7 @@ export default function PatientDetailPage() {
                     )
                   })}
                 </tbody>
-              </table>
+              </table></div>
             )}
           </div>
         )}
@@ -492,7 +492,7 @@ export default function PatientDetailPage() {
 
         {/* ── Tab: Facturation ── */}
         {activeTab === 'facturation' && (
-          <div style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, overflow: 'hidden' }}>
+          <div className="table-container">
             <div style={{ padding: '16px 20px', borderBottom: '1px solid #E2E8F0' }}>
               <h3 style={{ fontSize: 15, fontWeight: 600, color: '#0F172A', margin: 0 }}>Factures ({patient.factures?.length || 0})</h3>
             </div>
@@ -513,7 +513,7 @@ export default function PatientDetailPage() {
                     </div>
                   ))}
                 </div>
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <div className="table-scroll"><table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
                       {['Date', 'Montant', 'Statut', 'Date paiement'].map(h => (
@@ -534,7 +534,7 @@ export default function PatientDetailPage() {
                       )
                     })}
                   </tbody>
-                </table>
+                </table></div>
               </>
             )}
           </div>

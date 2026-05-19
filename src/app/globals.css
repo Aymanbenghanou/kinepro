@@ -21,6 +21,7 @@ body {
   font-family: 'Inter', sans-serif;
   background-color: #F8FAFC;
   color: #0F172A;
+  overflow-x: hidden;
 }
 
 /* ─── Sidebar ────────────────────────────────────────────────────────────── */
@@ -74,6 +75,78 @@ body {
 .stats-grid-4 {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.stats-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+/* ─── Table container (preserves border-radius + enables scroll) ──────────── */
+.table-container {
+  background: white;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* ─── Modal overlay + bottom sheet ───────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal-sheet {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+  overflow-y: auto;
+}
+
+/* ─── FAB button (shown only on mobile) ───────────────────────────────────── */
+.fab-btn {
+  display: none;
+}
+
+/* ─── Agenda week grid ───────────────────────────────────────────────────── */
+.agenda-week-outer {
+  background: white;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* ─── Patient tabs: horizontal scroll on mobile ───────────────────────────── */
+.patient-tabs {
+  scrollbar-width: none; /* Firefox */
+}
+.patient-tabs::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
+/* ─── Page header: search + action row ───────────────────────────────────── */
+.page-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  gap: 12px;
+}
+
+/* ─── Dashboard grids → 1-col on mobile ──────────────────────────────────── */
+.dashboard-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.dashboard-grid-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 16px;
 }
 
@@ -225,8 +298,21 @@ body {
     grid-template-columns: repeat(2, 1fr) !important;
     gap: 12px !important;
   }
+  .stats-grid-3 {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
 
-  /* Tables: horizontal scroll */
+  /* Tables: horizontal scroll within container */
+  .table-container .table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .table-container table {
+    min-width: 560px;
+  }
+
+  /* Legacy: standalone table scroll */
   .main-content table {
     min-width: 560px;
   }
@@ -259,5 +345,65 @@ body {
   /* Page padding on mobile */
   .main-content > div {
     padding: 16px !important;
+  }
+
+  /* Topbar: 56px on mobile */
+  .topbar {
+    height: 56px;
+  }
+
+  /* FAB button */
+  .fab-btn {
+    display: flex;
+    position: fixed;
+    bottom: 84px;
+    right: 20px;
+    width: 56px;
+    height: 56px;
+    background: #2563EB;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 20px rgba(37,99,235,0.5);
+    z-index: 50;
+    font-size: 24px;
+    min-height: unset;
+    padding: 0;
+    flex-shrink: 0;
+    touch-action: manipulation;
+  }
+  .fab-btn:active {
+    transform: scale(0.94);
+  }
+
+  /* Agenda week grid: scrollable on mobile */
+  .agenda-week-outer {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 12px;
+  }
+  .agenda-week-outer > div {
+    min-width: 680px;
+  }
+
+  /* Page header row: stack on mobile */
+  .page-header-row {
+    flex-wrap: wrap;
+  }
+
+  /* Confirmation/info cards: full width */
+  .mobile-full-width {
+    width: 100% !important;
+  }
+
+  /* Dashboard grids → 1-col on mobile */
+  .dashboard-grid-2 {
+    grid-template-columns: 1fr !important;
+  }
+  .dashboard-grid-3 {
+    grid-template-columns: 1fr !important;
   }
 }

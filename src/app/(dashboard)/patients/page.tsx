@@ -49,8 +49,8 @@ export default function PatientsPage() {
       <div style={{ padding: 24 }}>
 
         {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <div style={{ position: 'relative' }}>
+        <div className="page-header-row">
+          <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
             <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
             <input
               type="text"
@@ -60,17 +60,19 @@ export default function PatientsPage() {
               style={{
                 paddingLeft: 36, paddingRight: 16, paddingTop: 10, paddingBottom: 10,
                 border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 14,
-                width: 280, outline: 'none', background: 'white',
+                width: '100%', outline: 'none', background: 'white',
               }}
             />
           </div>
           <button
             onClick={() => setShowWizard(true)}
+            className="desktop-add-btn"
             style={{
               display: 'flex', alignItems: 'center', gap: 8,
               background: '#2563EB', color: 'white', border: 'none',
               borderRadius: 8, padding: '10px 18px', cursor: 'pointer',
               fontWeight: 600, fontSize: 14, boxShadow: '0 2px 8px rgba(37,99,235,0.25)',
+              flexShrink: 0,
             }}
           >
             <Plus size={16} /> Nouveau patient
@@ -78,7 +80,8 @@ export default function PatientsPage() {
         </div>
 
         {/* Table */}
-        <div style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, overflow: 'hidden' }}>
+        <div className="table-container">
+          <div className="table-scroll">
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
@@ -137,6 +140,7 @@ export default function PatientsPage() {
               ))}
             </tbody>
           </table>
+          </div>{/* /table-scroll */}
 
           {/* Pagination */}
           {totalPages > 1 && (
@@ -156,6 +160,11 @@ export default function PatientsPage() {
           )}
         </div>
       </div>
+
+      {/* FAB: mobile only */}
+      <button className="fab-btn" onClick={() => setShowWizard(true)} aria-label="Nouveau patient">
+        +
+      </button>
 
       {showWizard && (
         <NewPatientWizard

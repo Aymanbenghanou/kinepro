@@ -230,7 +230,7 @@ export default function SeancesPage() {
         )}
 
         {/* Filtres + bouton */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, gap: 12, flexWrap: 'wrap' }}>
+        <div className="page-header-row" style={{ flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <select value={filterPatient} onChange={e => setFilterPatient(e.target.value)}
               style={{ padding: '9px 12px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13, background: 'white', color: '#374151', minWidth: 160 }}>
@@ -257,7 +257,8 @@ export default function SeancesPage() {
         </div>
 
         {/* Table */}
-        <div style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, overflow: 'hidden' }}>
+        <div className="table-container">
+          <div className="table-scroll">
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
@@ -294,13 +295,19 @@ export default function SeancesPage() {
               ))}
             </tbody>
           </table>
+          </div>{/* /table-scroll */}
         </div>
       </div>
 
+      {/* FAB: mobile only */}
+      <button className="fab-btn" onClick={() => setShowModal(true)} aria-label="Nouvelle séance">
+        +
+      </button>
+
       {/* Modal détail séance */}
       {selectedSeance && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div style={{ background: 'white', borderRadius: 16, padding: 28, width: 500, boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
+        <div className="modal-overlay" style={{ zIndex: 100 }}>
+          <div className="modal-sheet" style={{ padding: 28, width: 500 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h2 style={{ fontSize: 18, fontWeight: 700, color: '#0F172A', margin: 0 }}>Détail de la séance</h2>
               <button onClick={() => setSelectedSeance(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B' }}><X size={20} /></button>
@@ -474,8 +481,8 @@ export default function SeancesPage() {
 
       {/* Modal nouvelle séance */}
       {showModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div style={{ background: 'white', borderRadius: 16, padding: 28, width: 480, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
+        <div className="modal-overlay" style={{ zIndex: 100 }}>
+          <div className="modal-sheet" style={{ padding: 28, width: 480, maxHeight: '90vh' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h2 style={{ fontSize: 18, fontWeight: 700, color: '#0F172A', margin: 0 }}>Nouvelle séance</h2>
               <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B' }}><X size={20} /></button>

@@ -72,7 +72,7 @@ export default function FacturationPage() {
       <div style={{ padding: 24 }}>
 
         {/* Stats résumé */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
+        <div className="stats-grid-3" style={{ marginBottom: 24 }}>
           {[
             { label: 'Total encaissé', value: formatMoney(totalRevenu), bg: '#DCFCE7', color: '#16A34A' },
             { label: 'Montant impayé', value: formatMoney(totalImpaye), bg: '#FEE2E2', color: '#DC2626' },
@@ -86,7 +86,7 @@ export default function FacturationPage() {
         </div>
 
         {/* Filtres + bouton */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+        <div className="page-header-row">
           <select value={filterStatut} onChange={e => setFilterStatut(e.target.value)}
             style={{ padding: '9px 12px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13, background: 'white', color: '#374151' }}>
             <option value="">Tous les statuts</option>
@@ -101,7 +101,8 @@ export default function FacturationPage() {
         </div>
 
         {/* Table */}
-        <div style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, overflow: 'hidden' }}>
+        <div className="table-container">
+          <div className="table-scroll">
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
@@ -139,13 +140,19 @@ export default function FacturationPage() {
               ))}
             </tbody>
           </table>
+          </div>{/* /table-scroll */}
         </div>
       </div>
 
+      {/* FAB: mobile only */}
+      <button className="fab-btn" onClick={() => setShowModal(true)} aria-label="Créer facture">
+        +
+      </button>
+
       {/* Modal créer facture */}
       {showModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div style={{ background: 'white', borderRadius: 16, padding: 28, width: 420, boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
+        <div className="modal-overlay" style={{ zIndex: 100 }}>
+          <div className="modal-sheet" style={{ padding: 28, width: 420 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h2 style={{ fontSize: 18, fontWeight: 700, color: '#0F172A', margin: 0 }}>Créer une facture</h2>
               <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B' }}><X size={20} /></button>

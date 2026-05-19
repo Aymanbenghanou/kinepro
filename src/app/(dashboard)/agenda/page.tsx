@@ -187,7 +187,7 @@ export default function AgendaPage() {
       <div style={{ padding: 24 }}>
 
         {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+        <div className="page-header-row">
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <button onClick={() => { const d = new Date(currentDate); d.setDate(d.getDate()-7); setCurrentDate(d) }}
               style={{ padding: 8, border: '1px solid #E2E8F0', borderRadius: 8, background: 'white', cursor: 'pointer' }}>
@@ -222,7 +222,7 @@ export default function AgendaPage() {
         </div>
 
         {/* Calendrier */}
-        <div style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, overflow: 'hidden' }}>
+        <div className="agenda-week-outer">
           <div style={{ display: 'grid', gridTemplateColumns: '60px repeat(7, 1fr)', borderBottom: '1px solid #E2E8F0' }}>
             <div style={{ padding: '12px 8px', background: '#F8FAFC' }} />
             {weekDates.map((date, i) => {
@@ -268,10 +268,15 @@ export default function AgendaPage() {
         </div>
       </div>
 
+      {/* FAB: mobile only */}
+      <button className="fab-btn" onClick={() => { setForm(f => ({...f, date: '', heure: '09:00'})); setShowModal(true) }} aria-label="Nouveau RDV">
+        +
+      </button>
+
       {/* ── Modal Nouveau RDV ── */}
       {showModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div style={{ background: 'white', borderRadius: 16, padding: 28, width: 480, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
+        <div className="modal-overlay" style={{ zIndex: 100 }}>
+          <div className="modal-sheet" style={{ padding: 28, width: 480, maxHeight: '90vh' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h2 style={{ fontSize: 18, fontWeight: 700, color: '#0F172A', margin: 0 }}>Nouveau rendez-vous</h2>
               <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B' }}><X size={20} /></button>
@@ -349,8 +354,8 @@ export default function AgendaPage() {
 
       {/* ── WhatsApp Confirmation Panel ── */}
       {confirmationRdv && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
-          <div style={{ background: 'white', borderRadius: 20, padding: 32, width: 440, boxShadow: '0 24px 64px rgba(0,0,0,0.2)' }}>
+        <div className="modal-overlay" style={{ zIndex: 200 }}>
+          <div className="modal-sheet" style={{ padding: 32, width: 440 }}>
             {/* Success icon */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 24 }}>
               <div style={{ width: 60, height: 60, borderRadius: '50%', background: '#DCFCE7', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>

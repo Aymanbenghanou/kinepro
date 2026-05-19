@@ -133,7 +133,7 @@ export default async function DashboardPage() {
       <div style={{ padding: 24 }}>
 
         {/* Stats Cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
+        <div className="stats-grid-4" style={{ marginBottom: 24 }}>
           <StatCard title="RDV aujourd'hui"   value={rdvAujourdHui}                         icon={Calendar}    color="#2563EB" bgColor="#DBEAFE" />
           <StatCard title="Patients actifs"    value={patientsActifs}                         icon={Users}       color="#16A34A" bgColor="#DCFCE7" />
           <StatCard title="Revenus du mois"    value={formatMoney(revenusMonth._sum.montant ?? 0)} icon={DollarSign} color="#F59E0B" bgColor="#FEF3C7" />
@@ -141,7 +141,7 @@ export default async function DashboardPage() {
         </div>
 
         {/* Row 2 */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+        <div className="dashboard-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
 
           {/* Agenda du jour */}
           <div style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, padding: 20 }}>
@@ -189,7 +189,7 @@ export default async function DashboardPage() {
         </div>
 
         {/* Row 4 */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
+        <div className="dashboard-grid-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
 
           {/* Patients récents */}
           <div style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, padding: 20 }}>
