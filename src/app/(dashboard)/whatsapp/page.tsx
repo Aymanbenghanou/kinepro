@@ -6,11 +6,30 @@ import { formatDate, formatTime } from '@/lib/utils'
 import WhatsAppButton from '@/components/whatsapp/WhatsAppButton'
 import FeedbackModal from '@/components/whatsapp/FeedbackWidget'
 import {
-  msgConfirmationRDV, msgRappelRDV,
+  msgConfirmationRDV, msgRappelRDV, msgFeedbackAuto,
   buildWhatsAppUrl, scoreColor, scoreBadge, scoreCategory,
 } from '@/lib/whatsapp'
 
-type Tab = 'envoyer' | 'rappels' | 'historique'
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://kinepro-omega.vercel.app'
+
+type Tab = 'envoyer' | 'rappels' | 'ready' | 'historique'
+
+function CountdownBadge({ since }: { since: string }) {
+  const [elapsed, setElapsed] = useState(0)
+  useEffect(() => {
+    const tick = () => setElapsed(Math.floor((Date.now() - new Date(since).getTime()) / 1000))
+    tick()
+    const iv = setInterval(tick, 1000)
+    return () => clearInterval(iv)
+  }, [since])
+  const m = Math.floor(elapsed / 60)
+  const s = elapsed % 60
+  return (
+    <span style={{ fontSize: 11, color: '#8B5CF6', fontWeight: 600 }}>
+      il y a {m > 0 ? `${m}m ` : ''}{s}s
+    </span>
+  )
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -35,24 +54,32 @@ export default function WhatsAppCenterPage() {
   const [seances, setSeances] = useState<any[]>([])
   const [rdvs, setRdvs] = useState<any[]>([])
   const [feedbacks, setFeedbacks] = useState<any[]>([])
+  const [readySeances, setReadySeances] = useState<any[]>([])
   const [feedbackTarget, setFeedbackTarget] = useState<{ seance: any; patient: any } | null>(null)
 
   async function fetchAll() {
     setLoading(true)
     try {
-      const [s, r, f] = await Promise.all([
+      const [s, r, f, ready] = await Promise.all([
         fetch('/api/seances').then(x => x.json()),
         fetch('/api/rendez-vous').then(x => x.json()),
         fetch('/api/feedback').then(x => x.json()),
+        fetch('/api/feedback/ready').then(x => x.json()),
       ])
       setSeances(Array.isArray(s) ? s : [])
       setRdvs(Array.isArray(r) ? r : [])
       setFeedbacks(Array.isArray(f) ? f : [])
+      setReadySeances(Array.isArray(ready) ? ready : [])
     } catch {}
     setLoading(false)
   }
 
-  useEffect(() => { fetchAll() }, [])
+  // Check URL param on mount to open correct tab
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('tab') === 'ready') setTab('ready')
+    fetchAll()
+  }, [])
 
   const today = new Date()
   const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1)
@@ -78,10 +105,13 @@ export default function WhatsAppCenterPage() {
     s.scorePatient !== null && s.scorePatient !== undefined && s.scorePatient <= 4
   )
 
-  const tabs: { id: Tab; label: string; badge?: number }[] = [
+  const pendingSeances = seances.filter(s => s.feedbackStatus === 'pending')
+
+  const tabs: { id: Tab; label: string; badge?: number; highlight?: boolean }[] = [
     { id: 'envoyer',    label: '📤 À envoyer aujourd\'hui', badge: rdvsAujourdhui.length + seancesAttente.length },
     { id: 'rappels',    label: '🔔 Rappels demain',         badge: rdvsDemain.length },
-    { id: 'historique', label: '📊 Historique feedbacks',   badge: feedbacks.length },
+    { id: 'ready',      label: '⭐ Feedback prêt',          badge: readySeances.length, highlight: readySeances.length > 0 },
+    { id: 'historique', label: '📊 Historique',             badge: feedbacks.length },
   ]
 
   return (
@@ -91,29 +121,33 @@ export default function WhatsAppCenterPage() {
 
         {/* Tabs */}
         <div style={{ display: 'flex', gap: 4, marginBottom: 24, background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, padding: 4 }}>
-          {tabs.map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)}
-              style={{
-                flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                padding: '10px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                background: tab === t.id ? '#2563EB' : 'transparent',
-                color: tab === t.id ? 'white' : '#64748B',
-                fontWeight: tab === t.id ? 600 : 400,
-                fontSize: 13, transition: 'all 0.15s',
-              }}>
-              {t.label}
-              {t.badge !== undefined && t.badge > 0 && (
-                <span style={{
-                  background: tab === t.id ? 'rgba(255,255,255,0.3)' : '#E2E8F0',
-                  color: tab === t.id ? 'white' : '#64748B',
-                  fontSize: 11, fontWeight: 700,
-                  padding: '1px 7px', borderRadius: 999,
+          {tabs.map(t => {
+            const isActive    = tab === t.id
+            const isHighlight = t.highlight && !isActive
+            return (
+              <button key={t.id} onClick={() => setTab(t.id)}
+                style={{
+                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  padding: '10px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                  background: isActive ? '#7C3AED' : isHighlight ? '#F5F3FF' : 'transparent',
+                  color: isActive ? 'white' : isHighlight ? '#7C3AED' : '#64748B',
+                  fontWeight: isActive || isHighlight ? 600 : 400,
+                  fontSize: 13, transition: 'all 0.15s',
                 }}>
-                  {t.badge}
-                </span>
-              )}
-            </button>
-          ))}
+                {t.label}
+                {t.badge !== undefined && t.badge > 0 && (
+                  <span style={{
+                    background: isActive ? 'rgba(255,255,255,0.3)' : isHighlight ? '#EDE9FE' : '#E2E8F0',
+                    color: isActive ? 'white' : isHighlight ? '#7C3AED' : '#64748B',
+                    fontSize: 11, fontWeight: 700,
+                    padding: '1px 7px', borderRadius: 999,
+                  }}>
+                    {t.badge}
+                  </span>
+                )}
+              </button>
+            )
+          })}
         </div>
 
         {loading ? (
@@ -258,7 +292,101 @@ export default function WhatsAppCenterPage() {
               </div>
             )}
 
-            {/* ── Tab 3: Historique feedbacks ── */}
+            {/* ── Tab 3: Feedback prêt ── */}
+            {tab === 'ready' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {/* Pending counter */}
+                {pendingSeances.length > 0 && (
+                  <div style={{ background: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: 10, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 18 }}>⏳</span>
+                    <div>
+                      <p style={{ margin: 0, fontWeight: 600, color: '#92400E', fontSize: 13 }}>
+                        {pendingSeances.length} séance{pendingSeances.length > 1 ? 's' : ''} en préparation
+                      </p>
+                      <p style={{ margin: 0, color: '#B45309', fontSize: 12 }}>
+                        Le feedback sera prêt ~20 min après la fin de la séance.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                <h2 style={{ fontSize: 15, fontWeight: 700, color: '#0F172A', margin: 0 }}>
+                  ⭐ Prêts à envoyer — {readySeances.length} patient{readySeances.length !== 1 ? 's' : ''}
+                </h2>
+
+                {readySeances.length === 0 ? (
+                  <div style={{ padding: 40, background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, color: '#64748B', fontSize: 14, textAlign: 'center' }}>
+                    <div style={{ fontSize: 36, marginBottom: 12 }}>✅</div>
+                    <p style={{ margin: 0, fontWeight: 500 }}>Aucun feedback prêt pour le moment</p>
+                    <p style={{ margin: '6px 0 0', fontSize: 13 }}>Terminez une séance pour déclencher le minuteur de 20 min</p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {readySeances.map((s: any) => (
+                      <div key={s.id} style={{
+                        background: 'white',
+                        border: '1px solid #DDD6FE',
+                        borderLeft: '4px solid #8B5CF6',
+                        borderRadius: 10,
+                        padding: '16px 18px',
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+                      }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                            <span style={{ fontWeight: 700, color: '#0F172A', fontSize: 14 }}>
+                              {s.patient?.prenom} {s.patient?.nom}
+                            </span>
+                            <span style={{ background: '#EDE9FE', color: '#7C3AED', padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 600 }}>
+                              Prêt
+                            </span>
+                            {s.feedbackReadyAt && <CountdownBadge since={s.feedbackReadyAt} />}
+                          </div>
+                          <div style={{ fontSize: 13, color: '#64748B' }}>
+                            Dr. {s.praticien?.prenom} {s.praticien?.nom}
+                            {s.patient?.telephone && (
+                              <span style={{ marginLeft: 10, color: '#94A3B8' }}>📱 {s.patient.telephone}</span>
+                            )}
+                          </div>
+                          {s.feedbackToken && (
+                            <div style={{ fontSize: 11, color: '#8B5CF6', marginTop: 4, fontFamily: 'monospace' }}>
+                              🔗 {APP_URL}/feedback/{s.feedbackToken.slice(0, 12)}...
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
+                          {s.patient?.telephone && s.feedbackToken ? (
+                            <a
+                              href={buildWhatsAppUrl(
+                                s.patient.telephone,
+                                msgFeedbackAuto({
+                                  prenom: s.patient.prenom,
+                                  feedbackUrl: `${APP_URL}/feedback/${s.feedbackToken}`,
+                                })
+                              )}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                display: 'inline-flex', alignItems: 'center', gap: 6,
+                                background: '#25D366', color: 'white',
+                                padding: '8px 16px', borderRadius: 8,
+                                fontSize: 13, fontWeight: 700, textDecoration: 'none',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              <WhatsAppSvg size={14} /> Envoyer le lien
+                            </a>
+                          ) : (
+                            <span style={{ fontSize: 12, color: '#94A3B8' }}>Pas de téléphone</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── Tab 4: Historique feedbacks ── */}
             {tab === 'historique' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 

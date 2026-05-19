@@ -24,6 +24,7 @@ export default function WhatsAppButton({
     confirmation_rdv: '#25D366',
     rappel_rdv:       '#2563EB',
     feedback_seance:  '#F59E0B',
+    feedback_auto:    '#8B5CF6',
     exercices:        '#7C3AED',
     avis_google:      '#D97706',
   }

@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import Topbar from '@/components/layout/Topbar'
 import { formatMoney, formatTime } from '@/lib/utils'
 import DashboardCharts from '@/components/dashboard/DashboardCharts'
+import FeedbackWidget from '@/components/dashboard/FeedbackWidget'
 import { Calendar, Users, DollarSign, AlertCircle } from 'lucide-react'
 
 function StatCard({ title, value, icon: Icon, color, bgColor }: {
@@ -182,7 +183,12 @@ export default async function DashboardPage() {
           </div>
         </div>
 
-        {/* Row 3 */}
+        {/* Row 3 — Feedback widget full-width */}
+        <div style={{ marginBottom: 16 }}>
+          <FeedbackWidget />
+        </div>
+
+        {/* Row 4 */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
 
           {/* Patients récents */}

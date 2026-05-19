@@ -67,6 +67,8 @@ export default function SeancesPage() {
   const [progScores, setProgScores] = useState({ douleur: 5, mobilite: 5, force: 5, notes: '' })
   const [savingScores, setSavingScores] = useState(false)
   const [scoresSaved, setScoresSaved] = useState(false)
+  const [terminating, setTerminating] = useState(false)
+  const [terminateDone, setTerminateDone] = useState(false)
   const [filterPatient, setFilterPatient]   = useState('')
   const [filterPraticien, setFilterPraticien] = useState('')
   const [filterStatut, setFilterStatut]     = useState('')
@@ -155,6 +157,7 @@ export default function SeancesPage() {
         notes:    selectedSeance.notesProgression ?? '',
       })
       setScoresSaved(false)
+      setTerminateDone(false)
     }
   }, [selectedSeance])
 
@@ -176,6 +179,23 @@ export default function SeancesPage() {
       fetchData()
     } catch {}
     setSavingScores(false)
+  }
+
+  async function terminerSeance() {
+    if (!selectedSeance) return
+    setTerminating(true)
+    try {
+      const res = await fetch(`/api/seances/${selectedSeance.id}/terminer`, {
+        method: 'PATCH',
+      })
+      if (res.ok) {
+        const updated = await res.json()
+        setSelectedSeance((prev: any) => ({ ...prev, ...updated }))
+        setTerminateDone(true)
+        fetchData()
+      }
+    } catch {}
+    setTerminating(false)
   }
 
   return (
@@ -302,6 +322,76 @@ export default function SeancesPage() {
                 <span style={{ fontSize: 13, color: '#64748B', minWidth: 80 }}>Statut</span>
                 <StatutBadge statut={selectedSeance.statut} />
               </div>
+
+              {/* Terminer la séance */}
+              {!selectedSeance.feedbackStatus && selectedSeance.statut !== 'annulee' && (
+                <div style={{ marginTop: 4 }}>
+                  {terminateDone ? (
+                    <div style={{
+                      background: '#F0FDF4', border: '1px solid #BBF7D0',
+                      borderRadius: 10, padding: '12px 16px',
+                      display: 'flex', alignItems: 'center', gap: 8,
+                    }}>
+                      <span style={{ fontSize: 18 }}>✅</span>
+                      <div>
+                        <p style={{ margin: 0, fontWeight: 600, color: '#16A34A', fontSize: 13 }}>Séance terminée !</p>
+                        <p style={{ margin: 0, color: '#166534', fontSize: 12 }}>Le feedback sera prêt dans 20 minutes.</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={terminerSeance}
+                      disabled={terminating}
+                      style={{
+                        width: '100%',
+                        padding: '11px',
+                        background: terminating ? '#86EFAC' : '#16A34A',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 10,
+                        cursor: terminating ? 'not-allowed' : 'pointer',
+                        fontWeight: 700,
+                        fontSize: 14,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 8,
+                      }}
+                    >
+                      {terminating ? '⏳ Traitement...' : '✓ Terminer la séance'}
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Feedback status indicator */}
+              {selectedSeance.feedbackStatus === 'pending' && (
+                <div style={{ background: '#FEF3C7', border: '1px solid #FCD34D', borderRadius: 8, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span>⏳</span>
+                  <span style={{ fontSize: 13, color: '#92400E', fontWeight: 500 }}>Feedback en préparation (prêt dans ~20 min)</span>
+                </div>
+              )}
+              {selectedSeance.feedbackStatus === 'ready' && !selectedSeance.feedbackEnvoye && (
+                <div style={{ background: '#F5F3FF', border: '1px solid #DDD6FE', borderRadius: 8, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span>🔔</span>
+                    <span style={{ fontSize: 13, color: '#5B21B6', fontWeight: 600 }}>Feedback prêt à envoyer !</span>
+                  </div>
+                  {selectedSeance.patient?.telephone && selectedSeance.feedbackToken && (
+                    <a
+                      href={`https://wa.me/${selectedSeance.patient.telephone.replace(/\D/g, '')}?text=${encodeURIComponent(
+                        `Bonjour ${selectedSeance.patient.prenom} 👋\n\nDonnez votre avis sur votre séance :\n${process.env.NEXT_PUBLIC_APP_URL ?? 'https://kinepro-omega.vercel.app'}/feedback/${selectedSeance.feedbackToken}`
+                      )}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ background: '#25D366', color: 'white', padding: '5px 12px', borderRadius: 6, fontSize: 12, fontWeight: 700, textDecoration: 'none' }}
+                    >
+                      📲 Envoyer WA
+                    </a>
+                  )}
+                </div>
+              )}
+
               {/* Feedback section in detail modal */}
               {selectedSeance.statut === 'realisee' && (
                 <div style={{ marginTop: 8, padding: 14, background: '#F8FAFC', borderRadius: 10, borderLeft: '3px solid #E2E8F0' }}>

@@ -156,7 +156,27 @@ Bon courage ! 💪
 *${CABINET_NOM}*`
 }
 
-// ─── 5. Demande d'avis Google Maps (score 8-10) ───────────────────────────────
+// ─── 5. Feedback automatique (lien token post-séance) ────────────────────────
+export function msgFeedbackAuto(p: {
+  prenom: string
+  feedbackUrl: string
+  nomCabinet?: string
+}): string {
+  const cab = p.nomCabinet || CABINET_NOM
+  return `Bonjour ${p.prenom} 👋
+
+Votre séance au *${cab}* vient de se terminer.
+
+Nous aimerions connaître votre ressenti 🙏
+
+👉 *Donnez votre avis ici (1 min) :*
+${p.feedbackUrl}
+
+Merci pour votre confiance 💙
+*${cab}*`
+}
+
+// ─── 6. Demande d'avis Google Maps (score 8-10) ───────────────────────────────
 export function msgAvisGoogle(p: {
   prenom: string
   googleMapsLink: string
@@ -198,6 +218,7 @@ export const WHATSAPP_TYPES = {
   confirmation_rdv:  { label: 'Confirmation RDV',   color: '#25D366', emoji: '✅' },
   rappel_rdv:        { label: 'Rappel RDV',          color: '#2563EB', emoji: '🔔' },
   feedback_seance:   { label: 'Feedback séance',     color: '#F59E0B', emoji: '⭐' },
+  feedback_auto:     { label: 'Feedback auto',       color: '#8B5CF6', emoji: '🔔' },
   exercices:         { label: 'Programme exercices', color: '#7C3AED', emoji: '💪' },
   avis_google:       { label: 'Avis Google',         color: '#D97706', emoji: '⭐' },
 } as const

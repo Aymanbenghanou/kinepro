@@ -1,5 +1,6 @@
 import Sidebar from '@/components/layout/Sidebar'
 import MobileBottomNav from '@/components/layout/MobileBottomNav'
+import FeedbackNotificationBar from '@/components/layout/FeedbackNotificationBar'
 import { SidebarProvider } from '@/lib/sidebar-context'
 import { auth } from '@/auth'
 import Link from 'next/link'
@@ -110,6 +111,7 @@ export default async function DashboardLayout({
     <SidebarProvider>
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
         <TrialBanner daysLeft={daysLeft} status={status} />
+        <FeedbackNotificationBar />
         <div className="flex flex-1" style={{ position: 'relative' }}>
           <Sidebar />
           <div className="main-content flex-1">
