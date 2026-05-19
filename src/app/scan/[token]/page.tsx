@@ -15,8 +15,8 @@ function frMoney(n: number): string {
 }
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
-export default async function ScanPage({ params }: { params: { token: string } }) {
-  const { token } = params
+export default async function ScanPage({ params }: { params: Promise<{ token: string }> }) {
+  const { token } = await params
 
   // Fetch patient data
   const patient = await prisma.patient.findUnique({

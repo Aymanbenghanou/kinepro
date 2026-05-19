@@ -18,9 +18,9 @@ function isRateLimited(token: string): boolean {
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { token: string } }
+  { params }: { params: Promise<{ token: string }> }
 ) {
-  const { token } = params
+  const { token } = await params
 
   if (isRateLimited(token)) {
     return NextResponse.json({ error: 'Trop de requêtes' }, { status: 429 })
