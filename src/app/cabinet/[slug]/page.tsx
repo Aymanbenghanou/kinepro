@@ -1,12 +1,6 @@
 import { notFound } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
-import dynamic from 'next/dynamic'
-
-// Dynamically load templates client-side (they use browser APIs)
-const MedicalTemplate = dynamic(() => import('@/components/cabinet-sites/templates/MedicalTemplate'), { ssr: false })
-const PremiumTemplate = dynamic(() => import('@/components/cabinet-sites/templates/PremiumTemplate'), { ssr: false })
-const WarmTemplate    = dynamic(() => import('@/components/cabinet-sites/templates/WarmTemplate'),    { ssr: false })
-const SportTemplate   = dynamic(() => import('@/components/cabinet-sites/templates/SportTemplate'),   { ssr: false })
+import TemplateRenderer from '@/components/cabinet-sites/TemplateRenderer'
 
 type Params = Promise<{ slug: string }>
 
@@ -97,11 +91,5 @@ export default async function CabinetSitePage({ params }: { params: Params }) {
     testimonials: cabinet.site.testimonials,
   }
 
-  const Template =
-    cabinet.site.templateId === 'premium' ? PremiumTemplate :
-    cabinet.site.templateId === 'warm'    ? WarmTemplate    :
-    cabinet.site.templateId === 'sport'   ? SportTemplate   :
-    MedicalTemplate
-
-  return <Template data={data} />
+  return <TemplateRenderer templateId={cabinet.site.templateId} data={data} />
 }
