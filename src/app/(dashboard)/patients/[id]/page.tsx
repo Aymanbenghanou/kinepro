@@ -6,9 +6,10 @@ import { formatDate, formatTime, formatMoney } from '@/lib/utils'
 import Topbar from '@/components/layout/Topbar'
 import {
   ArrowLeft, Phone, Mail, MapPin, Activity, FileText,
-  Calendar, Plus, X, User, CreditCard, Target, Clock,
+  Calendar, Plus, X, User, CreditCard, Target, Clock, Download,
 } from 'lucide-react'
 import ExercicesModal from '@/components/whatsapp/ExercicesModal'
+import { generateDossierPatientPDF } from '@/lib/pdf-utils'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type TabId = 'informations' | 'seances' | 'plan' | 'facturation' | 'documents'
@@ -176,6 +177,7 @@ export default function PatientDetailPage() {
   const id = params.id as string
 
   const [patient, setPatient] = useState<any>(null)
+  const [cabinet, setCabinet] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<TabId>('informations')
   const [showPlanifier, setShowPlanifier] = useState(false)
@@ -192,6 +194,9 @@ export default function PatientDetailPage() {
   }, [id])
 
   useEffect(() => { fetchPatient() }, [fetchPatient])
+  useEffect(() => {
+    fetch('/api/cabinet').then(r => r.json()).then(d => setCabinet(d)).catch(() => {})
+  }, [])
 
   if (loading) return (
     <div>
@@ -275,6 +280,10 @@ export default function PatientDetailPage() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
+              <button onClick={() => generateDossierPatientPDF(patient, cabinet)}
+                style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'white', color: '#374151', border: '1px solid #E2E8F0', borderRadius: 10, padding: '10px 16px', cursor: 'pointer', fontWeight: 500, fontSize: 14 }}>
+                <Download size={15} /> Exporter PDF
+              </button>
               {patient.telephone && (
                 <button onClick={() => setShowExercices(true)}
                   style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#7C3AED', color: 'white', border: 'none', borderRadius: 10, padding: '10px 18px', cursor: 'pointer', fontWeight: 600, fontSize: 14, boxShadow: '0 2px 8px rgba(124,58,237,0.25)' }}>

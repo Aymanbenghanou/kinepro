@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Topbar from '@/components/layout/Topbar'
 import { formatDate, formatMoney } from '@/lib/utils'
 import { Plus, X, Download } from 'lucide-react'
+import { generateFacturePDF } from '@/lib/pdf-utils'
 
 function StatutBadge({ statut }: { statut: string }) {
   const map: Record<string, { label: string; bg: string; color: string }> = {
@@ -18,6 +19,7 @@ function StatutBadge({ statut }: { statut: string }) {
 export default function FacturationPage() {
   const [factures, setFactures] = useState<any[]>([])
   const [patients, setPatients] = useState<any[]>([])
+  const [cabinet, setCabinet] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [filterStatut, setFilterStatut] = useState('')
   const [showModal, setShowModal] = useState(false)
@@ -38,6 +40,7 @@ export default function FacturationPage() {
   useEffect(() => { fetchFactures() }, [filterStatut])
   useEffect(() => {
     fetch('/api/patients').then(r => r.json()).then(d => setPatients(Array.isArray(d) ? d : []))
+    fetch('/api/cabinet').then(r => r.json()).then(d => setCabinet(d)).catch(() => {})
   }, [])
 
   const totalRevenu = factures.filter(f => f.statut === 'paye').reduce((sum, f) => sum + f.montant, 0)
@@ -60,13 +63,7 @@ export default function FacturationPage() {
   }
 
   function exportPDF(f: any) {
-    const content = `FACTURE\n\nPatient: ${f.patient?.prenom} ${f.patient?.nom}\nDate: ${formatDate(f.dateEmise)}\nMontant: ${formatMoney(f.montant)}\nStatut: ${f.statut === 'paye' ? 'Payé' : f.statut === 'en_attente' ? 'En attente' : 'En retard'}\n\nCabinet Amrani - Kinésithérapie\n45 Avenue Hassan II, Casablanca 20000\nTél: 0522-456-789`
-    const blob = new Blob([content], { type: 'text/plain' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `facture-${f.id.slice(0, 8)}.txt`
-    a.click()
+    generateFacturePDF(f, cabinet)
   }
 
   return (
@@ -134,8 +131,8 @@ export default function FacturationPage() {
                   <td style={{ padding: '14px 16px', fontSize: 13, color: '#374151' }}>{f.datePaiement ? formatDate(f.datePaiement) : '—'}</td>
                   <td style={{ padding: '14px 16px' }}>
                     <button onClick={() => exportPDF(f)}
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '5px 10px', border: '1px solid #E2E8F0', borderRadius: 6, background: 'white', cursor: 'pointer', fontSize: 12, color: '#374151' }}>
-                      <Download size={13} /> Exporter
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '5px 10px', border: '1px solid #DBEAFE', borderRadius: 6, background: '#EFF6FF', cursor: 'pointer', fontSize: 12, color: '#2563EB', fontWeight: 500 }}>
+                      <Download size={13} /> PDF
                     </button>
                   </td>
                 </tr>

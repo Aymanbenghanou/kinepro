@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import Topbar from '@/components/layout/Topbar'
 import { formatMoney } from '@/lib/utils'
-import { Download } from 'lucide-react'
+import { Download, FileText } from 'lucide-react'
+import { generateRapportPDF } from '@/lib/pdf-utils'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, BarChart, Bar, Legend
@@ -11,6 +12,7 @@ import {
 
 export default function RapportsPage() {
   const [data, setData] = useState<any>(null)
+  const [cabinet, setCabinet] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -18,6 +20,7 @@ export default function RapportsPage() {
       .then(r => r.json())
       .then(d => { setData(d); setLoading(false) })
       .catch(() => setLoading(false))
+    fetch('/api/cabinet').then(r => r.json()).then(d => setCabinet(d)).catch(() => {})
   }, [])
 
   function exportCSV() {
@@ -44,11 +47,16 @@ export default function RapportsPage() {
       <Topbar title="Rapports" subtitle="Analyses et statistiques" />
       <div style={{ padding: 24 }}>
 
-        {/* Header + Export */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 24 }}>
+        {/* Header + Export buttons */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginBottom: 24 }}>
           <button onClick={exportCSV}
             style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', border: '1px solid #E2E8F0', borderRadius: 8, background: 'white', cursor: 'pointer', fontWeight: 500, fontSize: 14, color: '#374151' }}>
             <Download size={16} /> Exporter CSV
+          </button>
+          <button onClick={() => generateRapportPDF(data, cabinet)}
+            disabled={!data}
+            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', border: '1px solid #DBEAFE', borderRadius: 8, background: '#EFF6FF', cursor: data ? 'pointer' : 'not-allowed', fontWeight: 500, fontSize: 14, color: '#2563EB' }}>
+            <FileText size={16} /> Exporter PDF
           </button>
         </div>
 
