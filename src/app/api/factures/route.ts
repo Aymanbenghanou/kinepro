@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
         ...(statut ? { statut } : {}),
       },
       include: {
-        patient: { select: { id: true, nom: true, prenom: true } },
+        patient: { select: { id: true, nom: true, prenom: true, telephone: true, email: true, publicToken: true } },
         seance:  { select: { id: true, typeSeance: true, date: true } },
       },
       orderBy: { dateEmise: 'desc' },

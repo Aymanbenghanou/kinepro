@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
+import { randomBytes } from 'crypto'
 
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : 'Erreur inconnue'
@@ -61,6 +62,7 @@ export async function POST(request: NextRequest) {
     const patient = await prisma.patient.create({
       data: {
         cabinetId,
+        publicToken:         randomBytes(16).toString('hex'),
         nom:                 body.nom.trim(),
         prenom:              body.prenom.trim(),
         dateNaissance:       body.dateNaissance       ? new Date(body.dateNaissance) : null,

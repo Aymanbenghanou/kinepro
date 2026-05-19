@@ -133,9 +133,10 @@ function addFootersToAllPages(doc: jsPDF, cab: any) {
 
 // ─── FEATURE 1: Facture PDF ───────────────────────────────────────────────────
 
-export function generateFacturePDF(facture: any, cab: any) {
+export async function generateFacturePDF(facture: any, cab: any, qrUrl?: string) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
   const W = doc.internal.pageSize.getWidth()
+  const H = doc.internal.pageSize.getHeight()
 
   const invoiceNum = facture.id?.slice(0, 8).toUpperCase() || '—'
   drawPageHeader(doc, cab, 'FACTURE', `N° ${invoiceNum}`)
@@ -231,6 +232,33 @@ export function generateFacturePDF(facture: any, cab: any) {
   y += 6
   doc.setFont('helvetica', 'normal')
   doc.text(`${cab?.nom || 'KinéPro'} · ${cab?.ville || ''} · ${cab?.telephone || ''}`, W / 2, y, { align: 'center' })
+
+  // ── QR Code (bottom-right, above footer) ──
+  if (qrUrl) {
+    try {
+      const QRCode = (await import('qrcode')).default
+      const qrDataUrl: string = await QRCode.toDataURL(qrUrl, {
+        width: 200,
+        margin: 1,
+        color: { dark: '#1E3A5F', light: '#FFFFFF' },
+      })
+      const qrSize = 38       // mm
+      const qrX = W - 14 - qrSize
+      const qrY = H - 14 - qrSize - 10   // 10mm above footer
+
+      // White background card
+      doc.setFillColor('#FFFFFF')
+      doc.setDrawColor(C.border)
+      doc.roundedRect(qrX - 3, qrY - 3, qrSize + 6, qrSize + 14, 2, 2, 'FD')
+
+      doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize)
+
+      doc.setFontSize(6.5)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(C.gray)
+      doc.text('Scannez pour voir\nvotre dossier', qrX + qrSize / 2, qrY + qrSize + 5, { align: 'center' })
+    } catch { /* QR generation failed — skip silently */ }
+  }
 
   drawFooterStrip(doc, cab)
 

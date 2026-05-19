@@ -3,8 +3,13 @@
 import { useState, useEffect } from 'react'
 import Topbar from '@/components/layout/Topbar'
 import { formatDate, formatMoney } from '@/lib/utils'
-import { Plus, X, Download } from 'lucide-react'
+import { Plus, X, Download, QrCode } from 'lucide-react'
 import { generateFacturePDF } from '@/lib/pdf-utils'
+import dynamic from 'next/dynamic'
+
+const QrCodeModal = dynamic(() => import('@/components/qr/QrCodeModal'), { ssr: false })
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://kinepro-omega.vercel.app'
 
 function StatutBadge({ statut }: { statut: string }) {
   const map: Record<string, { label: string; bg: string; color: string }> = {
@@ -25,6 +30,7 @@ export default function FacturationPage() {
   const [showModal, setShowModal] = useState(false)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({ patientId: '', montant: '', statut: 'en_attente' })
+  const [qrFacture, setQrFacture] = useState<{ url: string; title: string } | null>(null)
 
   async function fetchFactures() {
     setLoading(true)
@@ -62,8 +68,17 @@ export default function FacturationPage() {
     setSaving(false)
   }
 
-  function exportPDF(f: any) {
-    generateFacturePDF(f, cabinet)
+  async function exportPDF(f: any) {
+    const qrUrl = f.patient?.publicToken ? `${APP_URL}/scan/${f.patient.publicToken}` : undefined
+    await generateFacturePDF(f, cabinet, qrUrl)
+  }
+
+  function openQr(f: any) {
+    if (!f.patient?.publicToken) return
+    setQrFacture({
+      url: `${APP_URL}/scan/${f.patient.publicToken}`,
+      title: `${f.patient?.prenom ?? ''} ${f.patient?.nom ?? ''}`,
+    })
   }
 
   return (
@@ -131,10 +146,19 @@ export default function FacturationPage() {
                   </td>
                   <td style={{ padding: '14px 16px', fontSize: 13, color: '#374151' }}>{f.datePaiement ? formatDate(f.datePaiement) : '—'}</td>
                   <td style={{ padding: '14px 16px' }}>
-                    <button onClick={() => exportPDF(f)}
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '5px 10px', border: '1px solid #DBEAFE', borderRadius: 6, background: '#EFF6FF', cursor: 'pointer', fontSize: 12, color: '#2563EB', fontWeight: 500 }}>
-                      <Download size={13} /> PDF
-                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <button onClick={() => exportPDF(f)}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '5px 10px', border: '1px solid #DBEAFE', borderRadius: 6, background: '#EFF6FF', cursor: 'pointer', fontSize: 12, color: '#2563EB', fontWeight: 500 }}>
+                        <Download size={13} /> PDF
+                      </button>
+                      {f.patient?.publicToken && (
+                        <button onClick={() => openQr(f)}
+                          title="QR patient"
+                          style={{ display: 'inline-flex', alignItems: 'center', padding: '5px 7px', border: '1px solid #E2E8F0', borderRadius: 6, background: 'white', cursor: 'pointer', color: '#64748B' }}>
+                          <QrCode size={13} />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -150,6 +174,16 @@ export default function FacturationPage() {
       </button>
 
       {/* Modal créer facture */}
+      {/* QR Code modal */}
+      {qrFacture && (
+        <QrCodeModal
+          url={qrFacture.url}
+          title={qrFacture.title}
+          subtitle="Patient · Scannez pour accéder à votre dossier"
+          onClose={() => setQrFacture(null)}
+        />
+      )}
+
       {showModal && (
         <div className="modal-overlay" style={{ zIndex: 100 }}>
           <div className="modal-sheet" style={{ padding: 28, width: 420 }}>
