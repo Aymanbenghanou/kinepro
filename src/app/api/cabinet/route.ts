@@ -41,6 +41,15 @@ export async function PATCH(request: NextRequest) {
       ...(body.googleMapsLink   !== undefined && { googleMapsLink: body.googleMapsLink }),
       ...(body.whatsappNumber   !== undefined && { whatsappNumber: body.whatsappNumber }),
       ...(body.googleReviewLink !== undefined && { googleReviewLink: body.googleReviewLink }),
+      // Booking settings
+      ...(body.slug             !== undefined && { slug: body.slug || null }),
+      ...(body.bookingEnabled   !== undefined && { bookingEnabled: Boolean(body.bookingEnabled) }),
+      ...(body.workStartTime    !== undefined && { workStartTime: body.workStartTime }),
+      ...(body.workEndTime      !== undefined && { workEndTime: body.workEndTime }),
+      ...(body.lunchStartTime   !== undefined && { lunchStartTime: body.lunchStartTime }),
+      ...(body.lunchEndTime     !== undefined && { lunchEndTime: body.lunchEndTime }),
+      ...(body.bookingMessage   !== undefined && { bookingMessage: body.bookingMessage || null }),
+      ...(body.workingDays      !== undefined && { workingDays: body.workingDays }),
     }
 
     const cabinet = await prisma.cabinet.update({

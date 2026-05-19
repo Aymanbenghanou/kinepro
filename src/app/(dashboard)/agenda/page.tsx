@@ -212,13 +212,17 @@ export default function AgendaPage() {
         </div>
 
         {/* Légende */}
-        <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
           {seanceTypes.map((t: any) => (
             <div key={t.id || t.nom} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <div style={{ width: 10, height: 10, borderRadius: '50%', background: t.couleur || '#2563EB' }} />
               <span style={{ fontSize: 12, color: '#64748B' }}>{t.nom}</span>
             </div>
           ))}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingLeft: 8, borderLeft: '1px solid #E2E8F0' }}>
+            <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#0D9488' }} />
+            <span style={{ fontSize: 12, color: '#64748B' }}>🌐 En ligne</span>
+          </div>
         </div>
 
         {/* Calendrier */}
@@ -254,9 +258,17 @@ export default function AgendaPage() {
                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                     {rdvs.map(rdv => (
                       <div key={rdv.id} onClick={e => e.stopPropagation()}
-                        style={{ background: couleurMap[rdv.typeSeance] || '#2563EB', color: 'white', borderRadius: 6, padding: '4px 6px', fontSize: 11, marginBottom: 2 }}>
-                        <div style={{ fontWeight: 600 }}>{rdv.patient?.prenom} {rdv.patient?.nom}</div>
+                        style={{
+                          background: rdv.source === 'online' ? '#0D9488' : (couleurMap[rdv.typeSeance] || '#2563EB'),
+                          color: 'white', borderRadius: 6, padding: '4px 6px', fontSize: 11, marginBottom: 2,
+                          borderLeft: rdv.source === 'online' ? '3px solid #14B8A6' : undefined,
+                        }}>
+                        <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
+                          {rdv.source === 'online' && <span style={{ fontSize: 9 }}>🌐</span>}
+                          {rdv.patient?.prenom} {rdv.patient?.nom}
+                        </div>
                         <div style={{ opacity: 0.85 }}>{rdv.typeSeance} · {rdv.duree}min</div>
+                        {rdv.patientNotes && <div style={{ opacity: 0.75, fontSize: 10, fontStyle: 'italic', marginTop: 1 }}>{rdv.patientNotes.slice(0, 30)}{rdv.patientNotes.length > 30 ? '…' : ''}</div>}
                         <RappelBtn rdv={rdv} />
                       </div>
                     ))}

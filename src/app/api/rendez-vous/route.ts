@@ -35,6 +35,7 @@ export async function GET(request: NextRequest) {
       },
       orderBy: { date: 'asc' },
     })
+    // include source & patientNotes in output (already in the model, returned by default)
     return NextResponse.json(rendezVous)
   } catch (error) {
     console.error('[GET /api/rendez-vous]', error)
@@ -64,7 +65,7 @@ export async function POST(request: NextRequest) {
         praticienId: body.praticienId,
       },
       include: {
-        patient:   { select: { id: true, nom: true, prenom: true } },
+        patient:   { select: { id: true, nom: true, prenom: true, telephone: true } },
         praticien: { select: { id: true, nom: true, prenom: true, couleur: true } },
       },
     })

@@ -68,6 +68,16 @@ model Cabinet {
   subdomain        String?       @unique
   logoUrl          String?
   publicToken      String?       @unique
+  // ── Online booking ────────────────────────────────────────────
+  slug             String?       @unique
+  bookingEnabled   Boolean       @default(false)
+  workStartTime    String        @default("08:00")
+  workEndTime      String        @default("18:00")
+  lunchStartTime   String        @default("12:00")
+  lunchEndTime     String        @default("14:00")
+  bookingMessage   String?
+  workingDays      String        @default("1,2,3,4,5,6")
+  // ─────────────────────────────────────────────────────────────
   owner            User?         @relation("CabinetOwner", fields: [ownerId], references: [id])
   users            User[]        @relation("CabinetUsers")
   praticiens       Praticien[]
@@ -163,6 +173,9 @@ model RendezVous {
   salle        String?
   notes        String?
   statut       String      @default("confirme")
+  source       String      @default("cabinet")  // "cabinet" | "online" | "phone"
+  patientNotes String?
+  confirmedAt  DateTime?
   cabinetId    String?
   patientId    String
   praticienId  String
