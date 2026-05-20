@@ -27,6 +27,7 @@ model User {
   createdAt        DateTime            @default(now())
   lastLoginAt      DateTime?
   isActive         Boolean             @default(true)
+  preferredLang    String              @default("fr") // fr | ar
 }
 
 model PushSubscription {
