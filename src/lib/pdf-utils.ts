@@ -520,3 +520,125 @@ export function generateRapportPDF(data: any, cab: any) {
   const dateStr = new Date().toISOString().slice(0, 10)
   doc.save(`rapport-kinepro-${dateStr}.pdf`)
 }
+
+// ─── FEATURE 4: Rapport complet (advanced analytics) ─────────────────────────
+
+export function generateRapportComplet(stats: any, cab: any, periodLabel: string, praticienName?: string) {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+  const W = doc.internal.pageSize.getWidth()
+
+  drawPageHeader(doc, cab, 'RAPPORT', periodLabel.toUpperCase())
+  let y = 52
+
+  if (praticienName && praticienName !== 'Tous') {
+    doc.setFontSize(10); doc.setFont('helvetica', 'italic'); doc.setTextColor(C.gray)
+    doc.text(`Praticien : ${praticienName}`, 14, y)
+    y += 6
+  }
+
+  // ── KPI cards (3×2) ──
+  const kpis = stats?.kpis ?? {}
+  const k = [
+    { label: 'Revenus',           value: frMoney(kpis.revenus?.value ?? 0),        delta: kpis.revenus?.deltaPct,        color: C.green  },
+    { label: 'RDV',               value: `${kpis.rdv?.value ?? 0}`,                delta: kpis.rdv?.deltaPct,            color: C.blue   },
+    { label: 'Séances réalisées', value: `${kpis.seancesRealisees?.value ?? 0}`,   delta: kpis.seancesRealisees?.deltaPct, color: C.purple },
+    { label: 'Nouveaux patients', value: `${kpis.nouveauxPatients?.value ?? 0}`,   delta: kpis.nouveauxPatients?.deltaPct, color: C.amber  },
+    { label: 'Taux de présence',  value: `${kpis.tauxPresence?.value ?? 0}%`,      delta: kpis.tauxPresence?.deltaPct,   color: C.green  },
+    { label: 'Satisfaction',      value: `${kpis.satisfaction?.value ?? 0}/10`,    delta: kpis.satisfaction?.deltaPct,   color: C.blue   },
+  ]
+  const cardW = (W - 28 - 12) / 3
+  const cardH = 22
+  k.forEach((it, i) => {
+    const col = i % 3
+    const row = Math.floor(i / 3)
+    const cx = 14 + col * (cardW + 6)
+    const cy = y + row * (cardH + 4)
+    doc.setFillColor(C.light); doc.setDrawColor(C.border)
+    doc.roundedRect(cx, cy, cardW, cardH, 2, 2, 'FD')
+    doc.setFontSize(13); doc.setFont('helvetica', 'bold'); doc.setTextColor(it.color)
+    doc.text(it.value, cx + 4, cy + 10)
+    doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(C.gray)
+    doc.text(it.label, cx + 4, cy + 16)
+    if (typeof it.delta === 'number') {
+      const sign = it.delta > 0 ? '+' : ''
+      doc.setFontSize(7); doc.setFont('helvetica', 'bold')
+      doc.setTextColor(it.delta > 0 ? C.green : it.delta < 0 ? C.red : C.gray)
+      doc.text(`${sign}${it.delta}%`, cx + cardW - 4, cy + 16, { align: 'right' })
+    }
+  })
+  y += 2 * (cardH + 4) + 8
+
+  // ── Revenus par type ──
+  if (stats?.revenus?.parType?.length) {
+    y = drawSectionTitle(doc, y, 'REVENUS PAR TYPE DE SÉANCE')
+    autoTable(doc, {
+      startY: y, margin: { left: 14, right: 14 },
+      head: [['Type', 'Montant', 'Part']],
+      body: stats.revenus.repartition.map((r: any) => [r.nom, frMoney(r.montant), `${r.pct}%`]),
+      headStyles: { fillColor: C.navy as any, textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold' },
+      bodyStyles: { fontSize: 9, textColor: C.black as any },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      columnStyles: { 1: { halign: 'right' }, 2: { halign: 'center' } },
+      styles: { cellPadding: 3, lineColor: C.border as any, lineWidth: 0.3 },
+    })
+    y = lastAutoTableY(doc) + 6
+  }
+
+  // ── Performance par praticien ──
+  if (stats?.praticiensStats?.length) {
+    if (y > 230) { doc.addPage(); y = 20 }
+    y = drawSectionTitle(doc, y, 'PERFORMANCE PAR PRATICIEN')
+    autoTable(doc, {
+      startY: y, margin: { left: 14, right: 14 },
+      head: [['Praticien', 'RDV', 'Séances', 'Présence', 'Revenus', 'Score']],
+      body: stats.praticiensStats.map((p: any) => [
+        p.nom, `${p.rdv}`, `${p.seances}`, `${p.taux}%`, frMoney(p.revenus), p.score ? `${p.score}/10` : '—',
+      ]),
+      headStyles: { fillColor: C.navy as any, textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold' },
+      bodyStyles: { fontSize: 9, textColor: C.black as any },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      columnStyles: { 1: { halign: 'center' }, 2: { halign: 'center' }, 3: { halign: 'center' }, 4: { halign: 'right' }, 5: { halign: 'center' } },
+      styles: { cellPadding: 3, lineColor: C.border as any, lineWidth: 0.3 },
+    })
+    y = lastAutoTableY(doc) + 6
+  }
+
+  // ── Top pathologies ──
+  if (stats?.patients?.pathologies?.length) {
+    if (y > 240) { doc.addPage(); y = 20 }
+    y = drawSectionTitle(doc, y, 'TOP PATHOLOGIES')
+    autoTable(doc, {
+      startY: y, margin: { left: 14, right: 14 },
+      head: [['Pathologie', 'Patients']],
+      body: stats.patients.pathologies.map((p: any) => [p.nom, `${p.count}`]),
+      headStyles: { fillColor: C.navy as any, textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold' },
+      bodyStyles: { fontSize: 9, textColor: C.black as any },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      columnStyles: { 1: { halign: 'center' } },
+      styles: { cellPadding: 3, lineColor: C.border as any, lineWidth: 0.3 },
+    })
+    y = lastAutoTableY(doc) + 6
+  }
+
+  // ── Feedbacks négatifs ──
+  if (stats?.satisfaction?.summary?.negatifs?.length) {
+    if (y > 220) { doc.addPage(); y = 20 }
+    y = drawSectionTitle(doc, y, 'FEEDBACKS NÉGATIFS')
+    autoTable(doc, {
+      startY: y, margin: { left: 14, right: 14 },
+      head: [['Date', 'Patient', 'Score', 'Commentaire']],
+      body: stats.satisfaction.summary.negatifs.map((n: any) => [
+        frDate(n.date), n.patient, `${n.score}/10`, (n.commentaire || '').slice(0, 80),
+      ]),
+      headStyles: { fillColor: C.navy as any, textColor: [255, 255, 255], fontSize: 9, fontStyle: 'bold' },
+      bodyStyles: { fontSize: 9, textColor: C.black as any },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      columnStyles: { 2: { halign: 'center' } },
+      styles: { cellPadding: 3, lineColor: C.border as any, lineWidth: 0.3 },
+    })
+  }
+
+  addFootersToAllPages(doc, cab)
+  const safe = periodLabel.replace(/\s+/g, '-').toLowerCase()
+  doc.save(`rapport-${safe}.pdf`)
+}
