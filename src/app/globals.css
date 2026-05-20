@@ -45,20 +45,9 @@ body {
   background-color: #F8FAFC;
 }
 
-/* ─── RTL overrides (Arabic) ─────────────────────────────────────────────── */
-html[dir="rtl"], html[dir="rtl"] body {
+/* ─── Arabic font (LTR layout preserved — text only) ────────────────────── */
+html[lang="ar"], html[lang="ar"] body {
   font-family: 'Cairo', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-}
-html[dir="rtl"] .sidebar { left: auto; right: 0; }
-html[dir="rtl"] .main-content { margin-left: 0; margin-right: 220px; }
-html[dir="rtl"] .topbar { flex-direction: row-reverse; }
-html[dir="rtl"] .modal-sheet, html[dir="rtl"] .card { text-align: right; }
-/* Mirror left/right paddings on common utility classes used in nav rows */
-html[dir="rtl"] .flex { direction: rtl; }
-@media (max-width: 768px) {
-  html[dir="rtl"] .sidebar { right: 0; left: auto; transform: translateX(100%); }
-  html[dir="rtl"] .sidebar.sidebar-mobile-open { transform: translateX(0); }
-  html[dir="rtl"] .main-content { margin-right: 0; }
 }
 
 /* ─── Topbar ─────────────────────────────────────────────────────────────── */

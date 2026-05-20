@@ -26,7 +26,8 @@ export default async function RootLayout({
 }) {
   const session = await auth()
 
-  // Resolve user's preferred language (defaults to 'fr')
+  // Resolve user's preferred language (defaults to 'fr').
+  // Layout direction stays LTR; only the text and font change with `lang`.
   let lang: 'fr' | 'ar' = 'fr'
   if (session?.user?.id) {
     try {
@@ -37,10 +38,9 @@ export default async function RootLayout({
       if (u?.preferredLang === 'ar') lang = 'ar'
     } catch {}
   }
-  const dir = lang === 'ar' ? 'rtl' : 'ltr'
 
   return (
-    <html lang={lang} dir={dir}>
+    <html lang={lang} dir="ltr">
       <head>
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
