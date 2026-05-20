@@ -1,926 +1,475 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+
+interface SiteContent {
+  heroTitle?: string
+  heroSubtitle?: string
+  aboutTitle?: string
+  aboutText?: string
+  servicesTitle?: string
+  servicesSubtitle?: string
+  teamTitle?: string
+  teamSubtitle?: string
+  bookingTitle?: string
+  bookingSubtitle?: string
+  testimonialsTitle?: string
+  contactTitle?: string
+  stats?: { number: string; label: string }[]
+}
 
 interface SiteData {
   cabinet: {
-    nom: string; ville: string; adresse: string | null; telephone: string | null
-    email: string | null; whatsappNumber: string | null; slug: string | null
-    workStartTime: string; workEndTime: string; workingDays: string
-    logoUrl: string | null
+    nom: string
+    ville: string
+    adresse?: string | null
+    telephone?: string | null
+    email?: string | null
+    whatsappNumber?: string | null
+    slug: string | null
+    logoUrl?: string | null
+    workStartTime: string
+    workEndTime: string
+    workingDays: string
   }
   site: {
-    templateId: string; primaryColor: string; secondaryColor: string
-    heroTitle: string | null; heroSubtitle: string | null; heroImageUrl: string | null
-    aboutText: string | null; googleMapsEmbed: string | null
+    templateId: string
+    primaryColor: string
+    secondaryColor: string
+    contentFr: SiteContent | null
+    contentAr: SiteContent | null
+    heroImageUrl?: string | null
+    googleMapsEmbed?: string | null
   }
-  seanceTypes: Array<{ id: string; nom: string; dureeDefaut: number; tarifDefaut: number; couleur: string; description: string | null }>
-  praticiens: Array<{ id: string; nom: string; prenom: string; specialite: string | null; couleur: string }>
-  testimonials: Array<{ id: string; patientName: string; text: string; rating: number }>
+  seanceTypes: { id: string; nom: string; dureeDefaut: number; tarifDefaut: number | null; couleur: string | null; description: string | null }[]
+  praticiens: { id: string; nom: string; prenom: string; specialite: string | null; couleur: string | null }[]
+  testimonials: { id: string; patientName: string; textFr: string; textAr: string; rating: number }[]
 }
 
+const APP_URL = 'https://kinepro-omega.vercel.app'
+
 export default function SportTemplate({ data }: { data: SiteData }) {
-  const [scrolled, setScrolled] = useState(false)
+  const { cabinet } = data
+  const bookingUrl = cabinet.slug ? `${APP_URL}/booking/${cabinet.slug}` : '#'
+
+  const [lang, setLang] = useState<'fr' | 'ar'>(() => {
+    if (typeof window !== 'undefined') return (localStorage.getItem('cabinet_site_lang') as 'fr' | 'ar') ?? 'fr'
+    return 'fr'
+  })
   const [menuOpen, setMenuOpen] = useState(false)
+  const statsRef = useRef<HTMLDivElement>(null)
+  const [countersStarted, setCountersStarted] = useState(false)
 
-  useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 40)
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
-
-  const scrollTo = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
-    setMenuOpen(false)
+  function toggleLang() {
+    const next = lang === 'fr' ? 'ar' : 'fr'
+    setLang(next)
+    if (typeof window !== 'undefined') localStorage.setItem('cabinet_site_lang', next)
   }
 
-  const bookingUrl = `https://kinepro-omega.vercel.app/booking/${data.cabinet.slug}`
+  const content = lang === 'ar' ? (data.site.contentAr ?? data.site.contentFr) : (data.site.contentFr ?? data.site.contentAr)
+  const isRTL = lang === 'ar'
 
-  const navLinks = [
-    { label: 'Accueil', id: 'accueil' },
-    { label: 'Services', id: 'services' },
-    { label: 'Équipe', id: 'equipe' },
-    { label: 'Témoignages', id: 'temoignages' },
-    { label: 'Contact', id: 'contact' },
-  ]
+  useEffect(() => {
+    if (lang === 'ar') {
+      if (!document.getElementById('cairo-font')) {
+        const link = document.createElement('link')
+        link.id = 'cairo-font'
+        link.rel = 'stylesheet'
+        link.href = 'https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap'
+        document.head.appendChild(link)
+      }
+    }
+  }, [lang])
 
-  const stats = [
-    { value: '15 ans', label: "d'expérience" },
-    { value: '500+', label: 'athlètes traités' },
-    { value: '98%', label: 'de récupération' },
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      entries => entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible') }),
+      { threshold: 0.1 }
+    )
+    document.querySelectorAll('.fade-in').forEach(el => observer.observe(el))
+    return () => observer.disconnect()
+  }, [])
+
+  useEffect(() => {
+    if (!statsRef.current || countersStarted) return
+    const observer = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting) {
+        setCountersStarted(true)
+        observer.disconnect()
+      }
+    }, { threshold: 0.3 })
+    observer.observe(statsRef.current)
+    return () => observer.disconnect()
+  }, [countersStarted])
+
+  const defaultStats = [
+    { number: '800+', label: lang === 'ar' ? 'رياضي تعافى' : 'Athlètes rétablis' },
+    { number: '12+', label: lang === 'ar' ? 'سنوات خبرة' : 'Années d\'expérience' },
+    { number: '95%', label: lang === 'ar' ? 'عودة للمنافسة' : 'Retour compétition' },
+    { number: '20+', label: lang === 'ar' ? 'تقنية متخصصة' : 'Techniques spécialisées' },
   ]
+  const stats = content?.stats ?? defaultStats
+
+  const fontFamily = isRTL ? "'Cairo', sans-serif" : "'Segoe UI', system-ui, sans-serif"
 
   return (
-    <>
-      {/* ── NAVBAR ── */}
-      <nav
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          zIndex: 1000,
-          backgroundColor: '#0F172A',
-          borderBottom: scrolled ? '1px solid rgba(59,130,246,0.3)' : '1px solid transparent',
-          transition: 'border-color 0.3s ease',
-        }}
-      >
-        <div
-          style={{
-            maxWidth: 1200,
-            margin: '0 auto',
-            padding: '0 24px',
-            height: 68,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
-          {/* Logo */}
-          <div
-            style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}
-            onClick={() => scrollTo('accueil')}
-          >
-            {data.cabinet.logoUrl ? (
-              <img src={data.cabinet.logoUrl} alt={data.cabinet.nom} style={{ height: 40, borderRadius: 10 }} />
-            ) : (
-              <div
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: '50%',
-                  backgroundColor: '#3B82F6',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#fff',
-                  fontWeight: 700,
-                  fontSize: 18,
-                  boxShadow: '0 0 16px rgba(59,130,246,0.45)',
-                }}
-              >
-                K
-              </div>
-            )}
-            <span style={{ fontWeight: 700, fontSize: 18, color: '#fff' }}>{data.cabinet.nom}</span>
+    <div dir={isRTL ? 'rtl' : 'ltr'} style={{ fontFamily, background: '#0F172A', color: '#F1F5F9', minHeight: '100vh' }}>
+      <style>{`
+        .fade-in { opacity: 0; transform: translateY(24px); transition: opacity 0.6s ease, transform 0.6s ease; }
+        .fade-in.visible { opacity: 1; transform: none; }
+        .sport-nav-link { color: #E2E8F0; text-decoration: none; font-weight: 500; font-size: 15px; padding: 4px 0; position: relative; transition: color 0.2s; }
+        .sport-nav-link::after { content: ''; position: absolute; bottom: -2px; left: 0; right: 0; height: 2px; background: #06B6D4; transform: scaleX(0); transition: transform 0.2s; }
+        .sport-nav-link:hover { color: #06B6D4; }
+        .sport-nav-link:hover::after { transform: scaleX(1); }
+        .sport-card { background: #1E293B; border-top: 3px solid #06B6D4; border-radius: 12px; padding: 28px; transition: box-shadow 0.3s, transform 0.3s; }
+        .sport-card:hover { box-shadow: 0 0 20px rgba(6,182,212,0.2); transform: translateY(-6px); }
+        .team-card { background: #1E293B; border: 2px solid #1D4ED8; border-radius: 16px; padding: 28px 20px; text-align: center; transition: border-color 0.3s, box-shadow 0.3s, transform 0.3s; }
+        .team-card:hover { border-color: #06B6D4; box-shadow: 0 0 24px rgba(6,182,212,0.25); transform: translateY(-4px); }
+        .testi-card { background: #1E293B; border-left: 4px solid #06B6D4; border-radius: 12px; padding: 28px; transition: box-shadow 0.3s; }
+        .testi-card:hover { box-shadow: 0 8px 32px rgba(6,182,212,0.15); }
+        .contact-card { background: #1E293B; border-radius: 14px; padding: 20px 24px; display: flex; align-items: center; gap: 16px; transition: box-shadow 0.3s; }
+        .contact-card:hover { box-shadow: 0 4px 20px rgba(6,182,212,0.15); }
+        @keyframes pulse-glow { 0%, 100% { box-shadow: 0 0 16px rgba(6,182,212,0.5); } 50% { box-shadow: 0 0 32px rgba(6,182,212,0.9), 0 0 48px rgba(6,182,212,0.4); } }
+        .pulse-btn { animation: pulse-glow 2.4s ease-in-out infinite; }
+        .hamburger { display: none !important; }
+        @media (max-width: 768px) {
+          .hamburger { display: flex !important; background: none; border: none; cursor: pointer; font-size: 24px; color: white; }
+          .nav-links { display: none !important; }
+          .nav-links.open { display: flex !important; flex-direction: column; position: absolute; top: 68px; left: 0; right: 0; background: rgba(15,23,42,0.98); padding: 20px; gap: 12px; z-index: 100; border-top: 1px solid #1E293B; }
+          .hero-buttons { flex-direction: column !important; align-items: flex-start !important; }
+          .hero-stat-cards { grid-template-columns: repeat(3,1fr) !important; }
+          .two-col { flex-direction: column !important; }
+          .stats-grid { grid-template-columns: repeat(2,1fr) !important; }
+          .services-grid { grid-template-columns: 1fr !important; }
+          .team-grid { grid-template-columns: repeat(2,1fr) !important; }
+          .testi-grid { grid-template-columns: 1fr !important; }
+          .contact-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
+
+      {/* NAVBAR */}
+      <nav style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50, background: 'rgba(15,23,42,0.95)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(30,41,59,0.8)', padding: '0 32px' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 68 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {cabinet.logoUrl
+              ? <img src={cabinet.logoUrl} alt={cabinet.nom} style={{ height: 42, width: 42, borderRadius: '50%', objectFit: 'cover' }} />
+              : <div style={{ width: 42, height: 42, borderRadius: '50%', background: 'rgba(6,182,212,0.15)', border: '2px solid #06B6D4', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#06B6D4', fontWeight: 800, fontSize: 20, boxShadow: '0 0 12px rgba(6,182,212,0.4)' }}>K</div>
+            }
+            <span style={{ fontWeight: 700, fontSize: 17, color: 'white' }}>{cabinet.nom}</span>
           </div>
-
-          {/* Desktop links */}
-          <ul
-            style={{ display: 'flex', listStyle: 'none', gap: 32, margin: 0, padding: 0 }}
-            className="sport-desktop-nav"
-          >
-            {navLinks.map((l) => (
-              <li key={l.id}>
-                <button
-                  onClick={() => scrollTo(l.id)}
-                  className="sport-nav-link"
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontSize: 15,
-                    fontWeight: 500,
-                    color: '#fff',
-                    padding: '4px 0',
-                    borderBottom: '2px solid transparent',
-                    transition: 'color 0.2s, border-color 0.2s',
-                  }}
-                >
-                  {l.label}
-                </button>
-              </li>
-            ))}
-          </ul>
-
-          {/* CTA + hamburger */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <a
-              href={bookingUrl}
-              className="sport-cta-btn sport-desktop-nav"
-              style={{
-                backgroundColor: '#3B82F6',
-                color: '#fff',
-                padding: '10px 22px',
-                borderRadius: 8,
-                fontWeight: 600,
-                fontSize: 14,
-                textDecoration: 'none',
-                boxShadow: '0 0 18px rgba(59,130,246,0.45)',
-                transition: 'box-shadow 0.2s, background-color 0.2s',
-              }}
-            >
-              Prendre RDV
+          <div className={`nav-links${menuOpen ? ' open' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
+            <a href="#services" className="sport-nav-link">{lang === 'ar' ? 'خدماتنا' : 'Services'}</a>
+            <a href="#about" className="sport-nav-link">{lang === 'ar' ? 'من نحن' : 'À propos'}</a>
+            <a href="#team" className="sport-nav-link">{lang === 'ar' ? 'الفريق' : 'Équipe'}</a>
+            <a href="#contact" className="sport-nav-link">{lang === 'ar' ? 'اتصل بنا' : 'Contact'}</a>
+            <a href={bookingUrl} style={{ background: '#06B6D4', color: '#0F172A', padding: '9px 22px', borderRadius: 8, fontWeight: 700, fontSize: 14, textDecoration: 'none', boxShadow: '0 0 16px rgba(6,182,212,0.4)', transition: 'box-shadow 0.2s' }}>
+              {lang === 'ar' ? 'احجز موعداً' : 'Prendre RDV'}
             </a>
-            <button
-              className="sport-hamburger"
-              onClick={() => setMenuOpen(!menuOpen)}
-              style={{
-                display: 'none',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                flexDirection: 'column',
-                gap: 5,
-                padding: 4,
-              }}
-              aria-label="Menu"
-            >
-              <span style={{ display: 'block', width: 24, height: 2, backgroundColor: '#3B82F6', borderRadius: 2 }} />
-              <span style={{ display: 'block', width: 24, height: 2, backgroundColor: '#3B82F6', borderRadius: 2 }} />
-              <span style={{ display: 'block', width: 24, height: 2, backgroundColor: '#3B82F6', borderRadius: 2 }} />
+            <button onClick={toggleLang} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 14px', borderRadius: 999, border: '1.5px solid #06B6D4', cursor: 'pointer', fontSize: 13, fontWeight: 700, background: 'transparent', color: '#06B6D4' }}>
+              {lang === 'fr' ? 'ع عربي' : 'FR'}
             </button>
           </div>
+          <button onClick={() => setMenuOpen(o => !o)} className="hamburger">☰</button>
         </div>
-
-        {/* Mobile dropdown */}
-        {menuOpen && (
-          <div
-            style={{
-              backgroundColor: '#0F172A',
-              borderTop: '1px solid rgba(59,130,246,0.2)',
-              padding: '16px 24px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 12,
-            }}
-          >
-            {navLinks.map((l) => (
-              <button
-                key={l.id}
-                onClick={() => scrollTo(l.id)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: 16,
-                  fontWeight: 500,
-                  color: '#fff',
-                  textAlign: 'left',
-                  padding: '6px 0',
-                }}
-              >
-                {l.label}
-              </button>
-            ))}
-            <a
-              href={bookingUrl}
-              style={{
-                backgroundColor: '#3B82F6',
-                color: '#fff',
-                padding: '12px 22px',
-                borderRadius: 8,
-                fontWeight: 600,
-                fontSize: 15,
-                textDecoration: 'none',
-                textAlign: 'center',
-                marginTop: 4,
-                boxShadow: '0 0 18px rgba(59,130,246,0.45)',
-              }}
-            >
-              Prendre RDV
-            </a>
-          </div>
-        )}
       </nav>
 
-      {/* ── HERO ── */}
-      <section
-        id="accueil"
-        style={{
-          minHeight: '100vh',
-          display: 'flex',
-          alignItems: 'center',
-          position: 'relative',
-          overflow: 'hidden',
-          backgroundColor: '#0F172A',
-          paddingTop: 68,
-        }}
-      >
-        {/* Hero background image or decorative elements */}
-        {data.site.heroImageUrl ? (
-          <>
-            <div
-              style={{
-                position: 'absolute',
-                inset: 0,
-                backgroundImage: `url(${data.site.heroImageUrl})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-              }}
-            />
-            <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(15,23,42,0.88)' }} />
-          </>
-        ) : (
-          <>
-            {/* Diagonal blue shape top-right */}
-            <div
-              style={{
-                position: 'absolute',
-                inset: 0,
-                clipPath: 'polygon(60% 0, 100% 0, 100% 100%, 40% 100%)',
-                background: 'rgba(59,130,246,0.12)',
-              }}
-            />
-            {/* Blue grid dot pattern */}
-            <div
-              style={{
-                position: 'absolute',
-                inset: 0,
-                backgroundImage: 'radial-gradient(circle, rgba(59,130,246,0.18) 1px, transparent 1px)',
-                backgroundSize: '28px 28px',
-                opacity: 0.6,
-              }}
-            />
-          </>
-        )}
+      {/* HERO */}
+      <section style={{ position: 'relative', minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', overflow: 'hidden', paddingTop: 68 }}>
+        <div style={{ position: 'absolute', inset: 0, backgroundImage: `url(https://res.cloudinary.com/djouneyaq/image/upload/v1779231314/KOSSPARIS_DSC9951-1-480x320-1_ycjl6b.jpg)`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(15,23,42,0.8)' }} />
+        {/* Diagonal accent line */}
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'linear-gradient(135deg, rgba(29,78,216,0.15) 0%, transparent 60%)', pointerEvents: 'none' }} />
+        <div style={{ position: 'relative', zIndex: 2, padding: '80px 48px', maxWidth: 1200, margin: '0 auto', width: '100%' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(6,182,212,0.15)', border: '1px solid rgba(6,182,212,0.4)', borderRadius: 999, padding: '6px 18px', marginBottom: 28, color: '#06B6D4', fontSize: 14, fontWeight: 700, boxShadow: '0 0 12px rgba(6,182,212,0.2)' }}>
+            <span>⚡</span> {lang === 'ar' ? 'الأداء والتعافي' : 'Performance & Récupération'}
+          </div>
+          <h1 style={{ fontSize: 'clamp(2.4rem, 7vw, 5rem)', fontWeight: 900, color: 'white', margin: '0 0 20px', lineHeight: 1.05, textTransform: 'uppercase', letterSpacing: '-0.02em', maxWidth: 700 }}>
+            {content?.heroTitle ?? cabinet.nom}
+          </h1>
+          <p style={{ fontSize: 'clamp(1rem, 2vw, 1.2rem)', color: 'rgba(226,232,240,0.85)', marginBottom: 40, lineHeight: 1.7, maxWidth: 560 }}>
+            {content?.heroSubtitle ?? (lang === 'ar' ? 'عيادة كينيزيتيرابيا متخصصة لإعادة تأهيل الرياضيين وتعزيز الأداء' : 'Cabinet spécialisé en kinésithérapie sportive pour la rééducation et l\'optimisation des performances')}
+          </p>
+          <div className="hero-buttons" style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', marginBottom: 72 }}>
+            <a href={bookingUrl} className="pulse-btn" style={{ background: 'linear-gradient(135deg, #06B6D4, #1D4ED8)', color: 'white', padding: '16px 40px', borderRadius: 8, fontWeight: 800, fontSize: 16, textDecoration: 'none', display: 'inline-block' }}>
+              {lang === 'ar' ? 'احجز موعداً' : 'Réserver une séance'}
+            </a>
+            <a href="#services" style={{ color: 'white', padding: '16px 40px', borderRadius: 8, fontWeight: 600, fontSize: 16, textDecoration: 'none', border: '2px solid rgba(255,255,255,0.3)', display: 'inline-block', transition: 'border-color 0.2s' }}>
+              {lang === 'ar' ? 'اكتشف خدماتنا' : 'Découvrir nos services'}
+            </a>
+          </div>
+          {/* Hero stat cards */}
+          <div className="hero-stat-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16, maxWidth: 600 }}>
+            {[
+              { num: '800+', label: lang === 'ar' ? 'رياضي تعافى' : 'Athlètes traités' },
+              { num: '12+', label: lang === 'ar' ? 'سنوات خبرة' : 'Ans d\'expérience' },
+              { num: '95%', label: lang === 'ar' ? 'نسبة النجاح' : 'Taux de succès' },
+            ].map((s, i) => (
+              <div key={i} style={{ background: 'rgba(30,41,59,0.8)', backdropFilter: 'blur(8px)', border: '1px solid rgba(6,182,212,0.2)', borderRadius: 12, padding: '16px 20px' }}>
+                <div style={{ fontSize: 26, fontWeight: 800, color: '#06B6D4', lineHeight: 1, textShadow: '0 0 12px rgba(6,182,212,0.5)' }}>{s.num}</div>
+                <div style={{ fontSize: 12, color: '#94A3B8', marginTop: 4 }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
-        {/* Content */}
-        <div
-          style={{
-            position: 'relative',
-            zIndex: 2,
-            maxWidth: 1200,
-            width: '100%',
-            margin: '0 auto',
-            padding: '80px 24px',
-          }}
-        >
-          <div style={{ maxWidth: 680 }}>
-            {/* Glowing badge */}
-            <div
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 8,
-                backgroundColor: 'rgba(59,130,246,0.15)',
-                border: '1px solid rgba(59,130,246,0.4)',
-                color: '#60A5FA',
-                padding: '8px 18px',
-                borderRadius: 999,
-                fontSize: 13,
-                fontWeight: 700,
-                marginBottom: 28,
-                boxShadow: '0 0 16px rgba(59,130,246,0.2)',
-                letterSpacing: 0.5,
-              }}
-            >
-              ⚡ Kinésithérapie &amp; Performance
+      {/* STATS BAR */}
+      <section ref={statsRef} style={{ background: '#111827', padding: '56px 24px', borderTop: '1px solid #1E293B', borderBottom: '1px solid #1E293B' }}>
+        <div className="stats-grid" style={{ maxWidth: 1000, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 32, textAlign: 'center' }}>
+          {stats.map((s, i) => (
+            <div key={i} className="fade-in">
+              <div style={{ fontSize: 'clamp(2rem,4vw,2.8rem)', fontWeight: 800, color: '#06B6D4', lineHeight: 1, textShadow: '0 0 20px rgba(6,182,212,0.5)' }}>{s.number}</div>
+              <div style={{ fontSize: 14, color: '#94A3B8', marginTop: 8, fontWeight: 500 }}>{s.label}</div>
             </div>
+          ))}
+        </div>
+      </section>
 
-            <h1
-              style={{
-                fontSize: 60,
-                fontWeight: 900,
-                color: '#fff',
-                lineHeight: 1.1,
-                textTransform: 'uppercase',
-                margin: '0 0 20px',
-                letterSpacing: -1,
-              }}
-              className="sport-hero-h1"
-            >
-              {data.site.heroTitle ?? data.cabinet.nom}
-            </h1>
-
-            <p
-              style={{
-                fontSize: 19,
-                color: '#94A3B8',
-                lineHeight: 1.7,
-                margin: '0 0 40px',
-                maxWidth: 520,
-              }}
-              className="sport-hero-subtitle"
-            >
-              {data.site.heroSubtitle ?? `Votre cabinet de kinésithérapie sportive à ${data.cabinet.ville}. Récupérez plus vite, performez mieux.`}
+      {/* SERVICES */}
+      <section id="services" style={{ padding: '96px 24px', background: '#0F172A' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+          <div style={{ marginBottom: 56 }} className="fade-in">
+            <div style={{ display: 'inline-block', background: 'rgba(6,182,212,0.1)', color: '#06B6D4', borderRadius: 6, padding: '4px 14px', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>
+              {lang === 'ar' ? 'خدماتنا' : 'Nos spécialités'}
+            </div>
+            <h2 style={{ fontSize: 'clamp(1.8rem,4vw,2.6rem)', fontWeight: 800, color: 'white', marginBottom: 12, textTransform: 'uppercase', letterSpacing: '-0.01em' }}>
+              {content?.servicesTitle ?? (lang === 'ar' ? 'خدماتنا المتخصصة' : 'Nos Services')}
+            </h2>
+            <p style={{ color: '#94A3B8', fontSize: 17, maxWidth: 600 }}>
+              {content?.servicesSubtitle ?? (lang === 'ar' ? 'تقنيات متقدمة لإعادة التأهيل الرياضي' : 'Des techniques avancées pour votre rééducation sportive')}
             </p>
+          </div>
+          <div className="services-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 20 }}>
+            {data.seanceTypes.length > 0 ? data.seanceTypes.map((s, i) => (
+              <div key={s.id} className="sport-card fade-in">
+                <div style={{ color: '#06B6D4', fontSize: 13, fontWeight: 700, marginBottom: 12 }}>◆ {lang === 'ar' ? 'تخصص' : 'Spécialité'}</div>
+                <h3 style={{ fontSize: 17, fontWeight: 700, color: 'white', marginBottom: 8 }}>{s.nom}</h3>
+                {s.description && <p style={{ color: '#94A3B8', fontSize: 14, lineHeight: 1.6, marginBottom: 12 }}>{s.description}</p>}
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <span style={{ background: 'rgba(6,182,212,0.1)', color: '#06B6D4', borderRadius: 6, padding: '3px 10px', fontSize: 12, fontWeight: 600, border: '1px solid rgba(6,182,212,0.2)' }}>{s.dureeDefaut} min</span>
+                  {s.tarifDefaut && <span style={{ background: 'rgba(29,78,216,0.15)', color: '#93C5FD', borderRadius: 6, padding: '3px 10px', fontSize: 12, fontWeight: 600, border: '1px solid rgba(29,78,216,0.3)' }}>{s.tarifDefaut} MAD</span>}
+                </div>
+              </div>
+            )) : ([
+              { icon: '⚡', title: lang === 'ar' ? 'إعادة تأهيل رياضية' : 'Rééducation Sportive' },
+              { icon: '🏋️', title: lang === 'ar' ? 'تقوية عضلية' : 'Renforcement Musculaire' },
+              { icon: '🧊', title: lang === 'ar' ? 'علاج الإصابات الحادة' : 'Traumatologie Aiguë' },
+              { icon: '🦵', title: lang === 'ar' ? 'إعادة تأهيل الركبة' : 'Rééducation du Genou' },
+              { icon: '💪', title: lang === 'ar' ? 'تأهيل ما بعد الجراحة' : 'Post-chirurgical' },
+              { icon: '🏃', title: lang === 'ar' ? 'تحسين الأداء' : 'Optimisation Performance' },
+            ]).map((s, i) => (
+              <div key={i} className="sport-card fade-in">
+                <div style={{ color: '#06B6D4', fontSize: 13, fontWeight: 700, marginBottom: 12 }}>◆</div>
+                <div style={{ fontSize: 28, marginBottom: 12 }}>{s.icon}</div>
+                <h3 style={{ fontSize: 17, fontWeight: 700, color: 'white', marginBottom: 8 }}>{s.title}</h3>
+                <p style={{ color: '#94A3B8', fontSize: 14, lineHeight: 1.6 }}>{lang === 'ar' ? 'تقنيات متقدمة لتحقيق أفضل النتائج' : 'Techniques avancées pour des résultats optimaux'}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
-            {/* CTA buttons */}
-            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 56 }}>
-              <a
-                href={bookingUrl}
-                style={{
-                  backgroundColor: '#3B82F6',
-                  color: '#fff',
-                  padding: '15px 36px',
-                  borderRadius: 8,
-                  fontWeight: 700,
-                  fontSize: 16,
-                  textDecoration: 'none',
-                  boxShadow: '0 0 28px rgba(59,130,246,0.50)',
-                  transition: 'box-shadow 0.2s, background-color 0.2s',
-                }}
-                className="sport-btn-primary"
-              >
-                Prendre rendez-vous
-              </a>
-              <button
-                onClick={() => scrollTo('services')}
-                style={{
-                  backgroundColor: 'transparent',
-                  color: '#3B82F6',
-                  border: '2px solid #3B82F6',
-                  padding: '15px 36px',
-                  borderRadius: 8,
-                  fontWeight: 600,
-                  fontSize: 16,
-                  cursor: 'pointer',
-                  transition: 'background-color 0.2s',
-                }}
-                className="sport-btn-ghost"
-              >
-                Nos services
-              </button>
+      {/* ABOUT */}
+      <section id="about" style={{ padding: '96px 24px', background: '#111827' }}>
+        <div className="two-col" style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', alignItems: 'center', gap: 64 }}>
+          <div style={{ flex: 1 }} className="fade-in">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+              <div style={{ width: 4, height: 36, background: 'linear-gradient(180deg, #06B6D4, #1D4ED8)', borderRadius: 2 }} />
+              <span style={{ color: '#06B6D4', fontWeight: 700, fontSize: 13, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{lang === 'ar' ? 'من نحن' : 'À propos'}</span>
             </div>
-
-            {/* Stats */}
-            <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
-              {stats.map((s) => (
-                <div
-                  key={s.value}
-                  style={{
-                    backgroundColor: '#1E293B',
-                    border: '1px solid rgba(59,130,246,0.3)',
-                    borderRadius: 12,
-                    padding: '16px 24px',
-                    minWidth: 120,
-                  }}
-                >
-                  <p style={{ color: '#3B82F6', fontWeight: 800, fontSize: 26, margin: '0 0 4px', lineHeight: 1 }}>
-                    {s.value}
-                  </p>
-                  <p style={{ color: '#94A3B8', fontSize: 13, margin: 0 }}>{s.label}</p>
+            <h2 style={{ fontSize: 'clamp(1.8rem,4vw,2.4rem)', fontWeight: 800, color: 'white', marginBottom: 20, lineHeight: 1.2, textTransform: 'uppercase' }}>
+              {content?.aboutTitle ?? (lang === 'ar' ? cabinet.nom : cabinet.nom)}
+            </h2>
+            <p style={{ color: '#94A3B8', fontSize: 16, lineHeight: 1.8, marginBottom: 28 }}>
+              {content?.aboutText ?? (lang === 'ar'
+                ? `في ${cabinet.nom}، نختص في كينيزيتيرابيا الرياضة وإعادة التأهيل. نستخدم أحدث التقنيات لمساعدتك على العودة إلى أفضل مستوياتك.`
+                : `Au ${cabinet.nom}, nous sommes spécialisés en kinésithérapie du sport et rééducation. Nous utilisons les techniques les plus avancées pour vous aider à retrouver votre meilleur niveau.`)}
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              {[
+                { icon: '⚡', text: lang === 'ar' ? 'تقنيات متقدمة' : 'Techniques avancées' },
+                { icon: '🎯', text: lang === 'ar' ? 'نتائج مضمونة' : 'Résultats garantis' },
+                { icon: '🏆', text: lang === 'ar' ? 'خبراء معتمدون' : 'Experts certifiés' },
+                { icon: '📊', text: lang === 'ar' ? 'متابعة رقمية' : 'Suivi digital' },
+              ].map((item, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(30,41,59,0.5)', borderRadius: 10, padding: '12px 16px', border: '1px solid rgba(6,182,212,0.1)' }}>
+                  <span style={{ fontSize: 18 }}>{item.icon}</span>
+                  <span style={{ color: '#CBD5E1', fontSize: 14, fontWeight: 500 }}>{item.text}</span>
                 </div>
               ))}
             </div>
           </div>
+          <div style={{ flex: 1, borderRadius: 16, overflow: 'hidden', border: '2px solid rgba(6,182,212,0.2)', boxShadow: '0 0 40px rgba(6,182,212,0.15)', minHeight: 420 }} className="fade-in">
+            <img src="https://res.cloudinary.com/djouneyaq/image/upload/v1779231315/kinesitherapeute-sport-1024x683_izcie4.jpg" alt="Cabinet sport" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', minHeight: 420 }} />
+          </div>
         </div>
       </section>
 
-      {/* ── ABOUT ── */}
-      {data.site.aboutText && (
-        <section style={{ backgroundColor: '#0F172A', padding: '64px 24px', borderTop: '1px solid rgba(59,130,246,0.1)' }}>
-          <div style={{ maxWidth: 720, margin: '0 auto', textAlign: 'center' }}>
-            <p style={{ fontSize: 17, color: '#94A3B8', lineHeight: 1.8 }}>{data.site.aboutText}</p>
-          </div>
-        </section>
-      )}
-
-      {/* ── SERVICES ── */}
-      <section id="services" style={{ backgroundColor: '#0F172A', padding: '80px 24px', borderTop: '1px solid rgba(59,130,246,0.1)' }}>
+      {/* TEAM */}
+      <section id="team" style={{ padding: '96px 24px', background: '#0F172A' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-          <div style={{ marginBottom: 56 }}>
-            <span
-              style={{
-                display: 'inline-block',
-                backgroundColor: 'rgba(59,130,246,0.12)',
-                border: '1px solid rgba(59,130,246,0.3)',
-                color: '#60A5FA',
-                padding: '6px 18px',
-                borderRadius: 999,
-                fontSize: 13,
-                fontWeight: 700,
-                marginBottom: 16,
-                letterSpacing: 0.5,
-              }}
-            >
-              Nos prestations
-            </span>
-            <h2 style={{ fontSize: 36, fontWeight: 800, color: '#fff', margin: '0 0 12px', textTransform: 'uppercase', letterSpacing: -0.5 }}>
-              Services &amp; Soins
+          <div style={{ textAlign: 'center', marginBottom: 56 }} className="fade-in">
+            <div style={{ display: 'inline-block', background: 'rgba(6,182,212,0.1)', color: '#06B6D4', borderRadius: 6, padding: '4px 14px', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>Team</div>
+            <h2 style={{ fontSize: 'clamp(1.8rem,4vw,2.6rem)', fontWeight: 800, color: 'white', marginBottom: 12, textTransform: 'uppercase' }}>
+              {content?.teamTitle ?? (lang === 'ar' ? 'فريقنا المتخصص' : 'Notre Équipe')}
             </h2>
-            <p style={{ color: '#94A3B8', fontSize: 16, maxWidth: 520 }}>
-              Des programmes spécialisés pour sportifs et actifs, conçus pour une récupération maximale.
+            <p style={{ color: '#94A3B8', fontSize: 17 }}>
+              {content?.teamSubtitle ?? (lang === 'ar' ? 'خبراء في كينيزيتيرابيا الرياضة' : 'Experts en kinésithérapie du sport')}
             </p>
           </div>
-
-          <div className="sport-grid-3">
-            {data.seanceTypes.length > 0 ? (
-              data.seanceTypes.map((s) => (
-                <div
-                  key={s.id}
-                  className="sport-service-card"
-                  style={{
-                    backgroundColor: '#1E293B',
-                    border: '1px solid rgba(59,130,246,0.3)',
-                    borderTop: '3px solid #3B82F6',
-                    borderRadius: 12,
-                    padding: '28px 24px',
-                    boxShadow: '0 0 20px rgba(59,130,246,0.05)',
-                    transition: 'box-shadow 0.2s, transform 0.2s',
-                  }}
-                >
-                  <h3 style={{ fontSize: 17, fontWeight: 700, color: '#fff', margin: '0 0 10px' }}>
-                    <span style={{ color: '#3B82F6', marginRight: 8 }}>◆</span>
-                    {s.nom}
-                  </h3>
-                  {s.description && (
-                    <p style={{ color: '#94A3B8', fontSize: 14, lineHeight: 1.7, margin: '0 0 18px' }}>{s.description}</p>
-                  )}
-                  <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 13, color: '#60A5FA', fontWeight: 600 }}>⏱ {s.dureeDefaut} min</span>
-                    <span style={{ fontSize: 13, color: '#60A5FA', fontWeight: 600 }}>💶 {s.tarifDefaut} €</span>
-                  </div>
+          <div className="team-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 24 }}>
+            {(data.praticiens.length > 0 ? data.praticiens.map(p => ({
+              key: p.id,
+              initials: `${p.prenom[0]}${p.nom[0]}`,
+              name: `${p.prenom} ${p.nom}`,
+              spec: p.specialite,
+            })) : [
+              { key: '1', initials: 'KA', name: lang === 'ar' ? 'كريم الأمراني' : 'Karim Amrani', spec: lang === 'ar' ? 'كينيزيتيرابيا رياضية' : 'Kinésithérapie Sportive' },
+              { key: '2', initials: 'LB', name: lang === 'ar' ? 'ليلى بنشقرون' : 'Leila Benchekroun', spec: lang === 'ar' ? 'إعادة تأهيل ما بعد الجراحة' : 'Rééducation Post-op' },
+              { key: '3', initials: 'YO', name: lang === 'ar' ? 'يوسف الوزاني' : 'Youssef Ouazzani', spec: lang === 'ar' ? 'تحسين الأداء الرياضي' : 'Performance Sportive' },
+            ]).map((p, i) => (
+              <div key={p.key} className="team-card fade-in">
+                <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'rgba(6,182,212,0.15)', border: '2px solid #06B6D4', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#06B6D4', fontWeight: 800, fontSize: 26, margin: '0 auto 16px', boxShadow: '0 0 16px rgba(6,182,212,0.3)' }}>
+                  {p.initials}
                 </div>
-              ))
-            ) : (
-              [
-                { title: 'Rééducation sportive', desc: 'Protocoles de récupération intensifs pour reprendre l\'entraînement rapidement.' },
-                { title: 'Prévention des blessures', desc: 'Bilans fonctionnels et programmes de renforcement ciblés.' },
-                { title: 'Massages sportifs', desc: 'Techniques de décontraction musculaire pré et post compétition.' },
-              ].map((s) => (
-                <div
-                  key={s.title}
-                  className="sport-service-card"
-                  style={{
-                    backgroundColor: '#1E293B',
-                    border: '1px solid rgba(59,130,246,0.3)',
-                    borderTop: '3px solid #3B82F6',
-                    borderRadius: 12,
-                    padding: '28px 24px',
-                    boxShadow: '0 0 20px rgba(59,130,246,0.05)',
-                    transition: 'box-shadow 0.2s, transform 0.2s',
-                  }}
-                >
-                  <h3 style={{ fontSize: 17, fontWeight: 700, color: '#fff', margin: '0 0 10px' }}>
-                    <span style={{ color: '#3B82F6', marginRight: 8 }}>◆</span>
-                    {s.title}
-                  </h3>
-                  <p style={{ color: '#94A3B8', fontSize: 14, lineHeight: 1.7 }}>{s.desc}</p>
-                </div>
-              ))
-            )}
+                <h3 style={{ fontSize: 17, fontWeight: 700, color: 'white', marginBottom: 4 }}>Dr. {p.name}</h3>
+                {p.spec && <p style={{ color: '#06B6D4', fontSize: 14, fontWeight: 600 }}>{p.spec}</p>}
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* ── ÉQUIPE ── */}
-      <section id="equipe" style={{ backgroundColor: '#0F172A', padding: '80px 24px', borderTop: '1px solid rgba(59,130,246,0.1)' }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-          <div style={{ marginBottom: 56 }}>
-            <span
-              style={{
-                display: 'inline-block',
-                backgroundColor: 'rgba(59,130,246,0.12)',
-                border: '1px solid rgba(59,130,246,0.3)',
-                color: '#60A5FA',
-                padding: '6px 18px',
-                borderRadius: 999,
-                fontSize: 13,
-                fontWeight: 700,
-                marginBottom: 16,
-                letterSpacing: 0.5,
-              }}
-            >
-              Notre équipe
-            </span>
-            <h2 style={{ fontSize: 36, fontWeight: 800, color: '#fff', margin: 0, textTransform: 'uppercase', letterSpacing: -0.5 }}>
-              Vos praticiens
-            </h2>
+      {/* BOOKING CTA */}
+      <section style={{ padding: '96px 24px', background: '#111827', position: 'relative', overflow: 'hidden' }}>
+        {/* Diagonal accent stripes */}
+        <div style={{ position: 'absolute', inset: 0, backgroundImage: 'repeating-linear-gradient(135deg, transparent, transparent 40px, rgba(6,182,212,0.03) 40px, rgba(6,182,212,0.03) 80px)', pointerEvents: 'none' }} />
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(90deg, transparent, #06B6D4, transparent)' }} />
+        <div style={{ maxWidth: 800, margin: '0 auto', textAlign: 'center', position: 'relative', zIndex: 1 }} className="fade-in">
+          <div style={{ display: 'inline-block', background: 'rgba(6,182,212,0.1)', color: '#06B6D4', borderRadius: 6, padding: '4px 14px', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 24 }}>
+            {lang === 'ar' ? 'حجز موعد' : 'Réservation'}
           </div>
-
-          <div className="sport-grid-4">
-            {data.praticiens.length > 0 ? (
-              data.praticiens.map((p) => (
-                <div
-                  key={p.id}
-                  className="sport-team-card"
-                  style={{
-                    backgroundColor: '#1E293B',
-                    border: '1px solid rgba(59,130,246,0.3)',
-                    borderRadius: 12,
-                    padding: '32px 20px',
-                    textAlign: 'center',
-                    boxShadow: '0 0 20px rgba(59,130,246,0.05)',
-                    transition: 'box-shadow 0.2s, transform 0.2s',
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 80,
-                      height: 80,
-                      borderRadius: '50%',
-                      border: '2px solid #3B82F6',
-                      backgroundColor: 'rgba(59,130,246,0.12)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: '#60A5FA',
-                      fontSize: 26,
-                      fontWeight: 700,
-                      margin: '0 auto 16px',
-                      boxShadow: '0 0 16px rgba(59,130,246,0.25)',
-                    }}
-                  >
-                    {p.prenom[0]}{p.nom[0]}
-                  </div>
-                  <h3 style={{ fontSize: 16, fontWeight: 700, color: '#fff', margin: '0 0 6px' }}>
-                    {p.prenom} {p.nom}
-                  </h3>
-                  {p.specialite && (
-                    <p style={{ color: '#94A3B8', fontSize: 13 }}>{p.specialite}</p>
-                  )}
-                </div>
-              ))
-            ) : (
-              <div style={{ gridColumn: '1 / -1', textAlign: 'center', color: '#94A3B8' }}>
-                Informations sur l&apos;équipe bientôt disponibles.
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* ── TÉMOIGNAGES ── */}
-      <section id="temoignages" style={{ backgroundColor: '#111827', padding: '80px 24px', borderTop: '1px solid rgba(59,130,246,0.1)' }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-          <div style={{ marginBottom: 56 }}>
-            <span
-              style={{
-                display: 'inline-block',
-                backgroundColor: 'rgba(59,130,246,0.12)',
-                border: '1px solid rgba(59,130,246,0.3)',
-                color: '#60A5FA',
-                padding: '6px 18px',
-                borderRadius: 999,
-                fontSize: 13,
-                fontWeight: 700,
-                marginBottom: 16,
-                letterSpacing: 0.5,
-              }}
-            >
-              Avis patients
-            </span>
-            <h2 style={{ fontSize: 36, fontWeight: 800, color: '#fff', margin: 0, textTransform: 'uppercase', letterSpacing: -0.5 }}>
-              Ce que disent nos patients
-            </h2>
-          </div>
-
-          <div className="sport-grid-3">
-            {data.testimonials.length > 0 ? (
-              data.testimonials.map((t) => (
-                <div
-                  key={t.id}
-                  style={{
-                    backgroundColor: '#1E293B',
-                    border: '1px solid rgba(59,130,246,0.2)',
-                    borderLeft: '4px solid #3B82F6',
-                    borderRadius: 12,
-                    padding: '28px 24px',
-                  }}
-                >
-                  <div style={{ marginBottom: 12 }}>
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <span key={i} style={{ color: i < t.rating ? '#3B82F6' : '#374151', fontSize: 18 }}>★</span>
-                    ))}
-                  </div>
-                  <p style={{ color: '#CBD5E1', fontSize: 15, fontStyle: 'italic', lineHeight: 1.8, margin: '0 0 16px' }}>
-                    <span style={{ color: '#3B82F6', fontSize: 20, fontStyle: 'normal', lineHeight: 1 }}>&ldquo;</span>
-                    {t.text}
-                    <span style={{ color: '#3B82F6', fontSize: 20, fontStyle: 'normal', lineHeight: 1 }}>&rdquo;</span>
-                  </p>
-                  <p style={{ color: '#60A5FA', fontWeight: 700, fontSize: 14, margin: 0 }}>— {t.patientName}</p>
-                </div>
-              ))
-            ) : (
-              <div style={{ gridColumn: '1 / -1', textAlign: 'center', color: '#94A3B8' }}>
-                Les avis seront affichés ici.
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* ── CONTACT ── */}
-      <section id="contact" style={{ backgroundColor: '#0F172A', padding: '80px 24px', borderTop: '1px solid rgba(59,130,246,0.1)' }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-          <div style={{ marginBottom: 56 }}>
-            <span
-              style={{
-                display: 'inline-block',
-                backgroundColor: 'rgba(59,130,246,0.12)',
-                border: '1px solid rgba(59,130,246,0.3)',
-                color: '#60A5FA',
-                padding: '6px 18px',
-                borderRadius: 999,
-                fontSize: 13,
-                fontWeight: 700,
-                marginBottom: 16,
-                letterSpacing: 0.5,
-              }}
-            >
-              Coordonnées
-            </span>
-            <h2 style={{ fontSize: 36, fontWeight: 800, color: '#fff', margin: 0, textTransform: 'uppercase', letterSpacing: -0.5 }}>
-              Nous trouver
-            </h2>
-          </div>
-
-          <div className="sport-grid-2">
-            {/* Info cards */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {data.cabinet.adresse && (
-                <div style={{
-                  backgroundColor: '#1E293B',
-                  border: '1px solid rgba(59,130,246,0.25)',
-                  borderRadius: 12,
-                  padding: '20px 24px',
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: 16,
-                }}>
-                  <span style={{ fontSize: 22 }}>📍</span>
-                  <div>
-                    <p style={{ fontWeight: 700, color: '#fff', margin: '0 0 4px', fontSize: 15 }}>Adresse</p>
-                    <p style={{ color: '#94A3B8', margin: 0, fontSize: 14 }}>{data.cabinet.adresse}</p>
-                  </div>
-                </div>
-              )}
-              {data.cabinet.telephone && (
-                <div style={{
-                  backgroundColor: '#1E293B',
-                  border: '1px solid rgba(59,130,246,0.25)',
-                  borderRadius: 12,
-                  padding: '20px 24px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 16,
-                }}>
-                  <span style={{ fontSize: 22 }}>☎️</span>
-                  <div>
-                    <p style={{ fontWeight: 700, color: '#fff', margin: '0 0 4px', fontSize: 15 }}>Téléphone</p>
-                    <a href={`tel:${data.cabinet.telephone}`} style={{ color: '#60A5FA', textDecoration: 'none', fontSize: 14 }}>
-                      {data.cabinet.telephone}
-                    </a>
-                  </div>
-                </div>
-              )}
-              {data.cabinet.email && (
-                <div style={{
-                  backgroundColor: '#1E293B',
-                  border: '1px solid rgba(59,130,246,0.25)',
-                  borderRadius: 12,
-                  padding: '20px 24px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 16,
-                }}>
-                  <span style={{ fontSize: 22 }}>✉️</span>
-                  <div>
-                    <p style={{ fontWeight: 700, color: '#fff', margin: '0 0 4px', fontSize: 15 }}>Email</p>
-                    <a href={`mailto:${data.cabinet.email}`} style={{ color: '#60A5FA', textDecoration: 'none', fontSize: 14 }}>
-                      {data.cabinet.email}
-                    </a>
-                  </div>
-                </div>
-              )}
-              <div style={{
-                backgroundColor: '#1E293B',
-                border: '1px solid rgba(59,130,246,0.25)',
-                borderRadius: 12,
-                padding: '20px 24px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 16,
-              }}>
-                <span style={{ fontSize: 22 }}>🕐</span>
-                <div>
-                  <p style={{ fontWeight: 700, color: '#fff', margin: '0 0 4px', fontSize: 15 }}>Horaires</p>
-                  <p style={{ color: '#94A3B8', margin: 0, fontSize: 14 }}>
-                    {data.cabinet.workingDays} · {data.cabinet.workStartTime} – {data.cabinet.workEndTime}
-                  </p>
-                </div>
-              </div>
-              {data.cabinet.whatsappNumber && (
-                <a
-                  href={`https://wa.me/${data.cabinet.whatsappNumber.replace(/\D/g, '')}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 10,
-                    backgroundColor: '#25D366',
-                    color: '#fff',
-                    borderRadius: 12,
-                    padding: '16px 24px',
-                    fontWeight: 700,
-                    fontSize: 15,
-                    textDecoration: 'none',
-                    transition: 'background-color 0.2s',
-                  }}
-                >
-                  <span style={{ fontSize: 20 }}>💬</span>
-                  Contacter sur WhatsApp
-                </a>
-              )}
-              <a
-                href={bookingUrl}
-                style={{
-                  display: 'block',
-                  backgroundColor: '#3B82F6',
-                  color: '#fff',
-                  borderRadius: 12,
-                  padding: '16px 24px',
-                  fontWeight: 700,
-                  fontSize: 15,
-                  textDecoration: 'none',
-                  textAlign: 'center',
-                  boxShadow: '0 0 24px rgba(59,130,246,0.4)',
-                  transition: 'box-shadow 0.2s, background-color 0.2s',
-                }}
-                className="sport-btn-primary"
-              >
-                Prendre rendez-vous en ligne
-              </a>
-            </div>
-
-            {/* Map embed */}
-            {data.site.googleMapsEmbed ? (
-              <div
-                style={{
-                  borderRadius: 12,
-                  overflow: 'hidden',
-                  minHeight: 300,
-                  border: '2px solid rgba(59,130,246,0.3)',
-                }}
-                dangerouslySetInnerHTML={{ __html: data.site.googleMapsEmbed }}
-              />
-            ) : (
-              <div
-                style={{
-                  backgroundColor: '#1E293B',
-                  border: '2px solid rgba(59,130,246,0.3)',
-                  borderRadius: 12,
-                  minHeight: 300,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#94A3B8',
-                  fontSize: 15,
-                }}
-              >
-                Carte bientôt disponible
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* ── FOOTER ── */}
-      <footer
-        style={{
-          backgroundColor: '#020617',
-          padding: '28px 24px',
-          borderTop: '1px solid #3B82F6',
-        }}
-      >
-        <div
-          style={{
-            maxWidth: 1200,
-            margin: '0 auto',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: 16,
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: '50%',
-                backgroundColor: '#3B82F6',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#fff',
-                fontWeight: 700,
-                fontSize: 16,
-                boxShadow: '0 0 12px rgba(59,130,246,0.4)',
-              }}
-            >
-              K
-            </div>
-            <span style={{ fontWeight: 700, color: '#fff', fontSize: 15 }}>{data.cabinet.nom}</span>
-          </div>
-          <p style={{ color: '#475569', fontSize: 13, margin: 0 }}>
-            © {new Date().getFullYear()} {data.cabinet.nom} · Propulsé par{' '}
-            <span style={{ color: '#3B82F6', fontWeight: 600 }}>KinéPro</span>
+          <h2 style={{ fontSize: 'clamp(1.8rem,4vw,2.8rem)', fontWeight: 900, color: 'white', marginBottom: 16, textTransform: 'uppercase' }}>
+            {content?.bookingTitle ?? (lang === 'ar' ? 'ابدأ تعافيك اليوم' : 'Commencez Votre Récupération')}
+          </h2>
+          <p style={{ color: '#94A3B8', fontSize: 18, marginBottom: 48, lineHeight: 1.6 }}>
+            {content?.bookingSubtitle ?? (lang === 'ar' ? 'احجز جلستك الأولى مع أخصائيينا' : 'Réservez votre première séance avec nos spécialistes')}
           </p>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 16, flexWrap: 'wrap' }}>
+            <a href={bookingUrl} className="pulse-btn" style={{ background: 'linear-gradient(135deg, #06B6D4, #1D4ED8)', color: 'white', padding: '18px 48px', borderRadius: 8, fontWeight: 800, fontSize: 17, textDecoration: 'none', display: 'inline-block' }}>
+              {lang === 'ar' ? 'احجز الآن' : 'Réserver maintenant'}
+            </a>
+            {cabinet.telephone && (
+              <a href={`tel:${cabinet.telephone}`} style={{ color: '#06B6D4', padding: '18px 32px', borderRadius: 8, fontWeight: 600, fontSize: 16, textDecoration: 'none', border: '2px solid rgba(6,182,212,0.4)', display: 'inline-block', transition: 'border-color 0.2s' }}>
+                📞 {cabinet.telephone}
+              </a>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* TESTIMONIALS */}
+      <section style={{ padding: '96px 24px', background: '#111827' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+          <div style={{ marginBottom: 56 }} className="fade-in">
+            <div style={{ display: 'inline-block', background: 'rgba(6,182,212,0.1)', color: '#06B6D4', borderRadius: 6, padding: '4px 14px', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>
+              {lang === 'ar' ? 'آراء' : 'Avis'}
+            </div>
+            <h2 style={{ fontSize: 'clamp(1.8rem,4vw,2.6rem)', fontWeight: 800, color: 'white', textTransform: 'uppercase' }}>
+              {content?.testimonialsTitle ?? (lang === 'ar' ? 'ماذا يقول رياضيونا' : 'Ils Témoignent')}
+            </h2>
+          </div>
+          <div className="testi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 24 }}>
+            {(data.testimonials.length > 0 ? data.testimonials : [
+              { id: '1', patientName: lang === 'ar' ? 'عمر الفهد' : 'Omar F.', textFr: 'Retour sur le terrain en un temps record. Une équipe au top qui connaît vraiment son métier.', textAr: 'عدت للملعب في وقت قياسي. فريق محترف حقيقي يعرف عمله جيداً.', rating: 5 },
+              { id: '2', patientName: lang === 'ar' ? 'ريم الحداد' : 'Rim H.', textFr: 'Après ma rupture des ligaments, ce cabinet m\'a accompagnée jusqu\'à la compétition. Merci !', textAr: 'بعد تمزق الرباط، رافقني هذا المركز حتى العودة للمنافسة. شكراً!', rating: 5 },
+              { id: '3', patientName: lang === 'ar' ? 'سفيان العلوي' : 'Soufiane A.', textFr: 'Techniques modernes, suivi personnalisé et résultats qui parlent d\'eux-mêmes. Je recommande !', textAr: 'تقنيات حديثة، متابعة شخصية ونتائج تتكلم بنفسها. أنصح بشدة!', rating: 5 },
+            ] as typeof data.testimonials).map((t, i) => (
+              <div key={t.id} className="testi-card fade-in">
+                <div style={{ fontSize: 40, color: '#06B6D4', lineHeight: 1, marginBottom: 16, fontFamily: 'Georgia, serif', textShadow: '0 0 12px rgba(6,182,212,0.4)' }}>"</div>
+                <p style={{ color: '#CBD5E1', fontSize: 15, lineHeight: 1.7, marginBottom: 20 }}>
+                  {lang === 'ar' ? t.textAr : t.textFr}
+                </p>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontWeight: 700, color: 'white', fontSize: 14 }}>{t.patientName}</span>
+                  <div style={{ color: '#06B6D4', fontSize: 14 }}>{'★'.repeat(t.rating)}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CONTACT */}
+      <section id="contact" style={{ padding: '96px 24px', background: '#0F172A' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: 56 }} className="fade-in">
+            <div style={{ display: 'inline-block', background: 'rgba(6,182,212,0.1)', color: '#06B6D4', borderRadius: 6, padding: '4px 14px', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>Contact</div>
+            <h2 style={{ fontSize: 'clamp(1.8rem,4vw,2.6rem)', fontWeight: 800, color: 'white', textTransform: 'uppercase', marginBottom: 12 }}>
+              {content?.contactTitle ?? (lang === 'ar' ? 'تواصل معنا' : 'Nous Contacter')}
+            </h2>
+            <p style={{ color: '#94A3B8', fontSize: 17 }}>{cabinet.adresse ?? cabinet.ville}</p>
+          </div>
+          <div className="contact-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 20, marginBottom: 40 }}>
+            {cabinet.telephone && (
+              <div className="contact-card fade-in">
+                <div style={{ width: 44, height: 44, borderRadius: 10, background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>📞</div>
+                <div>
+                  <div style={{ fontSize: 12, color: '#64748B', fontWeight: 600, marginBottom: 2, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{lang === 'ar' ? 'الهاتف' : 'Téléphone'}</div>
+                  <a href={`tel:${cabinet.telephone}`} style={{ color: '#06B6D4', fontWeight: 700, fontSize: 16, textDecoration: 'none' }}>{cabinet.telephone}</a>
+                </div>
+              </div>
+            )}
+            {cabinet.email && (
+              <div className="contact-card fade-in">
+                <div style={{ width: 44, height: 44, borderRadius: 10, background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>✉️</div>
+                <div>
+                  <div style={{ fontSize: 12, color: '#64748B', fontWeight: 600, marginBottom: 2, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Email</div>
+                  <a href={`mailto:${cabinet.email}`} style={{ color: '#06B6D4', fontWeight: 700, fontSize: 15, textDecoration: 'none' }}>{cabinet.email}</a>
+                </div>
+              </div>
+            )}
+            {cabinet.adresse && (
+              <div className="contact-card fade-in">
+                <div style={{ width: 44, height: 44, borderRadius: 10, background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>📍</div>
+                <div>
+                  <div style={{ fontSize: 12, color: '#64748B', fontWeight: 600, marginBottom: 2, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{lang === 'ar' ? 'العنوان' : 'Adresse'}</div>
+                  <span style={{ color: '#E2E8F0', fontWeight: 600, fontSize: 15 }}>{cabinet.adresse}</span>
+                </div>
+              </div>
+            )}
+            {cabinet.whatsappNumber && (
+              <div className="contact-card fade-in">
+                <div style={{ width: 44, height: 44, borderRadius: 10, background: 'rgba(22,163,74,0.1)', border: '1px solid rgba(22,163,74,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>💬</div>
+                <div>
+                  <div style={{ fontSize: 12, color: '#64748B', fontWeight: 600, marginBottom: 2, textTransform: 'uppercase', letterSpacing: '0.06em' }}>WhatsApp</div>
+                  <a href={`https://wa.me/${cabinet.whatsappNumber}`} target="_blank" rel="noopener noreferrer" style={{ color: '#4ADE80', fontWeight: 700, fontSize: 16, textDecoration: 'none' }}>
+                    {cabinet.whatsappNumber}
+                  </a>
+                </div>
+              </div>
+            )}
+          </div>
+          {data.site.googleMapsEmbed && (
+            <div style={{ borderRadius: 16, overflow: 'hidden', border: '2px solid rgba(6,182,212,0.2)', boxShadow: '0 0 32px rgba(6,182,212,0.1)' }} className="fade-in">
+              <iframe src={data.site.googleMapsEmbed} width="100%" height="360" style={{ border: 'none', display: 'block' }} loading="lazy" />
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* FOOTER */}
+      <footer style={{ background: '#020617', padding: '40px 24px', borderTop: '1px solid rgba(6,182,212,0.2)' }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(6,182,212,0.1)', border: '1px solid rgba(6,182,212,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#06B6D4', fontWeight: 800, fontSize: 16, boxShadow: '0 0 8px rgba(6,182,212,0.3)' }}>K</div>
+            <span style={{ fontWeight: 700, color: '#E2E8F0', fontSize: 16 }}>{cabinet.nom}</span>
+          </div>
+          <span style={{ color: '#475569', fontSize: 13 }}>
+            Propulsé par <a href="https://kinepro-omega.vercel.app" style={{ color: '#06B6D4', fontWeight: 600, textDecoration: 'none' }}>KinéPro</a>
+          </span>
         </div>
       </footer>
-
-      {/* ── STYLES ── */}
-      <style>{`
-        * { box-sizing: border-box; }
-
-        .sport-nav-link:hover {
-          color: #60A5FA !important;
-          border-bottom-color: #3B82F6 !important;
-        }
-        .sport-cta-btn:hover {
-          background-color: #2563EB !important;
-          box-shadow: 0 0 28px rgba(59,130,246,0.65) !important;
-        }
-        .sport-btn-primary:hover {
-          background-color: #2563EB !important;
-          box-shadow: 0 0 36px rgba(59,130,246,0.65) !important;
-        }
-        .sport-btn-ghost:hover {
-          background-color: rgba(59,130,246,0.10) !important;
-        }
-
-        .sport-service-card:hover {
-          transform: translateY(-4px);
-          box-shadow: 0 0 28px rgba(59,130,246,0.18) !important;
-        }
-        .sport-team-card:hover {
-          transform: translateY(-4px);
-          box-shadow: 0 0 28px rgba(59,130,246,0.25) !important;
-        }
-
-        .sport-grid-3 {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 24px;
-        }
-        .sport-grid-4 {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 24px;
-        }
-        .sport-grid-2 {
-          display: grid;
-          grid-template-columns: repeat(2, 1fr);
-          gap: 32px;
-          align-items: start;
-        }
-
-        @media (max-width: 1024px) {
-          .sport-grid-4 { grid-template-columns: repeat(2, 1fr); }
-        }
-
-        @media (max-width: 768px) {
-          .sport-desktop-nav { display: none !important; }
-          .sport-hamburger { display: flex !important; }
-
-          .sport-grid-3 { grid-template-columns: 1fr; }
-          .sport-grid-4 { grid-template-columns: repeat(2, 1fr); }
-          .sport-grid-2 { grid-template-columns: 1fr; }
-
-          .sport-hero-h1 { font-size: 36px !important; letter-spacing: -0.5px !important; }
-          .sport-hero-subtitle { font-size: 16px !important; }
-        }
-
-        @media (max-width: 480px) {
-          .sport-grid-4 { grid-template-columns: 1fr; }
-        }
-      `}</style>
-    </>
+    </div>
   )
 }

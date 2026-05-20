@@ -51,7 +51,7 @@ export async function PATCH(req: NextRequest, { params }: Context) {
 
   try {
     const body = await req.json()
-    const allowed = ['templateId','primaryColor','secondaryColor','heroTitle','heroSubtitle','heroImageUrl','aboutText','googleMapsEmbed','published'] as const
+    const allowed = ['templateId','primaryColor','secondaryColor','contentFr','contentAr','heroImageUrl','googleMapsEmbed','published'] as const
     const data: Record<string, any> = {}
     for (const key of allowed) {
       if (body[key] !== undefined) data[key] = body[key]
@@ -77,8 +77,8 @@ export async function POST(req: NextRequest, { params }: Context) {
 
   try {
     const body = await req.json()
-    if (!body.patientName || !body.text) {
-      return NextResponse.json({ error: 'patientName et text requis' }, { status: 400 })
+    if (!body.patientName) {
+      return NextResponse.json({ error: 'patientName requis' }, { status: 400 })
     }
 
     // Ensure site exists
@@ -92,7 +92,8 @@ export async function POST(req: NextRequest, { params }: Context) {
       data: {
         cabinetSiteId: site.id,
         patientName: body.patientName,
-        text: body.text,
+        textFr: body.textFr ?? body.text ?? '',
+        textAr: body.textAr ?? '',
         rating: body.rating ?? 5,
       },
     })

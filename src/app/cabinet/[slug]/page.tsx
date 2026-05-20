@@ -6,11 +6,36 @@ type Params = Promise<{ slug: string }>
 
 export async function generateMetadata({ params }: { params: Params }) {
   const { slug } = await params
-  const cab = await prisma.cabinet.findUnique({ where: { slug }, select: { nom: true, ville: true } })
-  if (!cab) return { title: 'Cabinet introuvable' }
+  const cabinet = await prisma.cabinet.findUnique({
+    where: { slug },
+    select: {
+      nom: true, ville: true,
+      site: { select: { contentFr: true, contentAr: true, heroImageUrl: true } },
+    },
+  })
+  if (!cabinet) return { title: 'Cabinet introuvable' }
+
+  const fr = cabinet.site?.contentFr as Record<string, any> | null
+  const title = fr?.seoTitle || `${cabinet.nom} — ${cabinet.ville ?? 'Maroc'} | Kinésithérapie`
+  const description = fr?.seoDescription || `Prenez rendez-vous en ligne avec ${cabinet.nom}, votre cabinet de kinésithérapie.`
+
   return {
-    title: `${cab.nom} — ${cab.ville ?? 'Maroc'} | Kinésithérapie`,
-    description: `Prenez rendez-vous en ligne avec ${cab.nom}, votre cabinet de kinésithérapie.`,
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      images: cabinet.site?.heroImageUrl ? [cabinet.site.heroImageUrl] : [],
+    },
+    other: {
+      'application/ld+json': JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'MedicalBusiness',
+        name: cabinet.nom,
+        description,
+        address: { '@type': 'PostalAddress', addressLocality: cabinet.ville ?? 'Maroc' },
+      }),
+    },
   }
 }
 
@@ -28,9 +53,12 @@ export default async function CabinetSitePage({ params }: { params: Params }) {
         select: {
           templateId: true, published: true,
           primaryColor: true, secondaryColor: true,
-          heroTitle: true, heroSubtitle: true, heroImageUrl: true,
-          aboutText: true, googleMapsEmbed: true,
-          testimonials: { orderBy: { createdAt: 'desc' }, select: { id: true, patientName: true, text: true, rating: true } },
+          contentFr: true, contentAr: true,
+          heroImageUrl: true, googleMapsEmbed: true,
+          testimonials: {
+            orderBy: { createdAt: 'desc' },
+            select: { id: true, patientName: true, textFr: true, textAr: true, rating: true },
+          },
         },
       },
       seanceTypes: {
@@ -46,20 +74,25 @@ export default async function CabinetSitePage({ params }: { params: Params }) {
     },
   }).catch(() => null)
 
-  if (!cabinet || !cabinet.site || !cabinet.site.published) {
-    // Show "under construction" instead of 404 for unpublished sites
-    if (cabinet && cabinet.site && !cabinet.site.published) {
-      return (
-        <div style={{ minHeight:'100vh', background:'#0F172A', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'system-ui,sans-serif' }}>
-          <div style={{ textAlign:'center', color:'white', padding:40 }}>
-            <div style={{ fontSize:64, marginBottom:20 }}>🚧</div>
-            <h1 style={{ fontSize:28, fontWeight:800, margin:'0 0 12px' }}>Site en construction</h1>
-            <p style={{ color:'rgba(255,255,255,0.5)', fontSize:16, margin:0 }}>{cabinet.nom} — bientôt en ligne</p>
-          </div>
-        </div>
-      )
-    }
+  if (!cabinet || !cabinet.site) {
     notFound()
+  }
+
+  if (!cabinet.site.published) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#0F172A', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'system-ui,sans-serif' }}>
+        <div style={{ textAlign: 'center', color: 'white', padding: 40, maxWidth: 480 }}>
+          <div style={{ fontSize: 64, marginBottom: 20 }}>🚧</div>
+          <h1 style={{ fontSize: 28, fontWeight: 800, margin: '0 0 12px' }}>Site en construction</h1>
+          <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 16, margin: '0 0 28px' }}>{cabinet.nom} — bientôt en ligne</p>
+          {cabinet.telephone && (
+            <a href={`tel:${cabinet.telephone}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '12px 24px', background: '#2563EB', color: 'white', borderRadius: 12, textDecoration: 'none', fontWeight: 700, fontSize: 15 }}>
+              📞 {cabinet.telephone}
+            </a>
+          )}
+        </div>
+      </div>
+    )
   }
 
   const data = {
@@ -80,10 +113,9 @@ export default async function CabinetSitePage({ params }: { params: Params }) {
       templateId: cabinet.site.templateId,
       primaryColor: cabinet.site.primaryColor,
       secondaryColor: cabinet.site.secondaryColor,
-      heroTitle: cabinet.site.heroTitle,
-      heroSubtitle: cabinet.site.heroSubtitle,
+      contentFr: cabinet.site.contentFr as Record<string, any> | null,
+      contentAr: cabinet.site.contentAr as Record<string, any> | null,
       heroImageUrl: cabinet.site.heroImageUrl,
-      aboutText: cabinet.site.aboutText,
       googleMapsEmbed: cabinet.site.googleMapsEmbed,
     },
     seanceTypes: cabinet.seanceTypes,
