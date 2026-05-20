@@ -20,6 +20,18 @@ export async function POST(req: NextRequest, { params }: Context) {
   }
   const { cabinetId } = await params
 
+  // ── Debug logs ──────────────────────────────────────────────────────────────
+  console.log('[generate-content] Cabinet ID:', cabinetId)
+  console.log('[generate-content] ANTHROPIC_API_KEY exists:', !!process.env.ANTHROPIC_API_KEY)
+
+  if (!process.env.ANTHROPIC_API_KEY) {
+    console.error('[generate-content] Missing ANTHROPIC_API_KEY env variable')
+    return NextResponse.json(
+      { error: 'Clé API Claude non configurée. Ajoutez ANTHROPIC_API_KEY dans les variables d\'environnement.' },
+      { status: 503 }
+    )
+  }
+
   try {
     // Gather cabinet context
     const cabinet = await prisma.cabinet.findUnique({
@@ -31,14 +43,19 @@ export async function POST(req: NextRequest, { params }: Context) {
         site: { select: { templateId: true } },
       },
     })
-    if (!cabinet) return NextResponse.json({ error: 'Cabinet introuvable' }, { status: 404 })
+
+    if (!cabinet) {
+      return NextResponse.json({ error: 'Cabinet introuvable' }, { status: 404 })
+    }
+
+    console.log('[generate-content] Cabinet found:', cabinet.nom, '| Praticiens:', cabinet.praticiens.length, '| Services:', cabinet.seanceTypes.length)
 
     const praticiensList = cabinet.praticiens
       .map(p => `${p.prenom} ${p.nom}${p.specialite ? ` (${p.specialite})` : ''}`)
       .join(', ') || 'Kinésithérapeute diplômé'
     const servicesList = cabinet.seanceTypes
       .map(s => `${s.nom}${s.dureeDefaut ? ` — ${s.dureeDefaut}min` : ''}${s.tarifDefaut ? ` — ${s.tarifDefaut} MAD` : ''}`)
-      .join(', ') || 'Kinésithérapie générale'
+      .join(', ') || 'Kinésithérapie générale, Rééducation, Massage thérapeutique'
     const templateId = cabinet.site?.templateId ?? 'medical'
 
     const prompt = `Tu es un expert en marketing pour cabinets de kinésithérapie au Maroc.
@@ -49,7 +66,7 @@ Praticiens: ${praticiensList}
 Services: ${servicesList}
 Template style: ${templateId}
 
-Réponds UNIQUEMENT en JSON valide sans markdown:
+Réponds UNIQUEMENT en JSON valide sans markdown ni backticks. Commence directement par { et termine par }:
 {
   "fr": {
     "heroTitle": "titre accrocheur max 8 mots",
@@ -98,19 +115,20 @@ Réponds UNIQUEMENT en JSON valide sans markdown:
       {"number": "98%", "label": "مرضى راضون"}
     ],
     "testimonials": [
-      {"name": "الاسم", "text": "شهادة واقعية 2-3 جمل", "rating": 5},
-      {"name": "الاسم", "text": "شهادة واقعية 2-3 جمل", "rating": 5},
-      {"name": "الاسم", "text": "شهادة واقعية 2-3 جمل", "rating": 4}
+      {"name": "الاسم ب.", "text": "شهادة واقعية 2-3 جمل", "rating": 5},
+      {"name": "الاسم م.", "text": "شهادة واقعية 2-3 جمل", "rating": 5},
+      {"name": "الاسم ع.", "text": "شهادة واقعية 2-3 جمل", "rating": 4}
     ]
   }
 }`
 
-    // Call Claude API
+    // ── Call Claude API ──────────────────────────────────────────────────────
+    console.log('[generate-content] Calling Anthropic API...')
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY ?? '',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
@@ -120,33 +138,49 @@ Réponds UNIQUEMENT en JSON valide sans markdown:
       }),
     })
 
+    console.log('[generate-content] Anthropic status:', anthropicRes.status)
+
     if (!anthropicRes.ok) {
       const errBody = await anthropicRes.text()
-      console.error('[generate-content] Anthropic error:', errBody)
-      return NextResponse.json({ error: 'Erreur API Claude' }, { status: 502 })
+      console.error('[generate-content] Anthropic API error:', anthropicRes.status, errBody)
+      return NextResponse.json(
+        { error: `Erreur API Claude (${anthropicRes.status}): ${errBody.slice(0, 200)}` },
+        { status: 502 }
+      )
     }
 
     const anthropicData = await anthropicRes.json()
     const rawText: string = anthropicData.content?.[0]?.text ?? ''
+    console.log('[generate-content] Raw response length:', rawText.length)
+    console.log('[generate-content] Raw response preview:', rawText.slice(0, 200))
 
     // Strip markdown code fences if present
-    const jsonText = rawText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim()
+    const jsonText = rawText
+      .replace(/^```(?:json)?\s*/i, '')
+      .replace(/\s*```\s*$/, '')
+      .trim()
 
     let parsed: { fr: Record<string, any>; ar: Record<string, any> }
     try {
       parsed = JSON.parse(jsonText)
-    } catch {
-      console.error('[generate-content] JSON parse error, raw:', rawText.slice(0, 500))
-      return NextResponse.json({ error: 'Réponse IA invalide' }, { status: 502 })
+    } catch (parseErr) {
+      console.error('[generate-content] JSON parse failed. Raw text:', rawText.slice(0, 800))
+      return NextResponse.json(
+        { error: `Réponse IA invalide (JSON parse error). Raw: ${rawText.slice(0, 200)}` },
+        { status: 502 }
+      )
     }
 
     const { fr, ar } = parsed
+    if (!fr || !ar) {
+      console.error('[generate-content] Missing fr or ar in parsed response:', JSON.stringify(parsed).slice(0, 300))
+      return NextResponse.json({ error: 'Réponse IA incomplète: champs fr/ar manquants' }, { status: 502 })
+    }
 
-    // Extract testimonials for the Testimonial table
+    // ── Save to DB ───────────────────────────────────────────────────────────
     const frTestimonials: { name: string; text: string; rating: number }[] = fr.testimonials ?? []
     const arTestimonials: { name: string; text: string; rating: number }[] = ar.testimonials ?? []
 
-    // Upsert site with content (without testimonials array in JSON)
     const contentFrClean = { ...fr, testimonials: undefined }
     const contentArClean = { ...ar, testimonials: undefined }
 
@@ -156,15 +190,14 @@ Réponds UNIQUEMENT en JSON valide sans markdown:
       update: { contentFr: contentFrClean, contentAr: contentArClean },
     })
 
-    // Replace existing AI testimonials (delete all, recreate)
+    // Replace AI testimonials
     await prisma.testimonial.deleteMany({ where: { cabinetSiteId: site.id } })
 
     const maxLen = Math.max(frTestimonials.length, arTestimonials.length)
-    const testimonials = []
     for (let i = 0; i < maxLen; i++) {
       const f = frTestimonials[i]
       const a = arTestimonials[i]
-      const t = await prisma.testimonial.create({
+      await prisma.testimonial.create({
         data: {
           cabinetSiteId: site.id,
           patientName: f?.name ?? a?.name ?? 'Patient',
@@ -173,7 +206,6 @@ Réponds UNIQUEMENT en JSON valide sans markdown:
           rating: f?.rating ?? a?.rating ?? 5,
         },
       })
-      testimonials.push(t)
     }
 
     const updatedSite = await prisma.cabinetSite.findUnique({
@@ -181,9 +213,14 @@ Réponds UNIQUEMENT en JSON valide sans markdown:
       include: { testimonials: { orderBy: { createdAt: 'desc' } } },
     })
 
+    console.log('[generate-content] Done. Testimonials saved:', maxLen)
     return NextResponse.json(updatedSite)
+
   } catch (err) {
-    console.error('[generate-content]', err)
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
+    console.error('[generate-content] Unexpected error:', err)
+    return NextResponse.json(
+      { error: `Erreur serveur: ${err instanceof Error ? err.message : String(err)}` },
+      { status: 500 }
+    )
   }
 }

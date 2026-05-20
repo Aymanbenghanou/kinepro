@@ -76,6 +76,8 @@ export default function SuperAdminSiteConfigPage() {
   const [contentAr, setContentAr] = useState<SiteContent>({})
   const [generating, setGenerating] = useState(false)
   const [generationDone, setGenerationDone] = useState(false)
+  const [genError, setGenError] = useState<string | null>(null)
+  const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
 
   // Testimonials tab
   const [newPatientName, setNewPatientName] = useState('')
@@ -131,18 +133,45 @@ export default function SuperAdminSiteConfigPage() {
     await patch({ published, googleMapsEmbed: googleMapsEmbed || null })
   }
 
+  function showToast(msg: string, type: 'success' | 'error') {
+    setToast({ msg, type })
+    setTimeout(() => setToast(null), 5000)
+  }
+
   async function generateAI() {
     setGenerating(true)
     setGenerationDone(false)
-    const res = await fetch(`/api/super-admin/sites/${cabinetId}/generate-content`, { method: 'POST' })
-    if (res.ok) {
-      const updated = await res.json()
-      setSite(prev => prev ? { ...prev, ...updated } : prev)
-      setContentFr((updated.contentFr as SiteContent) ?? {})
-      setContentAr((updated.contentAr as SiteContent) ?? {})
+    setGenError(null)
+    console.log('[generateAI] Starting — cabinetId:', cabinetId)
+    try {
+      const res = await fetch(`/api/super-admin/sites/${cabinetId}/generate-content`, { method: 'POST' })
+      console.log('[generateAI] Response status:', res.status)
+
+      let body: any
+      try { body = await res.json() } catch { body = { error: `HTTP ${res.status}` } }
+
+      if (!res.ok) {
+        const errMsg = body?.error ?? `Erreur ${res.status}`
+        console.error('[generateAI] API error:', errMsg)
+        setGenError(errMsg)
+        showToast(`❌ ${errMsg}`, 'error')
+        return
+      }
+
+      console.log('[generateAI] Success — contentFr keys:', Object.keys(body.contentFr ?? {}))
+      setSite(prev => prev ? { ...prev, ...body } : prev)
+      setContentFr((body.contentFr as SiteContent) ?? {})
+      setContentAr((body.contentAr as SiteContent) ?? {})
       setGenerationDone(true)
+      showToast('✓ Contenu généré avec succès en FR et AR !', 'success')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Erreur réseau'
+      console.error('[generateAI] Network/fetch error:', msg)
+      setGenError(msg)
+      showToast(`❌ ${msg}`, 'error')
+    } finally {
+      setGenerating(false)
     }
-    setGenerating(false)
   }
 
   async function togglePublish() {
@@ -196,6 +225,24 @@ export default function SuperAdminSiteConfigPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#0F0A2E', padding: '32px 24px' }}>
+      {/* ── Toast ── */}
+      {toast && (
+        <div style={{
+          position: 'fixed', top: 24, right: 24, zIndex: 9999,
+          padding: '14px 20px', borderRadius: 12, fontSize: 14, fontWeight: 600,
+          maxWidth: 420, boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+          background: toast.type === 'success' ? '#166534' : '#7f1d1d',
+          color: toast.type === 'success' ? '#4ADE80' : '#FCA5A5',
+          border: `1px solid ${toast.type === 'success' ? 'rgba(74,222,128,0.3)' : 'rgba(252,165,165,0.3)'}`,
+          display: 'flex', alignItems: 'flex-start', gap: 10,
+          animation: 'slideIn 0.25s ease',
+        }}>
+          <span style={{ flexShrink: 0, fontSize: 18, lineHeight: 1 }}>{toast.type === 'success' ? '✓' : '✗'}</span>
+          <span style={{ flex: 1, lineHeight: 1.5 }}>{toast.msg}</span>
+          <button onClick={() => setToast(null)} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: 18, padding: 0, lineHeight: 1, opacity: 0.7 }}>×</button>
+        </div>
+      )}
+
       <div style={{ maxWidth: 960, margin: '0 auto' }}>
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 28 }}>
@@ -325,10 +372,16 @@ export default function SuperAdminSiteConfigPage() {
                     </button>
                   )}
                   <button onClick={generateAI} disabled={generating} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 20px', background: generating ? 'rgba(99,102,241,0.3)' : '#4F46E5', color: 'white', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: generating ? 'not-allowed' : 'pointer' }}>
-                    {generating ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Génération…</> : <><Sparkles size={16} /> Générer avec Claude AI</>}
+                    {generating ? <><Loader2 size={16} style={{ animation: 'spin 1s linear infinite' }} /> Génération en cours…</> : <><Sparkles size={16} /> Générer avec Claude AI</>}
                   </button>
                 </div>
               </div>
+              {/* Error detail */}
+              {genError && (
+                <div style={{ marginTop: 14, padding: '12px 16px', background: 'rgba(127,29,29,0.5)', border: '1px solid rgba(252,165,165,0.3)', borderRadius: 10, color: '#FCA5A5', fontSize: 13, lineHeight: 1.6 }}>
+                  <strong>Erreur :</strong> {genError}
+                </div>
+              )}
             </div>
 
             {/* FR + AR fields side by side */}
@@ -482,7 +535,10 @@ export default function SuperAdminSiteConfigPage() {
         )}
       </div>
 
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: none; } }
+      `}</style>
     </div>
   )
 }
