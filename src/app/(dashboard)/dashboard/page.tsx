@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
@@ -78,8 +79,9 @@ export default async function DashboardPage() {
       where: { cabinetId, statut: 'paye', dateEmise: { gte: monthStart, lte: monthEnd } },
       _sum: { montant: true },
     }),
-    prisma.facture.count({
-      where: { cabinetId, statut: { in: ['en_attente', 'en_retard'] } },
+    prisma.facture.findMany({
+      where: { cabinetId, statut: { in: ['en_attente', 'en_retard', 'partielle'] } },
+      select: { montant: true, montantPaye: true },
     }),
     prisma.rendezVous.findMany({
       where: { cabinetId, date: { gte: todayStart, lte: todayEnd } },
@@ -127,6 +129,13 @@ export default async function DashboardPage() {
   })
   const seancesParJour = joursDisplay.map(j => ({ jour: j, count: joursMap[j] || 0 }))
 
+  // Reste à encaisser : SUM(montant - montantPaye) sur toutes les factures non payées
+  const resteAEncaisser = facturesImpayees.reduce(
+    (s: number, f: { montant: number; montantPaye: number }) => s + Math.max(0, f.montant - (f.montantPaye ?? 0)),
+    0,
+  )
+  const nbFacturesImpayees = facturesImpayees.length
+
   return (
     <div>
       <Topbar title="Tableau de bord" subtitle="Vue d'ensemble du cabinet" />
@@ -137,7 +146,15 @@ export default async function DashboardPage() {
           <StatCard title="RDV aujourd'hui"   value={rdvAujourdHui}                         icon={Calendar}    color="#2563EB" bgColor="#DBEAFE" />
           <StatCard title="Patients actifs"    value={patientsActifs}                         icon={Users}       color="#16A34A" bgColor="#DCFCE7" />
           <StatCard title="Revenus du mois"    value={formatMoney(revenusMonth._sum.montant ?? 0)} icon={DollarSign} color="#F59E0B" bgColor="#FEF3C7" />
-          <StatCard title="Factures impayées"  value={facturesImpayees}                       icon={AlertCircle} color="#DC2626" bgColor="#FEE2E2" />
+          <Link href="/facturation?statut=en_attente" style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
+            <StatCard
+              title={resteAEncaisser > 0 ? `Reste à encaisser (${nbFacturesImpayees})` : 'Factures impayées'}
+              value={resteAEncaisser > 0 ? formatMoney(resteAEncaisser) : nbFacturesImpayees}
+              icon={AlertCircle}
+              color={resteAEncaisser > 0 ? '#DC2626' : '#16A34A'}
+              bgColor={resteAEncaisser > 0 ? '#FEE2E2' : '#DCFCE7'}
+            />
+          </Link>
         </div>
 
         {/* Row 2 */}

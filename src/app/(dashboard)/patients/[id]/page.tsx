@@ -525,12 +525,19 @@ export default function PatientDetailPage() {
             ) : (
               <>
                 {/* Résumé financier */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1, borderBottom: '1px solid #E2E8F0' }}>
-                  {[
-                    { label: 'Total encaissé', value: formatMoney(patient.factures?.filter((f: any) => f.statut === 'paye').reduce((s: number, f: any) => s + f.montant, 0) || 0), color: '#16A34A' },
-                    { label: 'En attente', value: formatMoney(patient.factures?.filter((f: any) => f.statut !== 'paye').reduce((s: number, f: any) => s + f.montant, 0) || 0), color: '#D97706' },
-                    { label: 'Tarif séance', value: patient.tarifSeance ? `${patient.tarifSeance} MAD` : '—', color: '#2563EB' },
-                  ].map(({ label, value, color }) => (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 1, borderBottom: '1px solid #E2E8F0' }}>
+                  {(() => {
+                    const facs = patient.factures || []
+                    const totalFacture = facs.reduce((s: number, f: any) => s + (f.montant || 0), 0)
+                    const totalPaye    = facs.reduce((s: number, f: any) => s + (f.montantPaye ?? (f.statut === 'paye' ? f.montant : 0)), 0)
+                    const reste        = Math.max(0, totalFacture - totalPaye)
+                    return [
+                      { label: 'Total facturé', value: formatMoney(totalFacture), color: '#0F172A' },
+                      { label: 'Total payé',    value: formatMoney(totalPaye),    color: '#16A34A' },
+                      { label: 'Reste dû',      value: formatMoney(reste),        color: reste > 0 ? '#DC2626' : '#16A34A' },
+                      { label: 'Tarif séance',  value: patient.tarifSeance ? `${patient.tarifSeance} MAD` : '—', color: '#2563EB' },
+                    ]
+                  })().map(({ label, value, color }) => (
                     <div key={label} style={{ padding: 16, textAlign: 'center' }}>
                       <div style={{ fontSize: 18, fontWeight: 700, color }}>{value}</div>
                       <div style={{ fontSize: 12, color: '#64748B' }}>{label}</div>

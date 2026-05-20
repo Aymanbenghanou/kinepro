@@ -246,17 +246,31 @@ model Seance {
 }
 
 model Facture {
-  id           String    @id @default(cuid())
-  montant      Float
-  statut       String    @default("en_attente")
-  dateEmise    DateTime  @default(now())
+  id           String     @id @default(cuid())
+  montant      Float                      // = montant total à facturer
+  montantPaye  Float      @default(0)     // cumul des paiements
+  statut       String     @default("en_attente") // paye | en_attente | partielle | en_retard
+  dateEmise    DateTime   @default(now())
   datePaiement DateTime?
   cabinetId    String?
   patientId    String
-  seanceId     String?   @unique
-  patient      Patient   @relation(fields: [patientId], references: [id])
-  seance       Seance?   @relation(fields: [seanceId], references: [id])
-  createdAt    DateTime  @default(now())
+  seanceId     String?    @unique
+  paiements    Paiement[]
+  patient      Patient    @relation(fields: [patientId], references: [id])
+  seance       Seance?    @relation(fields: [seanceId], references: [id])
+  createdAt    DateTime   @default(now())
+}
+
+model Paiement {
+  id           String   @id @default(cuid())
+  factureId    String
+  facture      Facture  @relation(fields: [factureId], references: [id], onDelete: Cascade)
+  montant      Float
+  modePaiement String   // especes | virement | cheque | carte
+  datePaiement DateTime @default(now())
+  notes        String?
+  cabinetId    String?
+  createdAt    DateTime @default(now())
 }
 
 model Feedback {

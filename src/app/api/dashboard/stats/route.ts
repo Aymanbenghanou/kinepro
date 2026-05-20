@@ -44,7 +44,7 @@ export async function GET() {
         _sum: { montant: true },
       }),
       prisma.facture.count({
-        where: { cabinetId, statut: { in: ['en_attente', 'en_retard'] } },
+        where: { cabinetId, statut: { in: ['en_attente', 'en_retard', 'partielle'] } },
       }),
       prisma.rendezVous.findMany({
         where: { cabinetId, date: { gte: todayStart, lte: todayEnd } },
@@ -95,6 +95,13 @@ export async function GET() {
       }),
     ])
 
+    // Reste à encaisser : SUM(montant - montantPaye) sur toutes les factures non payées
+    const unpaidFactures = await prisma.facture.findMany({
+      where: { cabinetId, statut: { in: ['en_attente', 'en_retard', 'partielle'] } },
+      select: { montant: true, montantPaye: true },
+    })
+    const resteAEncaisser = unpaidFactures.reduce((s, f) => s + Math.max(0, f.montant - (f.montantPaye ?? 0)), 0)
+
     // Calcul séances par jour de la semaine
     const joursMap: Record<string, number> = { Lun: 0, Mar: 0, Mer: 0, Jeu: 0, Ven: 0, Sam: 0, Dim: 0 }
     const joursLabels  = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam']
@@ -112,6 +119,7 @@ export async function GET() {
         patientsActifs,
         revenusMonth: revenusMonth._sum.montant || 0,
         facturesImpayees,
+        resteAEncaisser,
       },
       rdvDuJour,
       patientsRecents,
