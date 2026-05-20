@@ -201,8 +201,11 @@ export default function CabinetSiteV2({ data }: { data: CabinetData }) {
   const [showBackToTop, setShowBackToTop] = useState(false)
   const [showMobileCta, setShowMobileCta] = useState(false) // hidden until first scroll
   const [statsActive, setStatsActive] = useState(false)
+  const [svcIndex, setSvcIndex] = useState(0)
+  const [showSwipeHint, setShowSwipeHint] = useState(true)
   const lastScrollY = useRef(0)
   const statsRef = useRef<HTMLDivElement>(null)
+  const svcScrollRef = useRef<HTMLDivElement>(null)
 
   const isRTL = lang === 'ar'
   const content = ((isRTL ? site.contentAr : site.contentFr) ?? {}) as SiteContent
@@ -271,6 +274,28 @@ export default function CabinetSiteV2({ data }: { data: CabinetData }) {
     document.body.style.overflow = menuOpen ? 'hidden' : ''
     return () => { document.body.style.overflow = '' }
   }, [menuOpen])
+
+  // Services carousel — track active card on scroll
+  useEffect(() => {
+    const el = svcScrollRef.current
+    if (!el) return
+    const onScroll = () => {
+      const card = el.querySelector<HTMLElement>('.v2-svc-card')
+      if (!card) return
+      const cardW = card.offsetWidth + 16 // gap
+      const idx = Math.round(el.scrollLeft / cardW)
+      setSvcIndex(idx)
+      if (el.scrollLeft > 20) setShowSwipeHint(false)
+    }
+    el.addEventListener('scroll', onScroll, { passive: true })
+    return () => el.removeEventListener('scroll', onScroll)
+  }, [])
+
+  // Hide swipe hint after 2.5s
+  useEffect(() => {
+    const t = setTimeout(() => setShowSwipeHint(false), 2500)
+    return () => clearTimeout(t)
+  }, [])
 
   const navItems = [
     { label: isRTL ? 'الخدمات' : 'Services', href: '#services' },
@@ -478,15 +503,61 @@ export default function CabinetSiteV2({ data }: { data: CabinetData }) {
 
     /* ── Services ── */
     .v2-services-bg { background: ${isDark ? bgColor : '#F8FAFF'}; }
-    .v2-svc-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
+    .v2-svc-grid {
+      display: flex;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      gap: 16px;
+      padding: 4px 20px 20px;
+      margin: 0 -20px;
+      scrollbar-width: none;
+    }
+    .v2-svc-grid::-webkit-scrollbar { display: none; }
     .v2-svc-card {
-      background: ${cardBg}; border-radius: ${borderRadius}; overflow: hidden;
+      flex: 0 0 75vw;
+      max-width: 300px;
+      min-height: 220px;
+      scroll-snap-align: center;
+      background: ${cardBg}; border-radius: 16px; overflow: hidden;
       display: flex; flex-direction: column;
       border: 1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.07)'};
-      box-shadow: 0 2px 12px rgba(0,0,0,${isDark ? '0.25' : '0.07'});
+      box-shadow: 0 4px 16px rgba(0,0,0,${isDark ? '0.3' : '0.08'});
       transition: transform 0.22s, box-shadow 0.22s;
+      text-decoration: none;
+      color: inherit;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
     }
-    .v2-svc-card:hover { transform: translateY(-5px); box-shadow: 0 14px 40px rgba(0,0,0,${isDark ? '0.35' : '0.14'}); }
+    .v2-svc-card:active { transform: scale(0.98); }
+    .v2-svc-card:hover { box-shadow: 0 14px 40px rgba(0,0,0,${isDark ? '0.35' : '0.14'}); }
+
+    /* Carousel dots */
+    .v2-svc-dots {
+      display: flex; justify-content: center; gap: 8px; margin-top: 20px;
+    }
+    .v2-svc-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: ${isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.18)'};
+      transition: all 0.25s ease;
+    }
+    .v2-svc-dot.active {
+      width: 24px; border-radius: 4px; background: ${primary};
+    }
+
+    /* Swipe hint */
+    .v2-svc-hint {
+      text-align: center; font-size: 13px; color: ${subtleColor};
+      font-weight: 600; margin-top: 14px; opacity: 1;
+      transition: opacity 0.6s ease;
+      animation: v2HintPulse 1.6s ease-in-out infinite;
+    }
+    .v2-svc-hint.fade { opacity: 0; pointer-events: none; }
+    @keyframes v2HintPulse {
+      0%,100% { transform: translateX(0); }
+      50% { transform: translateX(6px); }
+    }
     .v2-svc-top { height: 6px; background: linear-gradient(90deg, ${primary}, ${secondary}); }
     .v2-svc-body { padding: 24px; flex: 1; display: flex; flex-direction: column; }
     .v2-svc-icon {
@@ -685,13 +756,19 @@ export default function CabinetSiteV2({ data }: { data: CabinetData }) {
     /* ── Responsive ── */
     @media (min-width: 600px) {
       .v2-hero-btns { flex-direction: row; max-width: 460px; }
-      .v2-svc-grid { grid-template-columns: repeat(2,1fr); }
       .v2-testi-grid { flex-direction: row; flex-wrap: wrap; }
       .v2-testi-card { flex: 1; min-width: 260px; }
       .v2-steps { display: grid; grid-template-columns: repeat(3,1fr); }
     }
     @media (min-width: 1024px) {
-      .v2-svc-grid { grid-template-columns: repeat(3,1fr); }
+      .v2-svc-grid {
+        display: grid; grid-template-columns: repeat(3,1fr);
+        gap: 24px; overflow: visible; padding: 0; margin: 0;
+        scroll-snap-type: none;
+      }
+      .v2-svc-card { flex: 1; max-width: none; scroll-snap-align: none; }
+      .v2-svc-card:hover { transform: translateY(-5px); }
+      .v2-svc-dots, .v2-svc-hint { display: none; }
       .v2-about-grid { flex-direction: row; align-items: center; gap: 72px; }
       [dir="rtl"] .v2-about-grid { flex-direction: row-reverse; }
       .v2-about-img-wrap { flex: 1; }
@@ -813,9 +890,9 @@ export default function CabinetSiteV2({ data }: { data: CabinetData }) {
             <div className="v2-section-line" />
             <p className="v2-section-sub">{content.servicesSubtitle ?? (isRTL ? 'رعاية شاملة ومتخصصة لكل مريض' : 'Une prise en charge complète et personnalisée')}</p>
           </div>
-          <div className="v2-svc-grid">
+          <div className="v2-svc-grid" ref={svcScrollRef}>
             {displayServices.map((s, i) => (
-              <div key={s.id} className="v2-svc-card v2-fade">
+              <a key={s.id} href="#booking" className="v2-svc-card v2-fade">
                 <div className="v2-svc-top" />
                 <div className="v2-svc-body">
                   <div className="v2-svc-icon">
@@ -827,11 +904,19 @@ export default function CabinetSiteV2({ data }: { data: CabinetData }) {
                     {s.dureeDefaut && <span className="v2-pill-dur">⏱ {s.dureeDefaut} min</span>}
                     {s.tarifDefaut && <span className="v2-pill-price">💰 {s.tarifDefaut} MAD</span>}
                   </div>
-                  <a href="#booking" className="v2-svc-link">
+                  <span className="v2-svc-link">
                     {isRTL ? 'احجز هذا العلاج ←' : 'Réserver ce soin →'}
-                  </a>
+                  </span>
                 </div>
-              </div>
+              </a>
+            ))}
+          </div>
+          <div className={`v2-svc-hint${showSwipeHint ? '' : ' fade'}`}>
+            {isRTL ? '← اسحب لاستكشاف المزيد →' : '← Glissez pour découvrir →'}
+          </div>
+          <div className="v2-svc-dots">
+            {displayServices.map((_, i) => (
+              <div key={i} className={`v2-svc-dot${i === svcIndex ? ' active' : ''}`} />
             ))}
           </div>
         </div>
