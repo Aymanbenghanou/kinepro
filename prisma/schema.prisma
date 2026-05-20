@@ -308,3 +308,20 @@ model SystemConfig {
   prixAnnuel     Float  @default(2499)
   updatedAt      DateTime @updatedAt
 }
+
+// ─── Bank accounts (multiple RIBs for receiving payments) ───────────────────
+
+model BankAccount {
+  id            String   @id @default(cuid())
+  bankName      String
+  accountHolder String
+  rib           String
+  iban          String?
+  swift         String?
+  city          String?
+  isActive      Boolean  @default(true)
+  isDefault     Boolean  @default(false)
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}

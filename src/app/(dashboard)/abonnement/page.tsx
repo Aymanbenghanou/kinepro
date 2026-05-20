@@ -1,16 +1,21 @@
 'use client'
 
 import { useSession } from 'next-auth/react'
-import { useState } from 'react'
-import { Check, Crown, Building2, Copy } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Check, Crown, Copy, Star } from 'lucide-react'
+import { getBankMeta, formatRib } from '@/lib/banks'
 
 const SUPER_ADMIN_WA = process.env.NEXT_PUBLIC_SUPER_ADMIN_WA || '212600000000'
 
-const RIB = {
-  banque:   'Attijariwafa Bank',
-  rib:      '007 780 0001234567890 12',
-  titulaire:'KinéPro SARL',
-  ref:      'ABONNEMENT KINEPRO',
+interface BankInfo {
+  id: string
+  bankName: string
+  accountHolder: string
+  rib: string
+  iban?: string | null
+  swift?: string | null
+  city?: string | null
+  isDefault: boolean
 }
 
 function PlanCard({
@@ -27,12 +32,9 @@ function PlanCard({
   return (
     <div style={{
       border: `2px solid ${highlight ? '#2563EB' : '#E2E8F0'}`,
-      borderRadius: 16,
-      padding: 28,
+      borderRadius: 16, padding: 28,
       background: highlight ? '#EFF6FF' : 'white',
-      flex: 1,
-      position: 'relative',
-      cursor: 'pointer',
+      flex: 1, position: 'relative', cursor: 'pointer',
       transition: 'box-shadow 0.2s',
       boxShadow: selected ? '0 0 0 3px #2563EB' : 'none',
     }} onClick={onSelect}>
@@ -65,7 +67,7 @@ function PlanCard({
         padding: '8px 0', textAlign: 'center', borderRadius: 8, fontWeight: 700, fontSize: 14,
         background: selected ? '#2563EB' : 'transparent',
         color: selected ? 'white' : '#2563EB',
-        border: `2px solid ${selected ? '#2563EB' : '#2563EB'}`,
+        border: `2px solid #2563EB`,
       }}>
         {selected ? '✓ Sélectionné' : 'Choisir ce plan'}
       </div>
@@ -73,22 +75,110 @@ function PlanCard({
   )
 }
 
+function BankCard({ acc, amount }: { acc: BankInfo; amount: string }) {
+  const meta = getBankMeta(acc.bankName)
+  const [copied, setCopied] = useState(false)
+
+  function copyRib() {
+    navigator.clipboard.writeText(acc.rib)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div style={{
+      background: 'white', borderRadius: 14, border: '1px solid #E2E8F0',
+      overflow: 'hidden', display: 'flex', flexDirection: 'column',
+      boxShadow: '0 2px 10px rgba(0,0,0,0.04)',
+    }}>
+      {/* Header strip with brand color */}
+      <div style={{ background: meta.color, padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255,255,255,0.2)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, flexShrink: 0 }}>
+            {meta.short}
+          </div>
+          <span style={{ color: 'white', fontWeight: 700, fontSize: 14 }}>{acc.bankName}</span>
+        </div>
+        {acc.isDefault && (
+          <span style={{ background: 'rgba(255,255,255,0.22)', color: 'white', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            <Star size={11} fill="white" /> Recommandé
+          </span>
+        )}
+      </div>
+
+      {/* Body */}
+      <div style={{ padding: 18 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: '10px 12px', fontSize: 13.5 }}>
+          <span style={{ color: '#64748B', fontWeight: 600 }}>Titulaire</span>
+          <span style={{ color: '#0F172A', fontWeight: 600 }}>{acc.accountHolder}</span>
+
+          <span style={{ color: '#64748B', fontWeight: 600 }}>RIB</span>
+          <span style={{ color: '#0F172A', fontFamily: 'ui-monospace, monospace', fontWeight: 700, wordBreak: 'break-all' }}>
+            {formatRib(acc.rib)}
+          </span>
+
+          {acc.iban && (<>
+            <span style={{ color: '#64748B', fontWeight: 600 }}>IBAN</span>
+            <span style={{ color: '#0F172A', fontFamily: 'ui-monospace, monospace', fontSize: 12.5, wordBreak: 'break-all' }}>{acc.iban}</span>
+          </>)}
+
+          {acc.swift && (<>
+            <span style={{ color: '#64748B', fontWeight: 600 }}>SWIFT</span>
+            <span style={{ color: '#0F172A', fontFamily: 'ui-monospace, monospace', fontSize: 12.5 }}>{acc.swift}</span>
+          </>)}
+
+          {acc.city && (<>
+            <span style={{ color: '#64748B', fontWeight: 600 }}>Agence</span>
+            <span style={{ color: '#0F172A' }}>{acc.city}</span>
+          </>)}
+
+          <span style={{ color: '#64748B', fontWeight: 600 }}>Montant</span>
+          <span style={{ color: '#0F172A', fontWeight: 800 }}>{amount}</span>
+        </div>
+
+        <button onClick={copyRib} style={{
+          marginTop: 16, width: '100%', padding: '11px 16px',
+          background: copied ? '#16A34A' : '#F1F5F9',
+          color: copied ? 'white' : '#0F172A',
+          border: 'none', borderRadius: 10, cursor: 'pointer',
+          fontWeight: 700, fontSize: 13.5,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          transition: 'background 0.2s, color 0.2s',
+        }}>
+          {copied ? <><Check size={15} /> Copié !</> : <><Copy size={15} /> Copier le RIB</>}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function AbonnementPage() {
   const { data: session } = useSession()
-  const [selected, setSelected]   = useState<'mensuel' | 'annuel'>('annuel')
-  const [copied,   setCopied]     = useState(false)
-  const [sent,     setSent]       = useState(false)
-  const [sending,  setSending]    = useState(false)
+  const [selected, setSelected] = useState<'mensuel' | 'annuel'>('annuel')
+  const [sent,     setSent]     = useState(false)
+  const [sending,  setSending]  = useState(false)
+  const [accounts, setAccounts] = useState<BankInfo[]>([])
+  const [activeTab, setActiveTab] = useState<string | null>(null)
+  const [loadingBanks, setLoadingBanks] = useState(true)
 
   const user   = session?.user
   const status = user?.subscriptionStatus ?? 'TRIAL'
   const days   = user?.trialDaysLeft
 
-  function copyRib() {
-    navigator.clipboard.writeText(RIB.rib)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
+  useEffect(() => {
+    fetch('/api/payment-info')
+      .then(r => r.ok ? r.json() : [])
+      .then(data => {
+        if (Array.isArray(data)) {
+          setAccounts(data)
+          if (data.length > 0) setActiveTab(data[0].id)
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingBanks(false))
+  }, [])
+
+  const amount = selected === 'mensuel' ? '299 MAD' : '2 499 MAD'
 
   async function handleVirementDone() {
     setSending(true)
@@ -100,7 +190,6 @@ export default function AbonnementPage() {
       `Plan sélectionné: ${selected === 'mensuel' ? 'Mensuel' : 'Annuel'} — ${montant}\n\n` +
       `Veuillez vérifier le virement et activer l'abonnement.`
     )
-    // Notify SUPER_ADMIN via WhatsApp
     window.open(`https://wa.me/${SUPER_ADMIN_WA}?text=${msg}`, '_blank')
     setSent(true)
     setSending(false)
@@ -108,7 +197,7 @@ export default function AbonnementPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#F8FAFC', padding: '32px 24px' }}>
-      <div style={{ maxWidth: 860, margin: '0 auto' }}>
+      <div style={{ maxWidth: 920, margin: '0 auto' }}>
 
         {/* Header */}
         <div style={{ marginBottom: 32 }}>
@@ -118,8 +207,7 @@ export default function AbonnementPage() {
           </div>
           {status === 'TRIAL' && days != null && days >= 0 && (
             <p style={{ fontSize: 14, color: '#64748B', margin: 0 }}>
-              Votre essai gratuit se termine dans <strong>{days} jour{days > 1 ? 's' : ''}</strong>.
-              Choisissez un plan pour continuer.
+              Votre essai gratuit se termine dans <strong>{days} jour{days > 1 ? 's' : ''}</strong>. Choisissez un plan pour continuer.
             </p>
           )}
           {(status === 'TRIAL' && (days == null || days < 0)) && (
@@ -135,32 +223,25 @@ export default function AbonnementPage() {
         </div>
 
         {/* Plan cards */}
-        <div style={{ display: 'flex', gap: 20, marginBottom: 32, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 20, marginBottom: 36, flexWrap: 'wrap' }}>
           <PlanCard
-            name="Mensuel"
-            price="299"
-            period="mois"
+            name="Mensuel" price="299" period="mois"
             features={[
               'Accès complet à toutes les fonctionnalités',
-              'Patients illimités',
-              'Agenda & séances',
-              'Facturation & rapports',
-              'WhatsApp intégré',
-              'Support par email',
+              'Patients illimités', 'Agenda & séances',
+              'Facturation & rapports', 'WhatsApp intégré', 'Support par email',
             ]}
             selected={selected === 'mensuel'}
             onSelect={() => setSelected('mensuel')}
           />
           <PlanCard
-            name="Annuel"
-            price="2 499"
-            period="an"
+            name="Annuel" price="2 499" period="an"
             features={[
               'Tout le plan Mensuel inclus',
               '2 mois offerts (économisez 1 090 MAD)',
               'Support prioritaire',
               'Accès anticipé aux nouvelles fonctionnalités',
-              'Formation d\'intégration offerte',
+              "Formation d'intégration offerte",
               'Facturation annuelle unique',
             ]}
             highlight
@@ -169,38 +250,66 @@ export default function AbonnementPage() {
           />
         </div>
 
-        {/* Payment instructions */}
-        <div style={{ background: 'white', borderRadius: 16, padding: 28, border: '1px solid #E2E8F0', marginBottom: 24 }}>
-          <h2 style={{ fontSize: 16, fontWeight: 700, color: '#0F172A', margin: '0 0 16px' }}>
-            💳 Paiement par virement bancaire
+        {/* Payment section */}
+        <div style={{ marginBottom: 24 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', margin: '0 0 6px' }}>
+            💳 Comment payer ?
           </h2>
-          <p style={{ fontSize: 13, color: '#64748B', margin: '0 0 20px' }}>
-            Effectuez un virement bancaire avec les informations ci-dessous, puis cliquez sur "J'ai effectué le virement".
+          <p style={{ fontSize: 13.5, color: '#64748B', margin: '0 0 18px' }}>
+            Effectuez un virement bancaire vers l'un de nos comptes ci-dessous, puis cliquez sur "J'ai effectué le virement".
             Votre accès sera activé dans les 24h ouvrées.
           </p>
 
-          <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 12, padding: 20, marginBottom: 20 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '140px 1fr', gap: '10px 16px', fontSize: 14 }}>
-              <span style={{ color: '#64748B', fontWeight: 600 }}>Banque</span>
-              <span style={{ color: '#0F172A' }}>{RIB.banque}</span>
-              <span style={{ color: '#64748B', fontWeight: 600 }}>RIB</span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ color: '#0F172A', fontFamily: 'monospace', fontWeight: 600 }}>{RIB.rib}</span>
-                <button onClick={copyRib} style={{ background: 'none', border: 'none', cursor: 'pointer', color: copied ? '#16A34A' : '#2563EB', padding: 0 }}>
-                  <Copy size={14} />
-                </button>
-                {copied && <span style={{ fontSize: 11, color: '#16A34A' }}>Copié !</span>}
-              </span>
-              <span style={{ color: '#64748B', fontWeight: 600 }}>Titulaire</span>
-              <span style={{ color: '#0F172A' }}>{RIB.titulaire}</span>
-              <span style={{ color: '#64748B', fontWeight: 600 }}>Montant</span>
-              <span style={{ color: '#0F172A', fontWeight: 700 }}>
-                {selected === 'mensuel' ? '299 MAD' : '2 499 MAD'}
-              </span>
-              <span style={{ color: '#64748B', fontWeight: 600 }}>Référence</span>
-              <span style={{ color: '#0F172A' }}>{RIB.ref}</span>
+          {loadingBanks ? (
+            <div style={{ padding: 32, textAlign: 'center', color: '#94A3B8', fontSize: 14, background: 'white', borderRadius: 14, border: '1px solid #E2E8F0' }}>
+              Chargement des coordonnées bancaires...
             </div>
-          </div>
+          ) : accounts.length === 0 ? (
+            <div style={{ padding: 24, background: '#FEF3C7', border: '1px solid #FCD34D', borderRadius: 12, color: '#92400E', fontSize: 14, fontWeight: 600 }}>
+              ⚠️ Aucun compte bancaire n'est configuré pour le moment. Veuillez contacter le support sur WhatsApp.
+            </div>
+          ) : accounts.length === 1 ? (
+            <BankCard acc={accounts[0]} amount={amount} />
+          ) : (
+            <>
+              {/* Tabs */}
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
+                {accounts.map(acc => {
+                  const meta = getBankMeta(acc.bankName)
+                  const isActive = activeTab === acc.id
+                  return (
+                    <button
+                      key={acc.id} onClick={() => setActiveTab(acc.id)}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 8,
+                        padding: '9px 14px',
+                        background: isActive ? meta.color : 'white',
+                        color:      isActive ? 'white'    : '#475569',
+                        border: `1.5px solid ${isActive ? meta.color : '#E2E8F0'}`,
+                        borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer',
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      <span style={{
+                        background: isActive ? 'rgba(255,255,255,0.25)' : meta.color,
+                        color: 'white', borderRadius: 6, padding: '2px 7px',
+                        fontSize: 10.5, fontWeight: 800, letterSpacing: '0.04em',
+                      }}>{meta.short}</span>
+                      {acc.bankName}
+                      {acc.isDefault && <Star size={11} fill={isActive ? 'white' : '#F59E0B'} color={isActive ? 'white' : '#F59E0B'} />}
+                    </button>
+                  )
+                })}
+              </div>
+              {accounts.filter(a => a.id === activeTab).map(acc => (
+                <BankCard key={acc.id} acc={acc} amount={amount} />
+              ))}
+            </>
+          )}
+
+          <p style={{ fontSize: 13, color: '#64748B', margin: '18px 0 14px', textAlign: 'center' }}>
+            Après le virement, cliquez ci-dessous pour notifier notre équipe.
+          </p>
 
           {sent ? (
             <div style={{
@@ -212,16 +321,17 @@ export default function AbonnementPage() {
           ) : (
             <button
               onClick={handleVirementDone}
-              disabled={sending}
+              disabled={sending || accounts.length === 0}
               style={{
-                width: '100%', padding: '14px', borderRadius: 10,
-                background: sending ? '#93C5FD' : '#2563EB',
+                width: '100%', padding: '15px', borderRadius: 12,
+                background: sending || accounts.length === 0 ? '#93C5FD' : 'linear-gradient(135deg, #2563EB, #1D4ED8)',
                 color: 'white', border: 'none', fontWeight: 700, fontSize: 15,
                 cursor: sending ? 'not-allowed' : 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                boxShadow: '0 6px 20px rgba(37,99,235,0.3)',
               }}
             >
-              📱 J'ai effectué le virement — Notifier l'équipe KinéPro
+              ✅ J'ai effectué le virement — Notifier l'équipe KinéPro
             </button>
           )}
         </div>
@@ -230,18 +340,9 @@ export default function AbonnementPage() {
         <div style={{ background: 'white', borderRadius: 16, padding: 24, border: '1px solid #E2E8F0' }}>
           <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0F172A', margin: '0 0 16px' }}>Questions fréquentes</h3>
           {[
-            {
-              q: 'Quand mon accès sera-t-il activé ?',
-              a: 'Sous 24h ouvrées après réception et vérification de votre virement.',
-            },
-            {
-              q: 'Puis-je annuler mon abonnement ?',
-              a: 'Oui, à tout moment. Il n\'y a aucun engagement minimum. Contactez-nous par WhatsApp.',
-            },
-            {
-              q: 'Mes données sont-elles sécurisées ?',
-              a: 'Oui. Vos données sont isolées et chiffrées. Nous sommes conformes RGPD.',
-            },
+            { q: 'Quand mon accès sera-t-il activé ?', a: 'Sous 24h ouvrées après réception et vérification de votre virement.' },
+            { q: 'Puis-je annuler mon abonnement ?', a: "Oui, à tout moment. Il n'y a aucun engagement minimum. Contactez-nous par WhatsApp." },
+            { q: 'Mes données sont-elles sécurisées ?', a: 'Oui. Vos données sont isolées et chiffrées. Nous sommes conformes RGPD.' },
           ].map((item, i) => (
             <div key={i} style={{ marginBottom: i < 2 ? 16 : 0, paddingBottom: i < 2 ? 16 : 0, borderBottom: i < 2 ? '1px solid #F1F5F9' : 'none' }}>
               <p style={{ fontSize: 13, fontWeight: 700, color: '#0F172A', margin: '0 0 4px' }}>{item.q}</p>
@@ -249,7 +350,6 @@ export default function AbonnementPage() {
             </div>
           ))}
         </div>
-
       </div>
     </div>
   )
