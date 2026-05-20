@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { ServiceIcon, WhatsAppFloatingButton, WhatsAppContactButton } from '../CabinetSiteShared'
 
 interface SiteContent {
   heroTitle?: string
@@ -241,14 +242,19 @@ export default function SportTemplate({ data }: { data: SiteData }) {
           </div>
           <div className="services-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 20 }}>
             {data.seanceTypes.length > 0 ? data.seanceTypes.map((s, i) => (
-              <div key={s.id} className="sport-card fade-in">
-                <div style={{ color: '#06B6D4', fontSize: 13, fontWeight: 700, marginBottom: 12 }}>◆ {lang === 'ar' ? 'تخصص' : 'Spécialité'}</div>
+              <div key={s.id} className="sport-card fade-in" style={{ display: 'flex', flexDirection: 'column' }}>
+                <div style={{ width: 52, height: 52, borderRadius: 12, background: 'linear-gradient(135deg, #06B6D4, #1D4ED8)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, boxShadow: '0 4px 16px rgba(6,182,212,0.35)' }}>
+                  <ServiceIcon nom={s.nom} size={26} color="white" />
+                </div>
                 <h3 style={{ fontSize: 17, fontWeight: 700, color: 'white', marginBottom: 8 }}>{s.nom}</h3>
                 {s.description && <p style={{ color: '#94A3B8', fontSize: 14, lineHeight: 1.6, marginBottom: 12 }}>{s.description}</p>}
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <span style={{ background: 'rgba(6,182,212,0.1)', color: '#06B6D4', borderRadius: 6, padding: '3px 10px', fontSize: 12, fontWeight: 600, border: '1px solid rgba(6,182,212,0.2)' }}>{s.dureeDefaut} min</span>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+                  {s.dureeDefaut && <span style={{ background: 'rgba(6,182,212,0.1)', color: '#06B6D4', borderRadius: 6, padding: '3px 10px', fontSize: 12, fontWeight: 600, border: '1px solid rgba(6,182,212,0.2)' }}>{s.dureeDefaut} min</span>}
                   {s.tarifDefaut && <span style={{ background: 'rgba(29,78,216,0.15)', color: '#93C5FD', borderRadius: 6, padding: '3px 10px', fontSize: 12, fontWeight: 600, border: '1px solid rgba(29,78,216,0.3)' }}>{s.tarifDefaut} MAD</span>}
                 </div>
+                <a href="#booking" style={{ marginTop: 'auto', color: '#06B6D4', fontWeight: 700, fontSize: 14, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  {lang === 'ar' ? 'احجز ←' : 'Réserver →'}
+                </a>
               </div>
             )) : ([
               { icon: '⚡', title: lang === 'ar' ? 'إعادة تأهيل رياضية' : 'Rééducation Sportive' },
@@ -439,14 +445,8 @@ export default function SportTemplate({ data }: { data: SiteData }) {
               </div>
             )}
             {cabinet.whatsappNumber && (
-              <div className="contact-card fade-in">
-                <div style={{ width: 44, height: 44, borderRadius: 10, background: 'rgba(22,163,74,0.1)', border: '1px solid rgba(22,163,74,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>💬</div>
-                <div>
-                  <div style={{ fontSize: 12, color: '#64748B', fontWeight: 600, marginBottom: 2, textTransform: 'uppercase', letterSpacing: '0.06em' }}>WhatsApp</div>
-                  <a href={`https://wa.me/${cabinet.whatsappNumber}`} target="_blank" rel="noopener noreferrer" style={{ color: '#4ADE80', fontWeight: 700, fontSize: 16, textDecoration: 'none' }}>
-                    {cabinet.whatsappNumber}
-                  </a>
-                </div>
+              <div className="contact-card fade-in" style={{ gridColumn: '1 / -1' }}>
+                <WhatsAppContactButton whatsappNumber={cabinet.whatsappNumber} cabinetName={cabinet.nom} lang={lang} />
               </div>
             )}
           </div>
@@ -457,6 +457,8 @@ export default function SportTemplate({ data }: { data: SiteData }) {
           )}
         </div>
       </section>
+
+      {cabinet.whatsappNumber && <WhatsAppFloatingButton whatsappNumber={cabinet.whatsappNumber} cabinetName={cabinet.nom} lang={lang} />}
 
       {/* FOOTER */}
       <footer style={{ background: '#020617', padding: '40px 24px', borderTop: '1px solid rgba(6,182,212,0.2)' }}>

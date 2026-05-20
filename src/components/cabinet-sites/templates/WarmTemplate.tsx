@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { ServiceIcon, WhatsAppFloatingButton, WhatsAppContactButton } from '../CabinetSiteShared'
 
 interface SiteContent {
   heroTitle?: string
@@ -233,14 +234,19 @@ export default function WarmTemplate({ data }: { data: SiteData }) {
           </div>
           <div className="services-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 24 }}>
             {data.seanceTypes.length > 0 ? data.seanceTypes.map((s, i) => (
-              <div key={s.id} className="warm-card fade-in">
-                <div style={{ width: 48, height: 48, borderRadius: 12, background: '#CCFBF1', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, fontSize: 22 }}>🩺</div>
+              <div key={s.id} className="warm-card fade-in" style={{ display: 'flex', flexDirection: 'column' }}>
+                <div style={{ width: 52, height: 52, borderRadius: 14, background: '#0D9488', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, boxShadow: '0 4px 12px rgba(13,148,136,0.3)' }}>
+                  <ServiceIcon nom={s.nom} size={26} color="white" />
+                </div>
                 <h3 style={{ fontSize: 17, fontWeight: 700, color: '#0D9488', marginBottom: 8 }}>{s.nom}</h3>
                 {s.description && <p style={{ color: '#78716C', fontSize: 14, lineHeight: 1.6, marginBottom: 12 }}>{s.description}</p>}
-                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                  <span style={{ background: '#CCFBF1', color: '#0D9488', borderRadius: 999, padding: '3px 12px', fontSize: 12, fontWeight: 600 }}>{s.dureeDefaut} min</span>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+                  {s.dureeDefaut && <span style={{ background: '#CCFBF1', color: '#0D9488', borderRadius: 999, padding: '3px 12px', fontSize: 12, fontWeight: 600 }}>{s.dureeDefaut} min</span>}
                   {s.tarifDefaut && <span style={{ background: '#FEF3C7', color: '#92400E', borderRadius: 999, padding: '3px 12px', fontSize: 12, fontWeight: 600 }}>{s.tarifDefaut} MAD</span>}
                 </div>
+                <a href="#booking" style={{ marginTop: 'auto', color: '#0D9488', fontWeight: 700, fontSize: 14, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  {lang === 'ar' ? 'احجز ←' : 'Réserver →'}
+                </a>
               </div>
             )) : ([
               { icon: '🦴', title: lang === 'ar' ? 'علاج عضلي هيكلي' : 'Thérapie Musculo-Squelettique' },
@@ -419,14 +425,8 @@ export default function WarmTemplate({ data }: { data: SiteData }) {
               </div>
             )}
             {cabinet.whatsappNumber && (
-              <div className="contact-info-card fade-in">
-                <div style={{ width: 44, height: 44, borderRadius: '50%', background: '#DCFCE7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>💬</div>
-                <div>
-                  <div style={{ fontSize: 12, color: '#78716C', fontWeight: 600, marginBottom: 2 }}>WhatsApp</div>
-                  <a href={`https://wa.me/${cabinet.whatsappNumber}`} target="_blank" rel="noopener noreferrer" style={{ color: '#16A34A', fontWeight: 700, fontSize: 16, textDecoration: 'none' }}>
-                    {cabinet.whatsappNumber}
-                  </a>
-                </div>
+              <div className="contact-info-card fade-in" style={{ gridColumn: '1 / -1' }}>
+                <WhatsAppContactButton whatsappNumber={cabinet.whatsappNumber} cabinetName={cabinet.nom} lang={lang} />
               </div>
             )}
           </div>
@@ -437,6 +437,8 @@ export default function WarmTemplate({ data }: { data: SiteData }) {
           )}
         </div>
       </section>
+
+      {cabinet.whatsappNumber && <WhatsAppFloatingButton whatsappNumber={cabinet.whatsappNumber} cabinetName={cabinet.nom} lang={lang} />}
 
       {/* FOOTER */}
       <footer style={{ background: 'white', padding: '40px 24px', borderTop: '1px solid #FED7AA' }}>
