@@ -256,8 +256,45 @@ export default function SeancesPage() {
           </button>
         </div>
 
-        {/* Table */}
-        <div className="table-container">
+        {/* ── MOBILE card list ─────────────────────────────────── */}
+        <div className="mobile-only mlist">
+          {loading ? (
+            <div style={{ padding: 32, textAlign: 'center', color: '#94A3B8' }}>Chargement…</div>
+          ) : seances.length === 0 ? (
+            <div style={{ padding: 32, textAlign: 'center', color: '#94A3B8' }}>Aucune séance</div>
+          ) : seances.map((s: any) => {
+            const stMap: Record<string, { label: string; bg: string; color: string }> = {
+              realisee: { label: 'Réalisée', bg: '#DCFCE7', color: '#16A34A' },
+              annulee:  { label: 'Annulée',  bg: '#FEE2E2', color: '#DC2626' },
+              no_show:  { label: 'No-show',  bg: '#FEF3C7', color: '#D97706' },
+            }
+            const st = stMap[s.statut] ?? { label: s.statut, bg: '#F1F5F9', color: '#64748B' }
+            return (
+              <div key={s.id} className="mcard">
+                <div className="mcard-row">
+                  <div className="mcard-avatar">{s.patient?.prenom?.[0]}{s.patient?.nom?.[0]}</div>
+                  <div className="mcard-title">{s.patient?.prenom} {s.patient?.nom}</div>
+                  <span className="mcard-pill" style={{ background: st.bg, color: st.color }}>{st.label}</span>
+                </div>
+                <div className="mcard-meta">
+                  📅 {formatDate(s.date)} · ⏱ {s.duree} min
+                </div>
+                <div className="mcard-meta">
+                  🏥 {s.seanceType?.nom || s.typeSeance || '—'}
+                  {s.praticien && <>· Dr. {s.praticien.prenom} {s.praticien.nom}</>}
+                </div>
+                {s.scorePatient != null && (
+                  <div className="mcard-meta" style={{ color: scoreColor(s.scorePatient), fontWeight: 700 }}>
+                    {scoreBadge(s.scorePatient)} Score patient : {s.scorePatient}/10
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+
+        {/* ── DESKTOP table ─────────────────────────────────── */}
+        <div className="table-container desktop-only">
           <div className="table-scroll">
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>

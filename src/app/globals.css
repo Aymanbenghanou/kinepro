@@ -469,6 +469,115 @@ button, a, [role="button"] {
   }
 }
 
+/* ─── Visibility helpers ────────────────────────────────────────────── */
+.mobile-only  { display: none; }
+.desktop-only { display: block; }
+@media (max-width: 768px) {
+  .mobile-only  { display: block; }
+  .desktop-only { display: none !important; }
+  .mobile-only.flex { display: flex; }
+  .mobile-only.grid { display: grid; }
+  /* Hamburger no longer needed — bottom nav covers all routes */
+  .topbar-hamburger { display: none !important; }
+}
+
+/* ─── Horizontal scroll snap row (mobile stat strips) ───────────────── */
+.h-scroll {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  padding: 4px 16px 14px;
+  margin: 0 -16px;
+  touch-action: pan-x pan-y;
+}
+.h-scroll::-webkit-scrollbar { display: none; }
+.h-scroll > * { scroll-snap-align: start; flex-shrink: 0; }
+
+/* ─── Mobile card list (replaces tables on mobile) ──────────────────── */
+.mlist { display: flex; flex-direction: column; gap: 10px; }
+.mcard {
+  background: white;
+  border: 1px solid #E2E8F0;
+  border-radius: 14px;
+  padding: 14px 14px 12px;
+  position: relative;
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  -webkit-tap-highlight-color: transparent;
+}
+.mcard:active { background: #F8FAFC; }
+.mcard-row {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 6px;
+}
+.mcard-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: linear-gradient(135deg, #2563EB, #1E40AF);
+  color: white; font-weight: 800; font-size: 13px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.mcard-title { font-weight: 700; font-size: 15px; color: #0F172A; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mcard-meta  { font-size: 13px; color: #64748B; display: flex; align-items: center; gap: 6px; margin-bottom: 4px; flex-wrap: wrap; }
+.mcard-pill  { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; flex-shrink: 0; }
+.mcard-actions { display: flex; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px solid #F1F5F9; flex-wrap: wrap; }
+.mcard-btn {
+  flex: 1; min-width: 0;
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  padding: 9px 10px; border-radius: 9px;
+  font-weight: 700; font-size: 13px;
+  border: 1px solid #E2E8F0; background: white; color: #475569;
+  cursor: pointer; text-decoration: none;
+  min-height: 40px;
+}
+.mcard-btn.primary { background: #2563EB; color: white; border-color: #2563EB; }
+.mcard-btn.success { background: #DCFCE7; color: #166534; border-color: #BBF7D0; }
+.mcard-btn.warn    { background: #FEF3C7; color: #92400E; border-color: #FDE68A; }
+
+/* ─── Mobile sticky summary bar ─────────────────────────────────────── */
+.msummary {
+  position: sticky; top: 56px;
+  z-index: 30;
+  background: white;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex; gap: 14px; align-items: center;
+  margin-bottom: 14px;
+  box-shadow: 0 4px 14px rgba(15,23,42,0.05);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.msummary::-webkit-scrollbar { display: none; }
+.msummary-item { display: flex; flex-direction: column; flex-shrink: 0; min-width: 90px; }
+.msummary-label { font-size: 11px; color: #64748B; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.msummary-value { font-size: 15px; font-weight: 800; color: #0F172A; line-height: 1.1; margin-top: 2px; white-space: nowrap; }
+.msummary-divider { width: 1px; height: 28px; background: #E2E8F0; flex-shrink: 0; }
+
+/* ─── Mobile filter chip row ────────────────────────────────────────── */
+.fchips {
+  display: flex; gap: 8px; overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 4px 16px 10px;
+  margin: 0 -16px;
+}
+.fchips::-webkit-scrollbar { display: none; }
+.fchip {
+  flex-shrink: 0;
+  padding: 8px 14px; border-radius: 999px;
+  background: white; border: 1px solid #E2E8F0;
+  font-size: 13px; font-weight: 600; color: #475569;
+  cursor: pointer; min-height: 36px;
+  white-space: nowrap;
+}
+.fchip.active { background: #2563EB; color: white; border-color: #2563EB; }
+
 /* ─── Bottom-sheet (Plus menu on mobile bottom nav) ───────────────────── */
 .bsheet-overlay {
   position: fixed; inset: 0; z-index: 220;

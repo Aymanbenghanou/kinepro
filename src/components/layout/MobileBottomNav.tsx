@@ -6,7 +6,9 @@ import { useState, useEffect } from 'react'
 import {
   LayoutDashboard, Calendar, Users, CreditCard, MoreHorizontal,
   Clock, BarChart3, MessageCircle, Settings, Crown, ChevronRight,
+  UserCheck, User, LogOut,
 } from 'lucide-react'
+import { signOut } from 'next-auth/react'
 
 const mainTabs = [
   { icon: LayoutDashboard, label: 'Accueil',     href: '/dashboard'    },
@@ -17,10 +19,12 @@ const mainTabs = [
 
 const moreItems = [
   { icon: Clock,         label: 'Séances',     href: '/seances'     },
-  { icon: BarChart3,     label: 'Rapports',    href: '/rapports'    },
   { icon: MessageCircle, label: 'WhatsApp',    href: '/whatsapp'    },
+  { icon: BarChart3,     label: 'Rapports',    href: '/rapports'    },
+  { icon: UserCheck,     label: 'Personnel',   href: '/personnel'   },
   { icon: Settings,      label: 'Paramètres',  href: '/parametres'  },
   { icon: Crown,         label: 'Abonnement',  href: '/abonnement'  },
+  { icon: User,          label: 'Mon compte',  href: '/compte'      },
 ]
 
 export default function MobileBottomNav() {
@@ -156,6 +160,17 @@ export default function MobileBottomNav() {
               </Link>
             )
           })}
+          <div style={{ height: 1, background: '#F1F5F9', margin: '8px 16px' }} />
+          <button
+            onClick={() => { setSheetOpen(false); signOut({ callbackUrl: '/login' }) }}
+            className="bsheet-item"
+            style={{ color: '#DC2626' }}
+          >
+            <span className="bsheet-item-icon" style={{ background: '#FEE2E2', color: '#DC2626' }}>
+              <LogOut size={18} />
+            </span>
+            <span style={{ flex: 1 }}>Déconnexion</span>
+          </button>
         </div>
       </div>
     </>

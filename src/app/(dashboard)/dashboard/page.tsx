@@ -136,13 +136,42 @@ export default async function DashboardPage() {
   )
   const nbFacturesImpayees = facturesImpayees.length
 
+  const greetingDate = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  const userPrenom   = session.user.prenom ?? ''
+
   return (
     <div>
       <Topbar title="Tableau de bord" subtitle="Vue d'ensemble du cabinet" />
       <div style={{ padding: 24 }}>
 
-        {/* Stats Cards */}
-        <div className="stats-grid-4" style={{ marginBottom: 24 }}>
+        {/* ── MOBILE-ONLY greeting ── */}
+        <div className="mobile-only" style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: 20, fontWeight: 800, color: '#0F172A', lineHeight: 1.2 }}>
+            Bonjour{userPrenom ? `, Dr. ${userPrenom}` : ''} 👋
+          </div>
+          <div style={{ fontSize: 13, color: '#64748B', marginTop: 4, textTransform: 'capitalize' }}>{greetingDate}</div>
+        </div>
+
+        {/* ── MOBILE-ONLY horizontal stats row ── */}
+        <div className="mobile-only">
+          <div className="h-scroll" style={{ marginBottom: 4 }}>
+            <MobileStat icon="📅" value={String(rdvAujourdHui)}                                    label="RDV aujourd'hui" color="#2563EB" />
+            <MobileStat icon="👥" value={String(patientsActifs)}                                   label="Patients actifs" color="#16A34A" />
+            <MobileStat icon="💰" value={formatMoney(revenusMonth._sum.montant ?? 0)}              label="Ce mois"         color="#F59E0B" />
+            <MobileStat icon="⚠️" value={resteAEncaisser > 0 ? formatMoney(resteAEncaisser) : '0'} label={resteAEncaisser > 0 ? `Reste à encaisser (${nbFacturesImpayees})` : 'Tout est payé'} color={resteAEncaisser > 0 ? '#DC2626' : '#16A34A'} href="/facturation?statut=en_attente" />
+          </div>
+        </div>
+
+        {/* ── MOBILE-ONLY quick actions 2×2 ── */}
+        <div className="mobile-only" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
+          <MobileAction href="/agenda"     emoji="➕" label="Nouveau RDV"     bg="#EFF6FF" color="#2563EB" />
+          <MobileAction href="/patients"   emoji="👤" label="Nouveau patient" bg="#F0FDF4" color="#16A34A" />
+          <MobileAction href="/whatsapp"   emoji="💬" label="WhatsApp"        bg="#ECFDF5" color="#059669" />
+          <MobileAction href="/rapports"   emoji="📊" label="Rapports"        bg="#FEF3C7" color="#D97706" />
+        </div>
+
+        {/* ── DESKTOP stats grid (hidden on mobile) ── */}
+        <div className="stats-grid-4 desktop-only" style={{ marginBottom: 24 }}>
           <StatCard title="RDV aujourd'hui"   value={rdvAujourdHui}                         icon={Calendar}    color="#2563EB" bgColor="#DBEAFE" />
           <StatCard title="Patients actifs"    value={patientsActifs}                         icon={Users}       color="#16A34A" bgColor="#DCFCE7" />
           <StatCard title="Revenus du mois"    value={formatMoney(revenusMonth._sum.montant ?? 0)} icon={DollarSign} color="#F59E0B" bgColor="#FEF3C7" />
@@ -285,5 +314,42 @@ export default async function DashboardPage() {
 
       </div>
     </div>
+  )
+}
+
+// ─── Mobile-only helpers ─────────────────────────────────────────────────────
+
+function MobileStat({ icon, value, label, color, href }: {
+  icon: string; value: string; label: string; color: string; href?: string
+}) {
+  const inner = (
+    <div style={{
+      width: 150, padding: 14,
+      background: 'white', border: '1px solid #E2E8F0',
+      borderRadius: 14, display: 'flex', flexDirection: 'column', gap: 6,
+    }}>
+      <div style={{ fontSize: 22 }}>{icon}</div>
+      <div style={{ fontSize: 18, fontWeight: 800, color, lineHeight: 1.1 }}>{value}</div>
+      <div style={{ fontSize: 11.5, color: '#64748B', lineHeight: 1.25 }}>{label}</div>
+    </div>
+  )
+  if (href) return <Link href={href} style={{ textDecoration: 'none' }}>{inner}</Link>
+  return inner
+}
+
+function MobileAction({ href, emoji, label, bg, color }: {
+  href: string; emoji: string; label: string; bg: string; color: string
+}) {
+  return (
+    <Link href={href} style={{
+      background: bg, color,
+      padding: '14px 12px', borderRadius: 14,
+      textDecoration: 'none', display: 'flex', flexDirection: 'column',
+      gap: 6, alignItems: 'flex-start', minHeight: 80,
+      border: '1px solid ' + color + '20',
+    }}>
+      <span style={{ fontSize: 22 }}>{emoji}</span>
+      <span style={{ fontWeight: 700, fontSize: 13.5, lineHeight: 1.25 }}>{label}</span>
+    </Link>
   )
 }

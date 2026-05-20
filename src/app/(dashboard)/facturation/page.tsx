@@ -215,8 +215,77 @@ export default function FacturationPage() {
           </div>
         </div>
 
-        {/* Table */}
-        <div style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: 14, overflow: 'hidden' }}>
+        {/* ── MOBILE: sticky summary + card list ─────────────────── */}
+        <div className="mobile-only">
+          <div className="msummary">
+            <div className="msummary-item">
+              <span className="msummary-label">Encaissé</span>
+              <span className="msummary-value" style={{ color: '#16A34A' }}>{formatMoney(totalEncaisse)}</span>
+            </div>
+            <div className="msummary-divider" />
+            <div className="msummary-item">
+              <span className="msummary-label">Reste</span>
+              <span className="msummary-value" style={{ color: totalReste > 0 ? '#DC2626' : '#16A34A' }}>{formatMoney(totalReste)}</span>
+            </div>
+            <div className="msummary-divider" />
+            <div className="msummary-item">
+              <span className="msummary-label">Total</span>
+              <span className="msummary-value">{visible.length}</span>
+            </div>
+          </div>
+
+          <div className="mlist">
+            {loading ? (
+              <div style={{ padding: 32, textAlign: 'center', color: '#94A3B8' }}>Chargement…</div>
+            ) : visible.length === 0 ? (
+              <div style={{ padding: 32, textAlign: 'center', color: '#94A3B8' }}>Aucune facture</div>
+            ) : visible.map((f: any) => {
+              const reste = Math.max(0, f.montant - (f.montantPaye ?? 0))
+              const pct   = f.montant > 0 ? Math.min(100, ((f.montantPaye ?? 0) / f.montant) * 100) : 0
+              const pillColor = STATUT_LABELS[f.statut as FactureStatut] ?? { bg: '#F1F5F9', color: '#64748B', label: f.statut, icon: '' }
+              return (
+                <div key={f.id} className="mcard">
+                  <Link href={`/facturation/${f.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
+                    <div className="mcard-row">
+                      <div className="mcard-title">{f.patient?.prenom} {f.patient?.nom}</div>
+                      <span className="mcard-pill" style={{ background: pillColor.bg, color: pillColor.color }}>
+                        {pillColor.icon} {pillColor.label}
+                      </span>
+                    </div>
+                    <div className="mcard-meta">
+                      📅 {formatDate(f.dateEmise)}
+                      {f.seance?.seanceType?.nom && <>· 🏥 {f.seance.seanceType.nom}</>}
+                    </div>
+                    {/* Progress bar */}
+                    <div style={{ marginTop: 8 }}>
+                      <div style={{ height: 6, background: '#E2E8F0', borderRadius: 999, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${pct}%`, background: pct >= 100 ? '#16A34A' : '#F59E0B' }} />
+                      </div>
+                      <div style={{ marginTop: 6, fontSize: 12.5, color: '#64748B', display: 'flex', justifyContent: 'space-between' }}>
+                        <span><strong style={{ color: '#0F172A' }}>{formatMoney(f.montantPaye ?? 0)}</strong> / {formatMoney(f.montant)}</span>
+                        {reste > 0 && <span style={{ color: '#DC2626', fontWeight: 700 }}>Reste : {formatMoney(reste)}</span>}
+                      </div>
+                    </div>
+                  </Link>
+                  {/* Actions */}
+                  <div className="mcard-actions">
+                    {reste > 0 && (
+                      <button onClick={() => setPaymentFor(f)} className="mcard-btn success">
+                        <Wallet size={14} /> Payer
+                      </button>
+                    )}
+                    <button onClick={() => exportPDF(f)} className="mcard-btn">
+                      <Download size={14} /> PDF
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* ── DESKTOP: table ─────────────────────────────────── */}
+        <div className="desktop-only" style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: 14, overflow: 'hidden' }}>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }}>
               <thead>
