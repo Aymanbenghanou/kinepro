@@ -191,7 +191,22 @@ model Patient {
   feedbacks            Feedback[]
   whatsappLogs         WhatsAppLog[]
   documents            Document[]
+  exerciseProgrammes   ExerciceProgram[]
   createdAt            DateTime      @default(now())
+}
+
+model ExerciceProgram {
+  id             String    @id @default(cuid())
+  patientId      String
+  patient        Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  seanceId       String?
+  cabinetId      String?
+  titre          String
+  contenu        Json
+  langue         String    @default("fr")
+  envoyeWhatsApp Boolean   @default(false)
+  dateEnvoi      DateTime?
+  createdAt      DateTime  @default(now())
 }
 
 model RendezVous {

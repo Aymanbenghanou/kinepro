@@ -7,11 +7,14 @@ import Topbar from '@/components/layout/Topbar'
 import {
   ArrowLeft, Phone, Mail, MapPin, Activity, FileText,
   Calendar, Plus, X, User, CreditCard, Target, Clock, Download, BarChart2, QrCode,
+  Sparkles, Send,
 } from 'lucide-react'
 import ExercicesModal from '@/components/whatsapp/ExercicesModal'
 import { generateDossierPatientPDF } from '@/lib/pdf-utils'
 import ProgressionTab from '@/components/patients/ProgressionTab'
 import DocumentsTab from '@/components/patients/DocumentsTab'
+import ExerciseProgramModal from '@/components/exercise-program/ExerciseProgramModal'
+import { formatWhatsAppMessage, waUrl } from '@/lib/exercise-program'
 import dynamic from 'next/dynamic'
 
 const QrCodeModal = dynamic(() => import('@/components/qr/QrCodeModal'), { ssr: false })
@@ -19,12 +22,13 @@ const QrCodeModal = dynamic(() => import('@/components/qr/QrCodeModal'), { ssr: 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://kinepro-omega.vercel.app'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
-type TabId = 'informations' | 'seances' | 'plan' | 'facturation' | 'progression' | 'documents'
+type TabId = 'informations' | 'seances' | 'plan' | 'facturation' | 'progression' | 'documents' | 'programmes'
 
 const TABS: { id: TabId; label: string; icon: any }[] = [
   { id: 'informations', label: 'Informations',       icon: User },
   { id: 'seances',      label: 'Séances',            icon: Clock },
   { id: 'plan',         label: 'Plan de traitement', icon: Target },
+  { id: 'programmes',   label: 'Programmes',         icon: Sparkles },
   { id: 'facturation',  label: 'Facturation',        icon: CreditCard },
   { id: 'progression',  label: 'Progression',        icon: BarChart2 },
   { id: 'documents',    label: 'Documents',           icon: FileText },
@@ -581,6 +585,11 @@ export default function PatientDetailPage() {
           <DocumentsTab patientId={id} />
         )}
 
+        {/* ── Tab: Programmes IA ── */}
+        {activeTab === 'programmes' && patient && (
+          <ProgrammesTab patient={patient} cabinet={cabinet} />
+        )}
+
       </div>
 
       {showPlanifier && (
@@ -613,6 +622,123 @@ export default function PatientDetailPage() {
             onClose={() => setShowQr(false)}
           />
         ) : null
+      )}
+    </div>
+  )
+}
+
+// ─── Programmes IA Tab ───────────────────────────────────────────────────────
+
+function ProgrammesTab({ patient, cabinet }: { patient: any; cabinet: any }) {
+  const [programmes, setProgrammes] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showModal, setShowModal] = useState(false)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const r = await fetch(`/api/patients/${patient.id}/exercise-programs`)
+      const d = await r.json()
+      if (Array.isArray(d)) setProgrammes(d)
+    } finally { setLoading(false) }
+  }, [patient.id])
+
+  useEffect(() => { load() }, [load])
+
+  function resend(p: any) {
+    if (!patient.telephone) { alert('Aucun numéro de téléphone pour ce patient.'); return }
+    const msg = formatWhatsAppMessage(p.contenu, {
+      patientPrenom: patient.prenom,
+      pathologie:    patient.pathologie || '—',
+      cabinetNom:    cabinet?.nom ?? undefined,
+      cabinetTel:    cabinet?.telephone ?? undefined,
+      langue:        p.langue === 'ar' ? 'ar' : 'fr',
+    })
+    window.open(waUrl(patient.telephone, msg), '_blank')
+    fetch(`/api/exercise-programs/${p.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ markSent: true }),
+    }).then(load)
+  }
+
+  return (
+    <div style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: 14, overflow: 'hidden' }}>
+      {/* Header */}
+      <div style={{ padding: '18px 20px', borderBottom: '1px solid #F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+        <div>
+          <h2 style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Sparkles size={17} color="#7C3AED" />
+            Programmes d'exercices
+          </h2>
+          <p style={{ fontSize: 12.5, color: '#64748B', margin: '3px 0 0' }}>
+            Générés par Claude AI · envoyés au patient sur WhatsApp
+          </p>
+        </div>
+        <button onClick={() => setShowModal(true)} style={{
+          display: 'inline-flex', alignItems: 'center', gap: 7,
+          padding: '9px 16px', borderRadius: 10,
+          background: 'linear-gradient(135deg, #2563EB, #7C3AED)',
+          color: 'white', border: 'none', fontWeight: 800, fontSize: 13.5, cursor: 'pointer',
+          boxShadow: '0 4px 14px rgba(124,58,237,0.3)',
+        }}>
+          <Sparkles size={14} /> Nouveau programme
+        </button>
+      </div>
+
+      {/* List */}
+      {loading ? (
+        <div style={{ padding: 36, textAlign: 'center', color: '#94A3B8', fontSize: 14 }}>Chargement…</div>
+      ) : programmes.length === 0 ? (
+        <div style={{ padding: '48px 20px', textAlign: 'center' }}>
+          <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#EDE9FE', color: '#7C3AED', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
+            <Sparkles size={24} />
+          </div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: '#0F172A', marginBottom: 6 }}>Aucun programme généré</div>
+          <div style={{ fontSize: 13, color: '#64748B', marginBottom: 18 }}>
+            Cliquez sur « Nouveau programme » pour créer un programme personnalisé avec Claude AI.
+          </div>
+        </div>
+      ) : (
+        <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {programmes.map(p => (
+            <div key={p.id} style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: 12, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+              <div style={{ width: 38, height: 38, borderRadius: 10, background: 'linear-gradient(135deg,#2563EB,#7C3AED)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Sparkles size={17} />
+              </div>
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <div style={{ fontSize: 14.5, fontWeight: 700, color: '#0F172A' }}>{p.titre}</div>
+                <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
+                  {formatDate(p.createdAt)} · {p.langue === 'ar' ? 'العربية' : 'Français'} · {p.contenu?.exercices?.length ?? 0} exercices
+                </div>
+              </div>
+              {p.envoyeWhatsApp && (
+                <span style={{ background: '#DCFCE7', color: '#15803D', fontSize: 11.5, fontWeight: 700, padding: '4px 10px', borderRadius: 999, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  ✓ Envoyé WA
+                </span>
+              )}
+              <button onClick={() => resend(p)} title="Renvoyer sur WhatsApp" style={{
+                display: 'inline-flex', alignItems: 'center', gap: 5,
+                padding: '6px 12px', borderRadius: 8,
+                background: '#25D366', color: 'white', border: 'none',
+                fontWeight: 700, fontSize: 12.5, cursor: 'pointer',
+              }}>
+                <Send size={12} /> {p.envoyeWhatsApp ? 'Renvoyer' : 'Envoyer'}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {showModal && (
+        <ExerciseProgramModal
+          patient={{
+            id: patient.id, prenom: patient.prenom, nom: patient.nom,
+            pathologie: patient.pathologie, telephone: patient.telephone,
+          }}
+          cabinet={cabinet ? { nom: cabinet.nom, telephone: cabinet.telephone } : null}
+          onClose={() => setShowModal(false)}
+          onSent={() => { setShowModal(false); load() }}
+        />
       )}
     </div>
   )
