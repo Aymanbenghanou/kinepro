@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Plus, Eye, EyeOff, Pencil, Trash2, Copy, Check, X, Star } from 'lucide-react'
-import { MOROCCAN_BANKS, getBankMeta, maskRib, formatRib } from '@/lib/banks'
+import { Plus, Eye, EyeOff, Pencil, Trash2, Check, X, Star, ChevronDown } from 'lucide-react'
+import { MOROCCAN_BANKS, maskRib, formatRib } from '@/lib/banks'
+import { BankLogo } from '@/components/BankLogo'
 
 const inputStyle: React.CSSProperties = {
   width: '100%', padding: '10px 14px',
@@ -213,15 +214,12 @@ export default function SuperAdminParametresPage() {
               </thead>
               <tbody>
                 {accounts.map(acc => {
-                  const meta = getBankMeta(acc.bankName)
                   const isRevealed = revealed[acc.id]
                   return (
                     <tr key={acc.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
                       <td style={td}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <div style={{ width: 32, height: 32, borderRadius: 8, background: meta.color, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 11, flexShrink: 0 }}>
-                            {meta.short}
-                          </div>
+                          <BankLogo bankName={acc.bankName} size={36} />
                           <span style={{ fontWeight: 600, color: '#0F172A' }}>{acc.bankName}</span>
                         </div>
                       </td>
@@ -329,11 +327,14 @@ export default function SuperAdminParametresPage() {
             background: 'white', borderRadius: 18, padding: 28, maxWidth: 560, width: '100%',
             maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-              <h3 style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', margin: 0 }}>
-                {editingId ? 'Modifier le compte' : 'Ajouter un compte bancaire'}
-              </h3>
-              <button type="button" onClick={() => setModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B', padding: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18, gap: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                <BankLogo bankName={bankForm.bankName === 'Autre' && customBank ? customBank : bankForm.bankName} size={44} />
+                <h3 style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', margin: 0, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {editingId ? 'Modifier le compte' : 'Ajouter un compte bancaire'}
+                </h3>
+              </div>
+              <button type="button" onClick={() => setModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B', padding: 4, flexShrink: 0 }}>
                 <X size={20} />
               </button>
             </div>
@@ -341,15 +342,10 @@ export default function SuperAdminParametresPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div>
                 <label style={lbl}>Banque *</label>
-                <select
+                <BankDropdown
                   value={bankForm.bankName}
-                  onChange={e => setBankForm(f => ({ ...f, bankName: e.target.value }))}
-                  style={{ ...inputStyle, appearance: 'none' }}
-                >
-                  {MOROCCAN_BANKS.map(b => (
-                    <option key={b.name} value={b.name}>{b.name}</option>
-                  ))}
-                </select>
+                  onChange={v => setBankForm(f => ({ ...f, bankName: v }))}
+                />
                 {bankForm.bankName === 'Autre' && (
                   <input
                     placeholder="Nom de la banque"
@@ -457,6 +453,69 @@ const th: React.CSSProperties = { textAlign: 'left', padding: '10px 12px', fontS
 const td: React.CSSProperties = { padding: '12px', color: '#0F172A', verticalAlign: 'middle' }
 const lbl: React.CSSProperties = { fontSize: 13, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }
 const btnIcon: React.CSSProperties = { background: 'none', border: 'none', cursor: 'pointer', color: '#475569', padding: 6, borderRadius: 6, display: 'inline-flex', alignItems: 'center' }
+
+function BankDropdown({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+    const close = () => setOpen(false)
+    document.addEventListener('click', close)
+    return () => document.removeEventListener('click', close)
+  }, [open])
+
+  return (
+    <div style={{ position: 'relative' }} onClick={e => e.stopPropagation()}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        style={{
+          ...inputStyle, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          cursor: 'pointer', textAlign: 'left',
+        }}
+      >
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+          <BankLogo bankName={value} size={28} />
+          <span style={{ fontWeight: 600, color: '#0F172A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value}</span>
+        </span>
+        <ChevronDown size={16} color="#64748B" style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }} />
+      </button>
+
+      {open && (
+        <div style={{
+          position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0,
+          background: 'white', border: '1.5px solid #E2E8F0', borderRadius: 10,
+          boxShadow: '0 14px 40px rgba(0,0,0,0.12)', maxHeight: 320, overflowY: 'auto',
+          zIndex: 30, padding: 4,
+        }}>
+          {MOROCCAN_BANKS.map(b => {
+            const isActive = b.name === value
+            return (
+              <button
+                key={b.name}
+                type="button"
+                onClick={() => { onChange(b.name); setOpen(false) }}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '8px 10px', borderRadius: 8,
+                  background: isActive ? '#EFF6FF' : 'transparent',
+                  border: 'none', cursor: 'pointer', textAlign: 'left',
+                  transition: 'background 0.12s',
+                }}
+                onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = '#F8FAFC' }}
+                onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
+              >
+                <BankLogo bankName={b.name} size={28} />
+                <span style={{ flex: 1, fontSize: 13.5, fontWeight: isActive ? 700 : 500, color: '#0F172A' }}>{b.name}</span>
+                {isActive && <Check size={15} color="#2563EB" />}
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
 
 function Toggle({ label, checked, onChange, hint }: { label: string; checked: boolean; onChange: (v: boolean) => void; hint?: string }) {
   return (

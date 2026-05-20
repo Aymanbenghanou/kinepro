@@ -4,6 +4,7 @@ import { useSession } from 'next-auth/react'
 import { useState, useEffect } from 'react'
 import { Check, Crown, Copy, Star } from 'lucide-react'
 import { getBankMeta, formatRib } from '@/lib/banks'
+import { BankLogo } from '@/components/BankLogo'
 
 const SUPER_ADMIN_WA = process.env.NEXT_PUBLIC_SUPER_ADMIN_WA || '212600000000'
 
@@ -92,15 +93,13 @@ function BankCard({ acc, amount }: { acc: BankInfo; amount: string }) {
       boxShadow: '0 2px 10px rgba(0,0,0,0.04)',
     }}>
       {/* Header strip with brand color */}
-      <div style={{ background: meta.color, padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(255,255,255,0.2)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 12, flexShrink: 0 }}>
-            {meta.short}
-          </div>
-          <span style={{ color: 'white', fontWeight: 700, fontSize: 14 }}>{acc.bankName}</span>
+      <div style={{ background: meta.color, padding: '16px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+          <BankLogo bankName={acc.bankName} size={48} />
+          <span style={{ color: 'white', fontWeight: 700, fontSize: 15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{acc.bankName}</span>
         </div>
         {acc.isDefault && (
-          <span style={{ background: 'rgba(255,255,255,0.22)', color: 'white', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          <span style={{ background: 'rgba(255,255,255,0.22)', color: 'white', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999, display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
             <Star size={11} fill="white" /> Recommandé
           </span>
         )}
@@ -282,19 +281,15 @@ export default function AbonnementPage() {
                       key={acc.id} onClick={() => setActiveTab(acc.id)}
                       style={{
                         display: 'inline-flex', alignItems: 'center', gap: 8,
-                        padding: '9px 14px',
+                        padding: '7px 14px 7px 7px',
                         background: isActive ? meta.color : 'white',
                         color:      isActive ? 'white'    : '#475569',
                         border: `1.5px solid ${isActive ? meta.color : '#E2E8F0'}`,
-                        borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: 'pointer',
+                        borderRadius: 12, fontWeight: 700, fontSize: 13, cursor: 'pointer',
                         transition: 'all 0.15s',
                       }}
                     >
-                      <span style={{
-                        background: isActive ? 'rgba(255,255,255,0.25)' : meta.color,
-                        color: 'white', borderRadius: 6, padding: '2px 7px',
-                        fontSize: 10.5, fontWeight: 800, letterSpacing: '0.04em',
-                      }}>{meta.short}</span>
+                      <BankLogo bankName={acc.bankName} size={28} />
                       {acc.bankName}
                       {acc.isDefault && <Star size={11} fill={isActive ? 'white' : '#F59E0B'} color={isActive ? 'white' : '#F59E0B'} />}
                     </button>

@@ -9,6 +9,24 @@ export interface MoroccanBank {
   short: string
 }
 
+export interface BankLogoMeta {
+  url: string
+  color: string
+  bgColor: string
+}
+
+export const BANK_LOGOS: Record<string, BankLogoMeta> = {
+  'Attijariwafa Bank':           { url: 'https://www.attijariwafabank.com/sites/default/files/favicon.ico', color: '#E31837', bgColor: '#FEE2E2' },
+  'Banque Populaire':            { url: 'https://www.gbp.ma/favicon.ico',                                   color: '#00843D', bgColor: '#DCFCE7' },
+  'CIH Bank':                    { url: 'https://www.cihbank.ma/favicon.ico',                               color: '#F47920', bgColor: '#FEF3C7' },
+  'BMCE Bank (Bank of Africa)':  { url: 'https://www.bankofafrica.ma/favicon.ico',                          color: '#003DA5', bgColor: '#DBEAFE' },
+  'Société Générale Maroc':      { url: 'https://www.societegenerale.ma/favicon.ico',                       color: '#E30513', bgColor: '#FEE2E2' },
+  'Crédit Agricole du Maroc':    { url: 'https://www.creditagricole.ma/favicon.ico',                        color: '#5C8727', bgColor: '#DCFCE7' },
+  'Crédit du Maroc':             { url: 'https://www.creditdumaroc.ma/favicon.ico',                         color: '#0057A8', bgColor: '#DBEAFE' },
+  'CFG Bank':                    { url: 'https://www.cfgbank.com/favicon.ico',                              color: '#6B21A8', bgColor: '#F3E8FF' },
+  'Al Barid Bank':               { url: 'https://www.albaridbank.ma/favicon.ico',                           color: '#FDB913', bgColor: '#FEF9C3' },
+}
+
 export const MOROCCAN_BANKS: MoroccanBank[] = [
   { name: 'Attijariwafa Bank',           color: '#E31837', short: 'AWB' },
   { name: 'Banque Populaire',            color: '#00843D', short: 'BP'  },
