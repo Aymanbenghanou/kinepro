@@ -87,7 +87,7 @@ export function WhatsAppFloatingButton({
   lang?: 'fr' | 'ar'
 }) {
   const url = whatsAppUrl(whatsappNumber, cabinetName, lang)
-  const tooltip = lang === 'ar' ? 'تواصل معنا على واتساب' : 'Contactez-nous sur WhatsApp'
+  const tooltip = lang === 'ar' ? 'تحتاج مساعدة؟' : "Besoin d'aide ?"
 
   return (
     <>
@@ -97,18 +97,23 @@ export function WhatsAppFloatingButton({
           bottom: 32px;
           right: 28px;
           z-index: 50;
-          width: 56px;
-          height: 56px;
-          background: #25D366;
+          width: 58px;
+          height: 58px;
+          background: linear-gradient(135deg, #25D366, #128C7E);
           border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
-          box-shadow: 0 4px 20px rgba(37,211,102,0.45);
+          box-shadow: 0 6px 24px rgba(37,211,102,0.4), 0 2px 8px rgba(0,0,0,0.12);
           cursor: pointer;
-          transition: transform 0.2s ease, box-shadow 0.2s ease;
+          transition: transform 0.25s cubic-bezier(0.4,0,0.2,1), box-shadow 0.25s ease;
           text-decoration: none;
-          animation: waPulse 2.8s infinite;
+          animation: waEntry 0.6s 0.8s cubic-bezier(0.34,1.56,0.64,1) both, waPulse 2.8s 1.4s infinite;
+        }
+        .wa-float:active { transform: scale(0.92); }
+        @keyframes waEntry {
+          from { opacity: 0; transform: scale(0) translateY(20px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
         }
         .wa-float:hover {
           transform: scale(1.12);

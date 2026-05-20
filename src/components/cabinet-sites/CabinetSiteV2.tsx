@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, type ReactNode } from 'react'
+import { Users, Star, Activity } from 'lucide-react'
 import { ServiceIcon, WhatsAppFloatingButton, WhatsAppContactButton } from './CabinetSiteShared'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -156,16 +157,24 @@ function useCountUp(target: string, active: boolean): string {
   const [value, setValue] = useState('0')
   useEffect(() => {
     if (!active) return
-    const num = parseInt(target.replace(/\D/g, ''), 10)
-    const suffix = target.replace(/\d/g, '')
+    // Parse: [prefix][int][.decimal]?[suffix] — handles "+120", "4.9/5", "98%"
+    const m = target.match(/^([^\d]*)(\d+)([.,]\d+)?(.*)$/)
+    if (!m) { setValue(target); return }
+    const [, prefix, intStr, dec = '', suffix] = m
+    const num = parseInt(intStr, 10)
     if (isNaN(num)) { setValue(target); return }
     let current = 0
-    const step = Math.max(1, Math.ceil(num / 80))
+    const step = Math.max(1, Math.ceil(num / 60))
+    setValue(`${prefix}0${suffix}`)
     const timer = setInterval(() => {
       current = Math.min(current + step, num)
-      setValue(current + suffix)
-      if (current >= num) clearInterval(timer)
-    }, 16)
+      if (current >= num) {
+        setValue(`${prefix}${intStr}${dec}${suffix}`)
+        clearInterval(timer)
+      } else {
+        setValue(`${prefix}${current}${suffix}`)
+      }
+    }, 22)
     return () => clearInterval(timer)
   }, [active, target])
   return value
@@ -173,12 +182,13 @@ function useCountUp(target: string, active: boolean): string {
 
 // ── Stat item ─────────────────────────────────────────────────────────────────
 
-function StatItem({ stat, active }: { stat: { number: string; label: string }; active: boolean }) {
+function StatItem({ stat, active, icon }: { stat: { number: string; label: string }; active: boolean; icon: ReactNode }) {
   const value = useCountUp(stat.number, active)
   return (
-    <div style={{ textAlign: 'center', color: 'white' }}>
-      <div style={{ fontSize: 'clamp(1.8rem,5vw,2.8rem)', fontWeight: 800, lineHeight: 1, marginBottom: 6 }}>{value}</div>
-      <div style={{ fontSize: 14, opacity: 0.85, fontWeight: 500 }}>{stat.label}</div>
+    <div className="v2-stat-card">
+      <div className="v2-stat-icon">{icon}</div>
+      <div className="v2-stat-num">{value}</div>
+      <div className="v2-stat-label">{stat.label}</div>
     </div>
   )
 }
@@ -208,9 +218,9 @@ export default function CabinetSiteV2({ data }: { data: CabinetData }) {
   const isRTL = lang === 'ar'
   const content = ((isRTL ? site.contentAr : site.contentFr) ?? {}) as SiteContent
   const defaultStats = [
-    { number: '500+', label: isRTL ? 'مريض' : 'Patients' },
-    { number: '10+', label: isRTL ? 'سنوات خبرة' : "Ans d'exp." },
-    { number: '98%', label: isRTL ? 'رضا المرضى' : 'Satisfaction' },
+    { number: '+120', label: isRTL ? 'مرضى راضون' : 'Patients satisfaits' },
+    { number: '4.9/5', label: isRTL ? 'تقييمات جوجل' : 'Google Reviews' },
+    { number: '+300', label: isRTL ? 'جلسة منجزة' : 'Séances réalisées' },
   ]
   const stats = content.stats ?? defaultStats
   const defaultServices = isRTL ? DEFAULT_SERVICES_AR : DEFAULT_SERVICES_FR
@@ -286,8 +296,10 @@ export default function CabinetSiteV2({ data }: { data: CabinetData }) {
   const css = `
     ${tplId === 'premium' ? "@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&display=swap');" : ''}
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
 
-    .v2-fade { opacity: 0; transform: translateY(28px); transition: opacity 0.65s ease, transform 0.65s ease; }
+    .v2-fade { opacity: 0; transform: translateY(28px); transition: opacity 0.7s cubic-bezier(0.22,1,0.36,1), transform 0.7s cubic-bezier(0.22,1,0.36,1); }
     .v2-fade.v2-visible { opacity: 1; transform: none; }
 
     /* ── Navbar ── */
@@ -388,6 +400,18 @@ export default function CabinetSiteV2({ data }: { data: CabinetData }) {
       position: absolute; inset: 0;
       background: linear-gradient(160deg, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.38) 55%, rgba(0,0,0,0.65) 100%);
     }
+    .v2-hero-orb {
+      position: absolute; border-radius: 50%;
+      filter: blur(80px); opacity: 0.45; pointer-events: none;
+      will-change: transform;
+    }
+    .v2-hero-orb-1 { width: 340px; height: 340px; background: ${primary}; top: 8%; left: -90px; animation: v2OrbFloat 14s ease-in-out infinite; }
+    .v2-hero-orb-2 { width: 420px; height: 420px; background: ${secondary}; bottom: 4%; right: -110px; animation: v2OrbFloat 16s -4s ease-in-out infinite reverse; }
+    @keyframes v2OrbFloat {
+      0%,100% { transform: translate(0,0) scale(1); }
+      33% { transform: translate(28px,-30px) scale(1.06); }
+      66% { transform: translate(-22px,18px) scale(0.96); }
+    }
     .v2-hero-content {
       position: relative; z-index: 2;
       max-width: 1240px; margin: 0 auto;
@@ -413,14 +437,21 @@ export default function CabinetSiteV2({ data }: { data: CabinetData }) {
     }
     .v2-hero-btns { display: flex; flex-direction: column; gap: 12px; max-width: 360px; }
     .v2-btn-white {
-      display: flex; align-items: center; justify-content: center; gap: 8px;
-      padding: 15px 28px; background: white; color: ${primary};
-      border-radius: 13px; font-weight: 700; font-size: 16px;
-      text-decoration: none; min-height: 52px;
-      transition: transform 0.15s, box-shadow 0.15s;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      padding: 16px 30px; background: white; color: ${primary};
+      border-radius: 14px; font-weight: 700; font-size: 16px;
+      text-decoration: none; min-height: 54px;
+      transition: transform 0.2s cubic-bezier(0.4,0,0.2,1), box-shadow 0.25s ease;
+      box-shadow: 0 6px 22px rgba(0,0,0,0.22), inset 0 -2px 0 rgba(0,0,0,0.05);
+      position: relative;
     }
-    .v2-btn-white:hover { transform: translateY(-2px); box-shadow: 0 10px 32px rgba(0,0,0,0.25); }
+    .v2-btn-white::after {
+      content: ''; position: absolute; inset: 0; border-radius: 14px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.3), transparent 40%);
+      pointer-events: none;
+    }
+    .v2-btn-white:hover { transform: translateY(-3px); box-shadow: 0 14px 38px rgba(0,0,0,0.28); }
+    .v2-btn-white:active { transform: translateY(-1px) scale(0.985); }
     .v2-btn-ghost {
       display: flex; align-items: center; justify-content: center; gap: 8px;
       padding: 15px 28px; border: 2px solid rgba(255,255,255,0.65);
@@ -428,7 +459,26 @@ export default function CabinetSiteV2({ data }: { data: CabinetData }) {
       text-decoration: none; min-height: 52px;
       transition: background 0.15s, border-color 0.15s;
     }
-    .v2-btn-ghost:hover { background: rgba(255,255,255,0.15); border-color: white; }
+    .v2-btn-ghost:hover { background: rgba(255,255,255,0.15); border-color: white; transform: translateY(-3px); }
+    .v2-btn-ghost:active { transform: translateY(-1px) scale(0.985); }
+
+    /* Trust indicators row under hero CTAs */
+    .v2-trust-row {
+      display: flex; flex-wrap: wrap; gap: 18px;
+      margin-top: 28px; padding-top: 24px;
+      border-top: 1px solid rgba(255,255,255,0.18);
+      max-width: 560px;
+    }
+    .v2-trust-item {
+      display: inline-flex; align-items: center; gap: 6px;
+      color: rgba(255,255,255,0.9); font-size: 13.5px; font-weight: 600;
+    }
+    .v2-trust-check {
+      width: 18px; height: 18px; border-radius: 50%;
+      background: rgba(74,222,128,0.2); color: #4ADE80;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 800; flex-shrink: 0;
+    }
 
     .v2-scroll-bounce {
       position: absolute; bottom: 88px; left: 50%; transform: translateX(-50%);
@@ -455,12 +505,57 @@ export default function CabinetSiteV2({ data }: { data: CabinetData }) {
 
     /* ── Stats bar ── */
     .v2-stats {
-      background: linear-gradient(135deg, ${primary}, ${secondary});
-      padding: 52px 24px;
+      position: relative;
+      background: linear-gradient(135deg, ${primary} 0%, ${secondary} 100%);
+      padding: 68px 24px;
+      overflow: hidden;
+    }
+    .v2-stats::before {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(circle at 20% 30%, rgba(255,255,255,0.18), transparent 50%),
+                  radial-gradient(circle at 80% 70%, rgba(255,255,255,0.12), transparent 50%);
+      pointer-events: none;
     }
     .v2-stats-grid {
-      max-width: 900px; margin: 0 auto;
-      display: grid; grid-template-columns: repeat(3,1fr); gap: 16px;
+      position: relative; z-index: 1;
+      max-width: 1080px; margin: 0 auto;
+      display: grid; grid-template-columns: repeat(3,1fr); gap: 14px;
+    }
+    .v2-stat-card {
+      background: rgba(255,255,255,0.12);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 18px;
+      padding: 22px 16px;
+      text-align: center; color: white;
+      transition: transform 0.3s cubic-bezier(0.4,0,0.2,1), background 0.3s, border-color 0.3s;
+      display: flex; flex-direction: column; align-items: center; gap: 10px;
+    }
+    .v2-stat-card:hover {
+      transform: translateY(-5px);
+      background: rgba(255,255,255,0.18);
+      border-color: rgba(255,255,255,0.32);
+    }
+    .v2-stat-icon {
+      width: 48px; height: 48px; border-radius: 14px;
+      background: rgba(255,255,255,0.18);
+      border: 1px solid rgba(255,255,255,0.2);
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 4px;
+    }
+    .v2-stat-num {
+      font-size: clamp(1.7rem, 5vw, 2.6rem); font-weight: 800;
+      line-height: 1; letter-spacing: -0.02em;
+    }
+    .v2-stat-label {
+      font-size: 13px; opacity: 0.9; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    @media (min-width: 600px) {
+      .v2-stats-grid { gap: 20px; }
+      .v2-stat-card { padding: 28px 22px; }
+      .v2-stat-label { font-size: 14px; }
     }
 
     /* ── Sections ── */
@@ -834,7 +929,7 @@ export default function CabinetSiteV2({ data }: { data: CabinetData }) {
       max-height: 0; overflow: hidden;
       transition: max-height 0.35s ease;
     }
-    .v2-faq-item.open .v2-faq-body { max-height: 280px; }
+    .v2-faq-item.open .v2-faq-body { max-height: 400px; }
     .v2-faq-a {
       padding: 0 22px 22px;
       font-size: 14.5px; line-height: 1.7; color: ${subtleColor};
@@ -932,6 +1027,8 @@ export default function CabinetSiteV2({ data }: { data: CabinetData }) {
       <section className="v2-hero">
         <div className="v2-hero-bg" />
         <div className="v2-hero-overlay" />
+        <div className="v2-hero-orb v2-hero-orb-1" aria-hidden />
+        <div className="v2-hero-orb v2-hero-orb-2" aria-hidden />
         <div className="v2-hero-content">
           <div className="v2-hero-badge">
             <span className="v2-hero-badge-dot" />
@@ -955,6 +1052,17 @@ export default function CabinetSiteV2({ data }: { data: CabinetData }) {
               </a>
             )}
           </div>
+          <div className="v2-trust-row">
+            {[
+              isRTL ? 'استجابة سريعة' : 'Réponse rapide',
+              isRTL ? 'مركز عصري' : 'Cabinet moderne',
+              isRTL ? 'حجز عبر الإنترنت' : 'Réservation en ligne',
+            ].map((txt, i) => (
+              <span key={i} className="v2-trust-item">
+                <span className="v2-trust-check">✓</span>{txt}
+              </span>
+            ))}
+          </div>
         </div>
         <div className="v2-scroll-bounce">
           <div className="v2-scroll-chevron" />
@@ -967,9 +1075,10 @@ export default function CabinetSiteV2({ data }: { data: CabinetData }) {
       {/* ── STATS BAR ── */}
       <section className="v2-stats">
         <div className="v2-stats-grid" ref={statsRef}>
-          {stats.map((s, i) => (
-            <StatItem key={i} stat={s} active={statsActive} />
-          ))}
+          {stats.map((s, i) => {
+            const Icon = [Users, Star, Activity][i] ?? Activity
+            return <StatItem key={i} stat={s} active={statsActive} icon={<Icon size={24} strokeWidth={2.25} color="white" />} />
+          })}
         </div>
       </section>
 
@@ -1209,10 +1318,11 @@ export default function CabinetSiteV2({ data }: { data: CabinetData }) {
           </div>
           <div className="v2-faq-list">
             {[
-              { fr: ['Avez-vous une prise en charge mutuelle ?', 'Oui, nous acceptons CNSS, CNOPS et la plupart des mutuelles privées.'], ar: ['هل لديكم تغطية تأمينية؟', 'نعم، نقبل CNSS وCNOPS ومعظم شركات التأمين الخاصة.'] },
-              { fr: ['Faut-il une ordonnance pour consulter ?', "Une ordonnance médicale est recommandée mais pas toujours obligatoire. Contactez-nous pour plus d'informations."], ar: ['هل أحتاج إلى وصفة طبية للاستشارة؟', 'وصفة طبية موصى بها ولكنها ليست إلزامية دائماً. اتصل بنا للمزيد من المعلومات.'] },
-              { fr: ['Combien de séances sont nécessaires ?', 'Cela dépend de votre pathologie. Un bilan initial permet de définir un programme personnalisé.'], ar: ['كم عدد الجلسات اللازمة؟', 'يعتمد ذلك على حالتك. سيحدد التقييم الأولي برنامجاً مخصصاً.'] },
-              { fr: ['Puis-je annuler mon rendez-vous ?', "Oui, vous pouvez annuler jusqu'à 24h avant votre rendez-vous sans frais."], ar: ['هل يمكنني إلغاء موعدي؟', 'نعم، يمكنك الإلغاء حتى 24 ساعة قبل موعدك بدون رسوم.'] },
+              { fr: ['Combien coûte une séance ?', 'Le tarif varie selon le type de soin. Consultez notre liste de services pour le détail des prix, ou contactez-nous pour un devis personnalisé.'], ar: ['كم تكلف الجلسة؟', 'تختلف الأسعار حسب نوع الجلسة. اطلع على قائمة خدماتنا للمزيد من التفاصيل أو اتصل بنا.'] },
+              { fr: ['Est-ce remboursé ?', 'Oui, nos séances sont remboursables par la CNSS, CNOPS et la plupart des mutuelles privées au Maroc.'], ar: ['هل هي مغطاة بالتأمين؟', 'نعم، جلساتنا مغطاة من طرف CNSS وCNOPS ومعظم شركات التأمين الخاصة.'] },
+              { fr: ['Combien dure une séance ?', 'Une séance dure généralement entre 30 et 60 minutes selon le type de soin et votre pathologie.'], ar: ['كم تستغرق الجلسة؟', 'تستغرق الجلسة عادة بين 30 و 60 دقيقة حسب نوع العلاج.'] },
+              { fr: ['Puis-je annuler un rendez-vous ?', "Oui, vous pouvez annuler ou reporter jusqu'à 24h avant votre rendez-vous sans aucun frais."], ar: ['هل يمكنني إلغاء موعدي؟', 'نعم، يمكنك الإلغاء أو التأجيل حتى 24 ساعة قبل موعدك بدون رسوم.'] },
+              { fr: ['Quels problèmes traitez-vous ?', 'Lombalgies, sciatiques, post-opératoire, rééducation sportive, troubles articulaires, kiné respiratoire et bien plus.'], ar: ['ما هي المشاكل التي تعالجونها؟', 'آلام أسفل الظهر، عرق النسا، ما بعد الجراحة، إعادة التأهيل الرياضي، اضطرابات المفاصل، العلاج التنفسي وأكثر.'] },
             ].map((item, i) => {
               const isOpen = faqOpen === i
               return (
