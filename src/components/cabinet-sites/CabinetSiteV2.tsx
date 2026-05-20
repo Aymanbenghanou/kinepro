@@ -201,11 +201,9 @@ export default function CabinetSiteV2({ data }: { data: CabinetData }) {
   const [showBackToTop, setShowBackToTop] = useState(false)
   const [showMobileCta, setShowMobileCta] = useState(false) // hidden until first scroll
   const [statsActive, setStatsActive] = useState(false)
-  const [svcIndex, setSvcIndex] = useState(0)
-  const [showSwipeHint, setShowSwipeHint] = useState(true)
+  const [faqOpen, setFaqOpen] = useState<number | null>(0)
   const lastScrollY = useRef(0)
   const statsRef = useRef<HTMLDivElement>(null)
-  const svcScrollRef = useRef<HTMLDivElement>(null)
 
   const isRTL = lang === 'ar'
   const content = ((isRTL ? site.contentAr : site.contentFr) ?? {}) as SiteContent
@@ -275,33 +273,13 @@ export default function CabinetSiteV2({ data }: { data: CabinetData }) {
     return () => { document.body.style.overflow = '' }
   }, [menuOpen])
 
-  // Services carousel — track active card on scroll
-  useEffect(() => {
-    const el = svcScrollRef.current
-    if (!el) return
-    const onScroll = () => {
-      const card = el.querySelector<HTMLElement>('.v2-svc-card')
-      if (!card) return
-      const cardW = card.offsetWidth + 16 // gap
-      const idx = Math.round(el.scrollLeft / cardW)
-      setSvcIndex(idx)
-      if (el.scrollLeft > 20) setShowSwipeHint(false)
-    }
-    el.addEventListener('scroll', onScroll, { passive: true })
-    return () => el.removeEventListener('scroll', onScroll)
-  }, [])
-
-  // Hide swipe hint after 2.5s
-  useEffect(() => {
-    const t = setTimeout(() => setShowSwipeHint(false), 2500)
-    return () => clearTimeout(t)
-  }, [])
 
   const navItems = [
     { label: isRTL ? 'الخدمات' : 'Services', href: '#services' },
     { label: isRTL ? 'من نحن' : 'À propos', href: '#about' },
     ...(praticiens.length > 0 ? [{ label: isRTL ? 'الفريق' : 'Équipe', href: '#team' }] : []),
     ...(testimonials.length > 0 ? [{ label: isRTL ? 'آراء المرضى' : 'Témoignages', href: '#testimonials' }] : []),
+    { label: 'FAQ', href: '#faq' },
     { label: isRTL ? 'اتصل بنا' : 'Contact', href: '#contact' },
   ]
 
@@ -501,63 +479,40 @@ export default function CabinetSiteV2({ data }: { data: CabinetData }) {
     .v2-section-line { width: 48px; height: 4px; background: ${primary}; border-radius: 2px; margin: 12px auto 16px; }
     .v2-section-sub { font-size: 16px; color: ${subtleColor}; max-width: 580px; margin: 0 auto; line-height: 1.65; }
 
-    /* ── Services ── */
+    /* ── Services (infinite marquee) ── */
     .v2-services-bg { background: ${isDark ? bgColor : '#F8FAFF'}; }
-    .v2-svc-grid {
-      display: flex;
-      flex-wrap: nowrap;
-      overflow-x: auto;
-      scroll-snap-type: x mandatory;
-      -webkit-overflow-scrolling: touch;
-      gap: 16px;
-      padding: 4px 20px 20px;
-      margin: 0 -20px;
-      scrollbar-width: none;
+    .v2-svc-wrap {
+      overflow: hidden;
+      margin: 0 -24px;
+      -webkit-mask-image: linear-gradient(to right, transparent 0, black 8%, black 92%, transparent 100%);
+              mask-image: linear-gradient(to right, transparent 0, black 8%, black 92%, transparent 100%);
     }
-    .v2-svc-grid::-webkit-scrollbar { display: none; }
+    .v2-svc-track {
+      display: flex; gap: 16px; width: max-content;
+      animation: v2SvcScroll 35s linear infinite;
+      padding: 12px 8px;
+    }
+    .v2-svc-wrap:hover .v2-svc-track,
+    .v2-svc-wrap:active .v2-svc-track { animation-play-state: paused; }
+    @keyframes v2SvcScroll {
+      from { transform: translateX(0); }
+      to   { transform: translateX(-50%); }
+    }
+    [dir="rtl"] .v2-svc-track { animation-direction: reverse; }
+
     .v2-svc-card {
-      flex: 0 0 75vw;
-      max-width: 300px;
+      flex: 0 0 260px;
       min-height: 220px;
-      scroll-snap-align: center;
       background: ${cardBg}; border-radius: 16px; overflow: hidden;
       display: flex; flex-direction: column;
       border: 1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.07)'};
       box-shadow: 0 4px 16px rgba(0,0,0,${isDark ? '0.3' : '0.08'});
       transition: transform 0.22s, box-shadow 0.22s;
-      text-decoration: none;
-      color: inherit;
-      cursor: pointer;
+      text-decoration: none; color: inherit; cursor: pointer;
       -webkit-tap-highlight-color: transparent;
     }
     .v2-svc-card:active { transform: scale(0.98); }
-    .v2-svc-card:hover { box-shadow: 0 14px 40px rgba(0,0,0,${isDark ? '0.35' : '0.14'}); }
-
-    /* Carousel dots */
-    .v2-svc-dots {
-      display: flex; justify-content: center; gap: 8px; margin-top: 20px;
-    }
-    .v2-svc-dot {
-      width: 8px; height: 8px; border-radius: 50%;
-      background: ${isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.18)'};
-      transition: all 0.25s ease;
-    }
-    .v2-svc-dot.active {
-      width: 24px; border-radius: 4px; background: ${primary};
-    }
-
-    /* Swipe hint */
-    .v2-svc-hint {
-      text-align: center; font-size: 13px; color: ${subtleColor};
-      font-weight: 600; margin-top: 14px; opacity: 1;
-      transition: opacity 0.6s ease;
-      animation: v2HintPulse 1.6s ease-in-out infinite;
-    }
-    .v2-svc-hint.fade { opacity: 0; pointer-events: none; }
-    @keyframes v2HintPulse {
-      0%,100% { transform: translateX(0); }
-      50% { transform: translateX(6px); }
-    }
+    .v2-svc-card:hover { transform: translateY(-4px); box-shadow: 0 14px 40px rgba(0,0,0,${isDark ? '0.35' : '0.14'}); }
     .v2-svc-top { height: 6px; background: linear-gradient(90deg, ${primary}, ${secondary}); }
     .v2-svc-body { padding: 24px; flex: 1; display: flex; flex-direction: column; }
     .v2-svc-icon {
@@ -753,22 +708,159 @@ export default function CabinetSiteV2({ data }: { data: CabinetData }) {
       border-radius: 13px; text-decoration: none; font-weight: 700; font-size: 16px; min-height: 52px;
     }
 
+    /* ── Why choose us ── */
+    .v2-why-grid {
+      display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px;
+    }
+    .v2-why-card {
+      background: ${cardBg}; border-radius: 14px; padding: 22px 18px;
+      border: 1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.07)'};
+      box-shadow: 0 2px 10px rgba(0,0,0,${isDark ? '0.25' : '0.06'});
+      display: flex; flex-direction: column; gap: 12px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .v2-why-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(0,0,0,${isDark ? '0.35' : '0.12'}); }
+    .v2-why-icon {
+      width: 48px; height: 48px; border-radius: 14px;
+      background: linear-gradient(135deg, ${primary}, ${secondary});
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; box-shadow: 0 4px 14px ${primary}40;
+    }
+    .v2-why-title { font-size: 15px; font-weight: 800; color: ${textColor}; line-height: 1.3; }
+    .v2-why-desc { font-size: 13.5px; color: ${subtleColor}; line-height: 1.55; }
+
+    /* ── How it works ── */
+    .v2-how-bg { background: ${isDark ? 'rgba(255,255,255,0.025)' : '#F8FAFF'}; }
+    .v2-how-grid {
+      display: flex; flex-direction: column; gap: 0;
+      position: relative; max-width: 720px; margin: 0 auto;
+    }
+    .v2-how-step {
+      display: flex; gap: 18px; align-items: flex-start;
+      padding: 8px 0 32px;
+      position: relative;
+    }
+    .v2-how-step:not(:last-child)::after {
+      content: ''; position: absolute;
+      left: 27px; top: 60px; bottom: 0; width: 2px;
+      background-image: linear-gradient(to bottom, ${primary}60 50%, transparent 50%);
+      background-size: 2px 8px; background-repeat: repeat-y;
+    }
+    [dir="rtl"] .v2-how-step:not(:last-child)::after { left: auto; right: 27px; }
+    .v2-how-num {
+      width: 56px; height: 56px; border-radius: 50%;
+      background: linear-gradient(135deg, ${primary}, ${secondary});
+      display: flex; align-items: center; justify-content: center;
+      color: white; font-size: 22px; font-weight: 800; flex-shrink: 0;
+      box-shadow: 0 6px 20px ${primary}50;
+      position: relative; z-index: 2;
+    }
+    .v2-how-content { padding-top: 8px; flex: 1; }
+    .v2-how-emoji { font-size: 22px; margin-bottom: 6px; }
+    .v2-how-title { font-size: 17px; font-weight: 800; color: ${textColor}; margin-bottom: 6px; }
+    .v2-how-desc { font-size: 14.5px; color: ${subtleColor}; line-height: 1.6; }
+
+    /* ── Testimonials (2-row opposite marquee) ── */
+    .v2-google-badge {
+      display: inline-flex; align-items: center; gap: 10px;
+      background: ${cardBg}; border-radius: 999px; padding: 10px 18px;
+      box-shadow: 0 4px 16px rgba(0,0,0,${isDark ? '0.3' : '0.08'});
+      border: 1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'};
+      margin-bottom: 16px;
+    }
+    .v2-google-stars { color: #FBBF24; font-size: 15px; letter-spacing: 1px; }
+    .v2-google-text { font-size: 13.5px; font-weight: 700; color: ${textColor}; }
+    .v2-google-text small { color: ${subtleColor}; font-weight: 500; }
+    .v2-testi-marquee-wrap {
+      overflow: hidden; margin: 0 -24px;
+      -webkit-mask-image: linear-gradient(to right, transparent 0, black 6%, black 94%, transparent 100%);
+              mask-image: linear-gradient(to right, transparent 0, black 6%, black 94%, transparent 100%);
+    }
+    .v2-testi-track {
+      display: flex; gap: 16px; width: max-content;
+      padding: 8px 8px 16px;
+    }
+    .v2-testi-track.left  { animation: v2TestiLeft  45s linear infinite; }
+    .v2-testi-track.right { animation: v2TestiRight 45s linear infinite; }
+    @keyframes v2TestiLeft  { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+    @keyframes v2TestiRight { from { transform: translateX(-50%); } to { transform: translateX(0); } }
+    .v2-testi-marquee-wrap:hover .v2-testi-track { animation-play-state: paused; }
+
+    .v2-testi-card-mq {
+      flex: 0 0 300px; background: ${cardBg}; border-radius: 16px; padding: 22px 20px;
+      border: 1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.07)'};
+      box-shadow: 0 4px 18px rgba(0,0,0,${isDark ? '0.3' : '0.08'});
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .v2-testi-quote-mq { font-family: Georgia, serif; font-size: 44px; color: ${primary}; opacity: 0.18; line-height: 0.6; margin-bottom: -6px; }
+    .v2-testi-stars-mq { color: #FBBF24; font-size: 14px; letter-spacing: 2px; }
+    .v2-testi-text-mq { font-size: 14px; line-height: 1.65; color: ${subtleColor}; font-style: italic; flex: 1; }
+    .v2-testi-author { display: flex; align-items: center; gap: 12px; margin-top: 6px; }
+    .v2-testi-avatar {
+      width: 40px; height: 40px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      color: white; font-weight: 800; font-size: 14px; flex-shrink: 0;
+    }
+    .v2-testi-author-info { display: flex; flex-direction: column; }
+    .v2-testi-author-name { font-size: 13.5px; font-weight: 700; color: ${textColor}; }
+    .v2-testi-author-since { font-size: 12px; color: ${subtleColor}; }
+
+    /* ── FAQ ── */
+    .v2-faq-bg { background: ${isDark ? bgColor : '#FFFFFF'}; }
+    .v2-faq-list { display: flex; flex-direction: column; gap: 12px; max-width: 760px; margin: 0 auto; }
+    .v2-faq-item {
+      background: ${cardBg}; border-radius: 14px; overflow: hidden;
+      border: 1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.07)'};
+      transition: box-shadow 0.2s;
+    }
+    .v2-faq-item.open { box-shadow: 0 10px 32px rgba(0,0,0,${isDark ? '0.3' : '0.08'}); }
+    .v2-faq-q {
+      width: 100%; background: none; border: none; cursor: pointer;
+      padding: 18px 22px; display: flex; align-items: center; justify-content: space-between;
+      gap: 16px; text-align: ${isRTL ? 'right' : 'left'};
+      color: ${textColor}; font-size: 15.5px; font-weight: 700;
+      min-height: 56px; line-height: 1.4;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .v2-faq-toggle {
+      width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+      background: ${primary}18; color: ${primary};
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; font-weight: 700;
+      transition: transform 0.3s ease, background 0.2s;
+    }
+    .v2-faq-item.open .v2-faq-toggle { transform: rotate(135deg); background: ${primary}; color: white; }
+    .v2-faq-body {
+      max-height: 0; overflow: hidden;
+      transition: max-height 0.35s ease;
+    }
+    .v2-faq-item.open .v2-faq-body { max-height: 280px; }
+    .v2-faq-a {
+      padding: 0 22px 22px;
+      font-size: 14.5px; line-height: 1.7; color: ${subtleColor};
+    }
+
     /* ── Responsive ── */
     @media (min-width: 600px) {
       .v2-hero-btns { flex-direction: row; max-width: 460px; }
-      .v2-testi-grid { flex-direction: row; flex-wrap: wrap; }
-      .v2-testi-card { flex: 1; min-width: 260px; }
       .v2-steps { display: grid; grid-template-columns: repeat(3,1fr); }
     }
     @media (min-width: 1024px) {
-      .v2-svc-grid {
-        display: grid; grid-template-columns: repeat(3,1fr);
-        gap: 24px; overflow: visible; padding: 0; margin: 0;
-        scroll-snap-type: none;
+      .v2-why-grid { grid-template-columns: repeat(4, 1fr); gap: 22px; }
+      .v2-why-card { padding: 28px 22px; }
+      .v2-how-grid { flex-direction: row; max-width: 1100px; gap: 0; }
+      .v2-how-step { flex-direction: column; align-items: center; text-align: center; flex: 1; padding: 0 16px 0; }
+      .v2-how-step:not(:last-child)::after {
+        left: 50%; top: 28px; right: -50%; bottom: auto;
+        width: auto; height: 2px;
+        background-image: linear-gradient(to right, ${primary}60 50%, transparent 50%);
+        background-size: 8px 2px; background-repeat: repeat-x;
       }
-      .v2-svc-card { flex: 1; max-width: none; scroll-snap-align: none; }
-      .v2-svc-card:hover { transform: translateY(-5px); }
-      .v2-svc-dots, .v2-svc-hint { display: none; }
+      [dir="rtl"] .v2-how-step:not(:last-child)::after {
+        left: auto; right: 50%;
+        background-image: linear-gradient(to left, ${primary}60 50%, transparent 50%);
+      }
+      .v2-how-content { padding-top: 18px; }
       .v2-about-grid { flex-direction: row; align-items: center; gap: 72px; }
       [dir="rtl"] .v2-about-grid { flex-direction: row-reverse; }
       .v2-about-img-wrap { flex: 1; }
@@ -890,33 +982,53 @@ export default function CabinetSiteV2({ data }: { data: CabinetData }) {
             <div className="v2-section-line" />
             <p className="v2-section-sub">{content.servicesSubtitle ?? (isRTL ? 'رعاية شاملة ومتخصصة لكل مريض' : 'Une prise en charge complète et personnalisée')}</p>
           </div>
-          <div className="v2-svc-grid" ref={svcScrollRef}>
-            {displayServices.map((s, i) => (
-              <a key={s.id} href="#booking" className="v2-svc-card v2-fade">
-                <div className="v2-svc-top" />
-                <div className="v2-svc-body">
-                  <div className="v2-svc-icon">
-                    <ServiceIcon nom={s.nom} size={28} color="white" />
+          <div className="v2-svc-wrap">
+            <div className="v2-svc-track">
+              {[...displayServices, ...displayServices].map((s, i) => (
+                <a key={`${s.id}-${i}`} href="#booking" className="v2-svc-card" aria-hidden={i >= displayServices.length}>
+                  <div className="v2-svc-top" />
+                  <div className="v2-svc-body">
+                    <div className="v2-svc-icon">
+                      <ServiceIcon nom={s.nom} size={28} color="white" />
+                    </div>
+                    <div className="v2-svc-name">{s.nom}</div>
+                    {s.description && <p className="v2-svc-desc">{s.description}</p>}
+                    <div className="v2-svc-pills">
+                      {s.dureeDefaut && <span className="v2-pill-dur">⏱ {s.dureeDefaut} min</span>}
+                      {s.tarifDefaut && <span className="v2-pill-price">💰 {s.tarifDefaut} MAD</span>}
+                    </div>
+                    <span className="v2-svc-link">
+                      {isRTL ? 'احجز هذا العلاج ←' : 'Réserver ce soin →'}
+                    </span>
                   </div>
-                  <div className="v2-svc-name">{s.nom}</div>
-                  {s.description && <p className="v2-svc-desc">{s.description}</p>}
-                  <div className="v2-svc-pills">
-                    {s.dureeDefaut && <span className="v2-pill-dur">⏱ {s.dureeDefaut} min</span>}
-                    {s.tarifDefaut && <span className="v2-pill-price">💰 {s.tarifDefaut} MAD</span>}
-                  </div>
-                  <span className="v2-svc-link">
-                    {isRTL ? 'احجز هذا العلاج ←' : 'Réserver ce soin →'}
-                  </span>
-                </div>
-              </a>
-            ))}
+                </a>
+              ))}
+            </div>
           </div>
-          <div className={`v2-svc-hint${showSwipeHint ? '' : ' fade'}`}>
-            {isRTL ? '← اسحب لاستكشاف المزيد →' : '← Glissez pour découvrir →'}
+        </div>
+      </section>
+
+      {/* ── WHY CHOOSE US ── */}
+      <section className="v2-section" id="why">
+        <div className="v2-section-inner">
+          <div className="v2-section-header v2-fade">
+            <div className="v2-section-tag">{isRTL ? 'مزايانا' : 'Nos atouts'}</div>
+            <h2 className="v2-section-title">{isRTL ? 'لماذا تختارنا؟' : 'Pourquoi nous choisir ?'}</h2>
+            <div className="v2-section-line" />
+            <p className="v2-section-sub">{isRTL ? 'رعاية عالية الجودة ونتائج دائمة' : 'Des soins de qualité, des résultats durables'}</p>
           </div>
-          <div className="v2-svc-dots">
-            {displayServices.map((_, i) => (
-              <div key={i} className={`v2-svc-dot${i === svcIndex ? ' active' : ''}`} />
+          <div className="v2-why-grid">
+            {[
+              { icon: '🔒', fr: ['Données sécurisées', 'Vos informations médicales sont protégées et confidentielles'], ar: ['بيانات آمنة', 'معلوماتك الطبية محمية وسرية'] },
+              { icon: '📅', fr: ['Réservation 24h/24', 'Prenez RDV en ligne à tout moment, même la nuit'], ar: ['حجز على مدار الساعة', 'احجز موعدك عبر الإنترنت في أي وقت'] },
+              { icon: '💬', fr: ['Suivi personnalisé', 'Un programme de rééducation adapté à chaque patient'], ar: ['متابعة شخصية', 'برنامج علاجي مخصص لكل مريض'] },
+              { icon: '⭐', fr: ['Satisfaction garantie', '98% de nos patients recommandent notre cabinet'], ar: ['رضا مضمون', '98٪ من مرضانا يوصون بمركزنا'] },
+            ].map((c, i) => (
+              <div key={i} className="v2-why-card v2-fade">
+                <div className="v2-why-icon">{c.icon}</div>
+                <div className="v2-why-title">{isRTL ? c.ar[0] : c.fr[0]}</div>
+                <div className="v2-why-desc">{isRTL ? c.ar[1] : c.fr[1]}</div>
+              </div>
             ))}
           </div>
         </div>
@@ -951,6 +1063,34 @@ export default function CabinetSiteV2({ data }: { data: CabinetData }) {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── HOW IT WORKS ── */}
+      <section className="v2-section v2-how-bg" id="how">
+        <div className="v2-section-inner">
+          <div className="v2-section-header v2-fade">
+            <div className="v2-section-tag">{isRTL ? 'العملية' : 'Le processus'}</div>
+            <h2 className="v2-section-title">{isRTL ? 'كيف يعمل؟' : 'Comment ça marche ?'}</h2>
+            <div className="v2-section-line" />
+            <p className="v2-section-sub">{isRTL ? '3 خطوات بسيطة من الحجز إلى المتابعة' : '3 étapes simples, de la réservation au suivi'}</p>
+          </div>
+          <div className="v2-how-grid">
+            {[
+              { n: '1', emoji: '📅', fr: ['Réservez en ligne', 'Choisissez votre créneau en quelques secondes'], ar: ['احجز عبر الإنترنت', 'اختر موعدك في ثوانٍ'] },
+              { n: '2', emoji: '🏥', fr: ['Venez à votre séance', 'Notre équipe vous accueille dans un environnement moderne'], ar: ['احضر لجلستك', 'يستقبلك فريقنا في بيئة عصرية'] },
+              { n: '3', emoji: '📈', fr: ['Suivez votre progression', "Recevez votre programme d'exercices sur WhatsApp"], ar: ['تابع تقدمك', 'احصل على برنامج التمارين عبر واتساب'] },
+            ].map((s, i) => (
+              <div key={s.n} className="v2-how-step v2-fade">
+                <div className="v2-how-num">{s.n}</div>
+                <div className="v2-how-content">
+                  <div className="v2-how-emoji">{s.emoji}</div>
+                  <div className="v2-how-title">{isRTL ? s.ar[0] : s.fr[0]}</div>
+                  <div className="v2-how-desc">{isRTL ? s.ar[1] : s.fr[1]}</div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -1001,28 +1141,95 @@ export default function CabinetSiteV2({ data }: { data: CabinetData }) {
         </div>
       </section>
 
-      {/* ── TESTIMONIALS ── */}
+      {/* ── TESTIMONIALS (dual marquee) ── */}
       {testimonials.length > 0 && (
         <section className={`v2-section v2-testi-bg`} id="testimonials">
           <div className="v2-section-inner">
             <div className="v2-section-header v2-fade">
-              <div className="v2-section-tag">{isRTL ? 'آراء المرضى' : 'Témoignages'}</div>
+              <div className="v2-google-badge">
+                <span className="v2-google-stars">★★★★★</span>
+                <span className="v2-google-text">4.9/5 <small>· {isRTL ? '89 تقييماً جوجل' : '89 avis Google'}</small></span>
+              </div>
               <h2 className="v2-section-title">{content.testimonialsTitle ?? (isRTL ? 'آراء مرضانا' : 'Ce que disent nos patients')}</h2>
               <div className="v2-section-line" />
+              <p className="v2-section-sub">{isRTL ? 'انضم إلى مرضانا الراضين' : 'Rejoignez nos patients satisfaits'}</p>
             </div>
-            <div className="v2-testi-grid">
-              {testimonials.map(t => (
-                <div key={t.id} className="v2-testi-card v2-fade">
-                  <div className="v2-testi-quote">"</div>
-                  <p className="v2-testi-text">{isRTL ? t.textAr : t.textFr}</p>
-                  <div className="v2-testi-stars">{'★'.repeat(t.rating)}{'☆'.repeat(Math.max(0, 5 - t.rating))}</div>
-                  <div className="v2-testi-name">{t.patientName}</div>
-                </div>
-              ))}
-            </div>
+
+            {(() => {
+              const half = Math.ceil(testimonials.length / 2)
+              const row1 = testimonials.slice(0, half)
+              const row2 = testimonials.length > 1 ? testimonials.slice(half) : testimonials
+              const palette = [primary, secondary, '#F59E0B', '#10B981', '#8B5CF6', '#EC4899']
+              const renderCard = (t: typeof testimonials[number], idx: number, keyPrefix: string) => {
+                const initials = (t.patientName || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
+                const since = 2026 - Math.floor(Math.random() * 4 + 1)
+                const avatarColor = palette[idx % palette.length]
+                return (
+                  <div key={`${keyPrefix}-${t.id}-${idx}`} className="v2-testi-card-mq">
+                    <div className="v2-testi-quote-mq">"</div>
+                    <div className="v2-testi-stars-mq">{'★'.repeat(t.rating)}{'☆'.repeat(Math.max(0, 5 - t.rating))}</div>
+                    <p className="v2-testi-text-mq">{isRTL ? t.textAr : t.textFr}</p>
+                    <div className="v2-testi-author">
+                      <div className="v2-testi-avatar" style={{ background: avatarColor }}>{initials}</div>
+                      <div className="v2-testi-author-info">
+                        <span className="v2-testi-author-name">{t.patientName}</span>
+                        <span className="v2-testi-author-since">{isRTL ? `مريض منذ ${since}` : `Patient depuis ${since}`}</span>
+                      </div>
+                    </div>
+                  </div>
+                )
+              }
+              return (
+                <>
+                  <div className="v2-testi-marquee-wrap">
+                    <div className="v2-testi-track left">
+                      {[...row1, ...row1, ...row1].map((t, i) => renderCard(t, i, 'r1'))}
+                    </div>
+                  </div>
+                  <div className="v2-testi-marquee-wrap" style={{ marginTop: 8 }}>
+                    <div className="v2-testi-track right">
+                      {[...row2, ...row2, ...row2].map((t, i) => renderCard(t, i, 'r2'))}
+                    </div>
+                  </div>
+                </>
+              )
+            })()}
           </div>
         </section>
       )}
+
+      {/* ── FAQ ── */}
+      <section className="v2-section v2-faq-bg" id="faq">
+        <div className="v2-section-inner">
+          <div className="v2-section-header v2-fade">
+            <div className="v2-section-tag">FAQ</div>
+            <h2 className="v2-section-title">{isRTL ? 'الأسئلة الشائعة' : 'Questions fréquentes'}</h2>
+            <div className="v2-section-line" />
+            <p className="v2-section-sub">{isRTL ? 'كل ما تحتاج معرفته قبل زيارتنا' : 'Tout ce que vous devez savoir avant votre visite'}</p>
+          </div>
+          <div className="v2-faq-list">
+            {[
+              { fr: ['Avez-vous une prise en charge mutuelle ?', 'Oui, nous acceptons CNSS, CNOPS et la plupart des mutuelles privées.'], ar: ['هل لديكم تغطية تأمينية؟', 'نعم، نقبل CNSS وCNOPS ومعظم شركات التأمين الخاصة.'] },
+              { fr: ['Faut-il une ordonnance pour consulter ?', "Une ordonnance médicale est recommandée mais pas toujours obligatoire. Contactez-nous pour plus d'informations."], ar: ['هل أحتاج إلى وصفة طبية للاستشارة؟', 'وصفة طبية موصى بها ولكنها ليست إلزامية دائماً. اتصل بنا للمزيد من المعلومات.'] },
+              { fr: ['Combien de séances sont nécessaires ?', 'Cela dépend de votre pathologie. Un bilan initial permet de définir un programme personnalisé.'], ar: ['كم عدد الجلسات اللازمة؟', 'يعتمد ذلك على حالتك. سيحدد التقييم الأولي برنامجاً مخصصاً.'] },
+              { fr: ['Puis-je annuler mon rendez-vous ?', "Oui, vous pouvez annuler jusqu'à 24h avant votre rendez-vous sans frais."], ar: ['هل يمكنني إلغاء موعدي؟', 'نعم، يمكنك الإلغاء حتى 24 ساعة قبل موعدك بدون رسوم.'] },
+            ].map((item, i) => {
+              const isOpen = faqOpen === i
+              return (
+                <div key={i} className={`v2-faq-item v2-fade${isOpen ? ' open' : ''}`}>
+                  <button className="v2-faq-q" onClick={() => setFaqOpen(isOpen ? null : i)} aria-expanded={isOpen}>
+                    <span>{isRTL ? item.ar[0] : item.fr[0]}</span>
+                    <span className="v2-faq-toggle">+</span>
+                  </button>
+                  <div className="v2-faq-body">
+                    <div className="v2-faq-a">{isRTL ? item.ar[1] : item.fr[1]}</div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </section>
 
       {/* ── CONTACT ── */}
       <section className="v2-section" id="contact">

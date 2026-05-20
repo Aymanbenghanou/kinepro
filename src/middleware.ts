@@ -12,13 +12,13 @@ export default auth(function middleware(req) {
   if (pathname === '/') return NextResponse.next()
 
   // Fully open routes — no auth, no redirect even when logged in
-  const openPaths = ['/cabinet', '/scan', '/booking', '/checkin', '/patient-public']
+  const openPaths = ['/cabinet', '/scan', '/booking', '/checkin', '/patient-public', '/feedback']
   if (openPaths.some(p => pathname.startsWith(p))) {
     return NextResponse.next()
   }
 
   // Auth-page routes — no auth needed, but redirect logged-in users away
-  const authPaths = ['/login', '/register', '/feedback']
+  const authPaths = ['/login', '/register']
   if (authPaths.some(p => pathname.startsWith(p))) {
     if (session) {
       const dest = session.user.role === 'SUPER_ADMIN' ? '/super-admin' : '/dashboard'
