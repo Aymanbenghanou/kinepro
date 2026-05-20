@@ -6,6 +6,7 @@ import { formatDate, formatTime } from '@/lib/utils'
 import { Plus, X } from 'lucide-react'
 import FeedbackModal from '@/components/whatsapp/FeedbackWidget'
 import { scoreColor, scoreBadge } from '@/lib/whatsapp'
+import { useTranslation } from '@/hooks/useTranslation'
 
 // Fallback if API fails
 const TYPES_FALLBACK = ['Rééducation fonctionnelle', 'Massage thérapeutique', 'Électrothérapie', 'Balnéothérapie']
@@ -56,6 +57,7 @@ function FeedbackBadge({ seance, onClick }: { seance: any; onClick: () => void }
 }
 
 export default function SeancesPage() {
+  const { t } = useTranslation()
   const [seances, setSeances]     = useState<any[]>([])
   const [patients, setPatients]   = useState<any[]>([])
   const [praticiens, setPraticiens] = useState<any[]>([])
@@ -201,11 +203,11 @@ export default function SeancesPage() {
   return (
     <div>
       <Topbar
-        title="Séances"
+        title={t.seances}
         subtitle={
           pendingCount > 0
-            ? `${seances.length} séances · ⚡ ${pendingCount} feedback${pendingCount > 1 ? 's' : ''} en attente`
-            : `${seances.length} séances`
+            ? `${seances.length} ${t.seances} · ⚡ ${pendingCount} ${t.demanderFeedback}`
+            : `${seances.length} ${t.seances}`
         }
       />
       <div style={{ padding: 24 }}>
@@ -269,9 +271,9 @@ export default function SeancesPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8} style={{ padding: 32, textAlign: 'center', color: '#64748B', fontSize: 14 }}>Chargement...</td></tr>
+                <tr><td colSpan={8} style={{ padding: 32, textAlign: 'center', color: '#64748B', fontSize: 14 }}>{t.chargement}</td></tr>
               ) : seances.length === 0 ? (
-                <tr><td colSpan={8} style={{ padding: 32, textAlign: 'center', color: '#64748B', fontSize: 14 }}>Aucune séance trouvée</td></tr>
+                <tr><td colSpan={8} style={{ padding: 32, textAlign: 'center', color: '#64748B', fontSize: 14 }}>{t.aucuneSeance}</td></tr>
               ) : seances.map((s: any, i: number) => (
                 <tr key={s.id}
                   style={{ borderBottom: '1px solid #F1F5F9', background: i % 2 === 0 ? 'white' : '#FAFAFA', cursor: 'pointer' }}

@@ -5,6 +5,7 @@ import Topbar from '@/components/layout/Topbar'
 import Toast from '@/components/ui/Toast'
 import { Save, CheckCircle, AlertTriangle, Phone, Star, Info } from 'lucide-react'
 import dynamic from 'next/dynamic'
+import { useTranslation } from '@/hooks/useTranslation'
 
 const NotificationSettings = dynamic(
   () => import('@/components/pwa/NotificationSettings'),
@@ -61,6 +62,7 @@ function SaveButton({ saving, saved, onClick }: { saving: boolean; saved: boolea
 }
 
 export default function ParametresPage() {
+  const { t } = useTranslation()
   const [activeTab, setActiveTab] = useState<Tab>('cabinet')
   const [loading, setLoading]     = useState(true)
   const [saving, setSaving]       = useState(false)
@@ -130,7 +132,7 @@ export default function ParametresPage() {
   if (loading) {
     return (
       <div>
-        <Topbar title="Paramètres" subtitle="Configuration du cabinet" />
+        <Topbar title={t.parametres} subtitle={t.cabinetParametres} />
         <div style={{ padding: 24, color: '#64748B', fontSize: 14 }}>Chargement...</div>
       </div>
     )
@@ -138,7 +140,7 @@ export default function ParametresPage() {
 
   return (
     <div>
-      <Topbar title="Paramètres" subtitle="Configuration du cabinet" />
+      <Topbar title={t.parametres} subtitle={t.cabinetParametres} />
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       <div style={{ padding: 24 }}>

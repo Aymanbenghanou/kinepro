@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Topbar from '@/components/layout/Topbar'
 import Toast from '@/components/ui/Toast'
 import { Plus, X, Phone, Mail, Edit2, UserCheck, UserX, Eye, EyeOff, RefreshCw, Shuffle } from 'lucide-react'
+import { useTranslation } from '@/hooks/useTranslation'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -83,6 +84,7 @@ const inputStyle: React.CSSProperties = {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function PersonnelPage() {
+  const { t } = useTranslation()
   const [praticiens, setPraticiens] = useState<Praticien[]>([])
   const [loading, setLoading]       = useState(true)
   const [toast, setToast]           = useState<{ message: string; type: 'success' | 'error' } | null>(null)
@@ -300,7 +302,7 @@ export default function PersonnelPage() {
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div>
-      <Topbar title="Personnel" subtitle={`${actifs} actif${actifs > 1 ? 's' : ''}${inactifs > 0 ? ` · ${inactifs} inactif${inactifs > 1 ? 's' : ''}` : ''}`} />
+      <Topbar title={t.personnel} subtitle={`${actifs} ${t.actif}${inactifs > 0 ? ` · ${inactifs} ${t.inactif}` : ''}`} />
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       <div style={{ padding: 24 }}>

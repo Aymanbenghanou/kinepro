@@ -10,6 +10,7 @@ import {
   msgConfirmationRDV, msgRappelRDV,
   buildWhatsAppUrl, formatPhoneForWhatsApp,
 } from '@/lib/whatsapp'
+import { useTranslation } from '@/hooks/useTranslation'
 
 // Fallback colours until API types load
 const TYPES_SEANCE_FALLBACK = ['Rééducation fonctionnelle', 'Massage thérapeutique', 'Électrothérapie', 'Balnéothérapie']
@@ -82,6 +83,7 @@ function RappelBtn({ rdv }: { rdv: any }) {
 }
 
 export default function AgendaPage() {
+  const { t } = useTranslation()
   const [currentDate, setCurrentDate] = useState(new Date())
   const [rdvList, setRdvList]         = useState<any[]>([])
   const [patients, setPatients]       = useState<any[]>([])
@@ -182,7 +184,7 @@ export default function AgendaPage() {
 
   return (
     <div>
-      <Topbar title="Agenda" subtitle="Calendrier hebdomadaire" />
+      <Topbar title={t.agenda} subtitle={t.semaine} />
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <div style={{ padding: 24 }}>
 
@@ -202,12 +204,12 @@ export default function AgendaPage() {
             </button>
             <button onClick={() => setCurrentDate(new Date())}
               style={{ padding: '6px 12px', border: '1px solid #E2E8F0', borderRadius: 8, background: 'white', cursor: 'pointer', fontSize: 13, color: '#64748B' }}>
-              Aujourd'hui
+              {t.aujourdhui}
             </button>
           </div>
           <button onClick={() => { setForm(f => ({...f, date: '', heure: '09:00'})); setShowModal(true) }}
             style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#2563EB', color: 'white', border: 'none', borderRadius: 8, padding: '10px 16px', cursor: 'pointer', fontWeight: 500, fontSize: 14 }}>
-            <Plus size={16} /> Nouveau RDV
+            <Plus size={16} /> {t.nouveauRdv}
           </button>
         </div>
 
@@ -281,7 +283,7 @@ export default function AgendaPage() {
       </div>
 
       {/* FAB: mobile only */}
-      <button className="fab-btn" onClick={() => { setForm(f => ({...f, date: '', heure: '09:00'})); setShowModal(true) }} aria-label="Nouveau RDV">
+      <button className="fab-btn" onClick={() => { setForm(f => ({...f, date: '', heure: '09:00'})); setShowModal(true) }} aria-label={t.nouveauRdv}>
         +
       </button>
 
