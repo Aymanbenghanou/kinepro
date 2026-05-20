@@ -33,6 +33,13 @@ export default function FeedbackNotificationBar() {
     return () => clearInterval(interval)
   }, [fetchReady])
 
+  // Auto-dismiss the banner after 5 seconds (data still available in /whatsapp)
+  useEffect(() => {
+    if (!visible) return
+    const t = setTimeout(() => setVisible(false), 5000)
+    return () => clearTimeout(t)
+  }, [visible])
+
   const undismissed = readyList.filter((s) => !dismissed.has(s.id))
 
   if (!visible || undismissed.length === 0) return null
@@ -110,17 +117,20 @@ export default function FeedbackNotificationBar() {
         </Link>
         <button
           onClick={dismissAll}
+          aria-label="Fermer"
           style={{
-            background: 'none',
-            border: '1px solid rgba(255,255,255,0.4)',
+            background: 'rgba(255,255,255,0.18)',
+            border: 'none',
             color: 'white',
-            padding: '4px 10px',
-            borderRadius: 6,
-            fontSize: 12,
+            width: 28, height: 28,
+            borderRadius: '50%',
+            fontSize: 16, lineHeight: 1,
             cursor: 'pointer',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0,
           }}
         >
-          Masquer
+          ✕
         </button>
       </div>
     </div>

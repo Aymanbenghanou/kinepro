@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import {
-  LayoutDashboard, Calendar, Users, CreditCard, MoreHorizontal,
+  LayoutDashboard, Calendar, Users, CreditCard, MoreHorizontal, X,
   Clock, BarChart3, MessageCircle, Settings, Crown, ChevronRight,
   UserCheck, User, LogOut,
 } from 'lucide-react'
@@ -94,10 +94,10 @@ export default function MobileBottomNav() {
           )
         })}
 
-        {/* Plus → slide-up bottom sheet */}
+        {/* Plus → slide-up bottom sheet (icon morphs to X when open) */}
         <button
-          onClick={() => setSheetOpen(true)}
-          aria-label="Plus d'options"
+          onClick={() => setSheetOpen(o => !o)}
+          aria-label={sheetOpen ? 'Fermer le menu' : "Plus d'options"}
           aria-expanded={sheetOpen}
           style={{
             position: 'relative',
@@ -110,8 +110,10 @@ export default function MobileBottomNav() {
             minHeight: 48,
           }}
         >
-          <MoreHorizontal size={22} strokeWidth={isMoreActive || sheetOpen ? 2.5 : 2} />
-          <span style={{ fontSize: 11, fontWeight: isMoreActive || sheetOpen ? 700 : 500, lineHeight: 1 }}>Plus</span>
+          {sheetOpen
+            ? <X size={22} strokeWidth={2.5} />
+            : <MoreHorizontal size={22} strokeWidth={isMoreActive ? 2.5 : 2} />}
+          <span style={{ fontSize: 11, fontWeight: isMoreActive || sheetOpen ? 700 : 500, lineHeight: 1 }}>{sheetOpen ? 'Fermer' : 'Plus'}</span>
           {isMoreActive && (
             <span style={{
               position: 'absolute', top: 4,

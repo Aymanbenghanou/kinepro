@@ -107,41 +107,55 @@ export default function PatientsPage() {
             <div style={{ padding: 40, textAlign: 'center', color: '#94A3B8', fontSize: 14 }}>Chargement…</div>
           ) : paginated.length === 0 ? (
             <div style={{ padding: 40, textAlign: 'center', color: '#94A3B8', fontSize: 14 }}>Aucun patient trouvé</div>
-          ) : paginated.map((p: any) => (
-            <a
-              key={p.id}
-              href={`/patients/${p.id}`}
-              className="mcard"
-            >
-              <div className="mcard-row">
-                <div className="mcard-avatar">{p.prenom?.[0]}{p.nom?.[0]}</div>
-                <div className="mcard-title">{p.prenom} {p.nom}</div>
-                <span
-                  className="mcard-pill"
-                  style={{
-                    background: p.actif ? '#DCFCE7' : '#F1F5F9',
-                    color: p.actif ? '#16A34A' : '#64748B',
-                  }}
-                >
-                  {p.actif ? 'Actif' : 'Inactif'}
-                </span>
-              </div>
-              {p.telephone && (
-                <div className="mcard-meta">
-                  📞 <span style={{ color: '#0F172A', fontWeight: 600 }}>{p.telephone}</span>
+          ) : paginated.map((p: any) => {
+            const waPhone = p.telephone ? p.telephone.replace(/[\s\-\+]/g, '').replace(/^0/, '212') : null
+            return (
+              <div key={p.id} className="mcard">
+                <a href={`/patients/${p.id}`} style={{ display: 'block', textDecoration: 'none', color: 'inherit' }}>
+                  <div className="mcard-row">
+                    <div className="mcard-avatar">{p.prenom?.[0]}{p.nom?.[0]}</div>
+                    <div className="mcard-title">{p.prenom} {p.nom}</div>
+                    <span
+                      className="mcard-pill"
+                      style={{
+                        background: p.actif ? '#DCFCE7' : '#F1F5F9',
+                        color: p.actif ? '#16A34A' : '#64748B',
+                      }}
+                    >
+                      {p.actif ? 'Actif' : 'Inactif'}
+                    </span>
+                  </div>
+                  {p.telephone && (
+                    <div className="mcard-meta">
+                      📞 <span style={{ color: '#0F172A', fontWeight: 600 }}>{p.telephone}</span>
+                    </div>
+                  )}
+                  <div className="mcard-meta">
+                    🏥 <span>{p.pathologie || 'Non spécifiée'}</span>
+                    {p.seances?.length > 0 && <>· <strong style={{ color: '#2563EB' }}>{p.seances.length} séances</strong></>}
+                  </div>
+                  {p.rendezVous?.[0] && (
+                    <div className="mcard-meta" style={{ fontSize: 12, color: '#94A3B8' }}>
+                      Dernière visite : {formatDate(p.rendezVous[0].date)}
+                    </div>
+                  )}
+                </a>
+                <div className="mcard-actions">
+                  <a href={`/patients/${p.id}`} className="mcard-btn primary">
+                    📋 Voir
+                  </a>
+                  {waPhone && (
+                    <a href={`https://wa.me/${waPhone}`} target="_blank" rel="noopener noreferrer" className="mcard-btn success">
+                      💬 WhatsApp
+                    </a>
+                  )}
+                  <button onClick={e => openQr(e, p.id, `${p.prenom} ${p.nom}`)} className="mcard-btn">
+                    <QrCode size={13} /> QR
+                  </button>
                 </div>
-              )}
-              <div className="mcard-meta">
-                🏥 <span>{p.pathologie || 'Non spécifiée'}</span>
-                {p.seances?.length > 0 && <>· <strong style={{ color: '#2563EB' }}>{p.seances.length} séances</strong></>}
               </div>
-              {p.rendezVous?.[0] && (
-                <div className="mcard-meta" style={{ fontSize: 12, color: '#94A3B8' }}>
-                  Dernière visite : {formatDate(p.rendezVous[0].date)}
-                </div>
-              )}
-            </a>
-          ))}
+            )
+          })}
         </div>
 
         {/* ── DESKTOP: table ─────────────────────────────────── */}

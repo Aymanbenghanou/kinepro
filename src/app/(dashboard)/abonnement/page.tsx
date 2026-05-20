@@ -51,9 +51,9 @@ function PlanCard({
       )}
       <div style={{ marginBottom: 16 }}>
         <h3 style={{ fontSize: 18, fontWeight: 700, color: '#0F172A', margin: '0 0 4px' }}>{name}</h3>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-          <span style={{ fontSize: 32, fontWeight: 800, color: '#2563EB' }}>{price}</span>
-          <span style={{ fontSize: 14, color: '#64748B' }}>MAD / {period}</span>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'nowrap', whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: 32, fontWeight: 800, color: '#2563EB', whiteSpace: 'nowrap' }}>{price}</span>
+          <span style={{ fontSize: 13, color: '#64748B', whiteSpace: 'nowrap' }}>MAD / {period}</span>
         </div>
       </div>
       <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 20px', display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -222,7 +222,7 @@ export default function AbonnementPage() {
         </div>
 
         {/* Plan cards */}
-        <div style={{ display: 'flex', gap: 20, marginBottom: 36, flexWrap: 'wrap' }}>
+        <div className="pricing-grid" style={{ display: 'flex', gap: 20, marginBottom: 36, flexWrap: 'wrap' }}>
           <PlanCard
             name="Mensuel" price="299" period="mois"
             features={[

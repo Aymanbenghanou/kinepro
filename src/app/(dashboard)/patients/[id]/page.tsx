@@ -24,14 +24,14 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://kinepro-omega.vercel
 // ─── Types ───────────────────────────────────────────────────────────────────
 type TabId = 'informations' | 'seances' | 'plan' | 'facturation' | 'progression' | 'documents' | 'programmes'
 
-const TABS: { id: TabId; label: string; icon: any }[] = [
-  { id: 'informations', label: 'Informations',       icon: User },
-  { id: 'seances',      label: 'Séances',            icon: Clock },
-  { id: 'plan',         label: 'Plan de traitement', icon: Target },
-  { id: 'programmes',   label: 'Programmes',         icon: Sparkles },
-  { id: 'facturation',  label: 'Facturation',        icon: CreditCard },
-  { id: 'progression',  label: 'Progression',        icon: BarChart2 },
-  { id: 'documents',    label: 'Documents',           icon: FileText },
+const TABS: { id: TabId; label: string; short: string; icon: any }[] = [
+  { id: 'informations', label: 'Informations',       short: 'Info',     icon: User },
+  { id: 'seances',      label: 'Séances',            short: 'Séances',  icon: Clock },
+  { id: 'plan',         label: 'Plan de traitement', short: 'Plan',     icon: Target },
+  { id: 'programmes',   label: 'Programmes',         short: 'Progr.',   icon: Sparkles },
+  { id: 'facturation',  label: 'Facturation',        short: 'Factures', icon: CreditCard },
+  { id: 'progression',  label: 'Progression',        short: 'Progrès',  icon: BarChart2 },
+  { id: 'documents',    label: 'Documents',           short: 'Docs',     icon: FileText },
 ]
 
 function Badge({ label, bg, color }: { label: string; bg: string; color: string }) {
@@ -291,10 +291,18 @@ export default function PatientDetailPage() {
                     </span>
                   )}
                 </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, maxWidth: '100%', minWidth: 0 }}>
                   {age !== null && <span style={{ fontSize: 13, color: '#64748B', display: 'flex', alignItems: 'center', gap: 4 }}><User size={13} /> {age} ans</span>}
-                  {patient.telephone && <span style={{ fontSize: 13, color: '#64748B', display: 'flex', alignItems: 'center', gap: 4 }}><Phone size={13} /> {patient.telephone}</span>}
-                  {patient.email && <span style={{ fontSize: 13, color: '#64748B', display: 'flex', alignItems: 'center', gap: 4 }}><Mail size={13} /> {patient.email}</span>}
+                  {patient.telephone && (
+                    <a href={`tel:${patient.telephone}`} style={{ fontSize: 13, color: '#2563EB', display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontWeight: 600 }}>
+                      <Phone size={13} /> {patient.telephone}
+                    </a>
+                  )}
+                  {patient.email && (
+                    <span style={{ fontSize: 13, color: '#64748B', display: 'flex', alignItems: 'center', gap: 4, minWidth: 0, maxWidth: '100%', overflowWrap: 'anywhere', wordBreak: 'break-all' }}>
+                      <Mail size={13} style={{ flexShrink: 0 }} /> {patient.email}
+                    </span>
+                  )}
                   {patient.ville && <span style={{ fontSize: 13, color: '#64748B', display: 'flex', alignItems: 'center', gap: 4 }}><MapPin size={13} /> {patient.ville}</span>}
                 </div>
                 {patient.pathologie && (
@@ -306,14 +314,14 @@ export default function PatientDetailPage() {
                 )}
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 10, flexShrink: 0, flexWrap: 'wrap' }}>
+            <div className="action-grid-mobile" style={{ display: 'flex', gap: 10, flexShrink: 0, flexWrap: 'wrap' }}>
               <button onClick={openQr}
                 style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'white', color: '#374151', border: '1px solid #E2E8F0', borderRadius: 10, padding: '10px 14px', cursor: 'pointer', fontWeight: 500, fontSize: 14 }}>
                 <QrCode size={15} /> QR Code
               </button>
               <button onClick={() => generateDossierPatientPDF(patient, cabinet)}
                 style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'white', color: '#374151', border: '1px solid #E2E8F0', borderRadius: 10, padding: '10px 16px', cursor: 'pointer', fontWeight: 500, fontSize: 14 }}>
-                <Download size={15} /> Exporter PDF
+                <Download size={15} /> PDF
               </button>
               {patient.telephone && (
                 <button onClick={() => setShowExercices(true)}
@@ -323,7 +331,7 @@ export default function PatientDetailPage() {
               )}
               <button onClick={() => setShowPlanifier(true)}
                 style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#2563EB', color: 'white', border: 'none', borderRadius: 10, padding: '10px 18px', cursor: 'pointer', fontWeight: 600, fontSize: 14, boxShadow: '0 2px 8px rgba(37,99,235,0.25)' }}>
-                <Calendar size={16} /> Planifier séance
+                <Calendar size={16} /> Planifier
               </button>
             </div>
           </div>
@@ -358,7 +366,9 @@ export default function PatientDetailPage() {
                   color: active ? 'white' : '#64748B',
                   transition: 'all 0.15s', whiteSpace: 'nowrap',
                 }}>
-                <Icon size={14} /> {tab.label}
+                <Icon size={14} />
+                <span className="tab-label-full">{tab.label}</span>
+                <span className="tab-label-short">{tab.short}</span>
               </button>
             )
           })}

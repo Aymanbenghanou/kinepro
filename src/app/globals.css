@@ -481,6 +481,49 @@ button, a, [role="button"] {
   .topbar-hamburger { display: none !important; }
 }
 
+/* ─── Text overflow safety (global) ──────────────────────────────────── */
+.truncate-mobile {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+@media (max-width: 768px) {
+  /* Long emails / URLs must break instead of pushing the layout */
+  .main-content p, .main-content span, .main-content a, .main-content div {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+  /* 2×2 grid for stacked action buttons on patient detail */
+  .action-grid-mobile {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+  .action-grid-mobile > * {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 11px 10px !important;
+    min-height: 44px !important;
+    font-size: 13px !important;
+  }
+  /* Show the short tab label, hide the full one */
+  .tab-label-full  { display: none; }
+  .tab-label-short { display: inline; }
+
+  /* Abonnement pricing cards stack vertically on mobile */
+  .pricing-grid {
+    flex-direction: column !important;
+    gap: 16px !important;
+    margin-bottom: 28px !important;
+  }
+  .pricing-grid > * { width: 100% !important; flex: none !important; }
+}
+/* Desktop: hide short, show full */
+.tab-label-short { display: none; }
+.tab-label-full  { display: inline; }
+
 /* ─── Horizontal scroll snap row (mobile stat strips) ───────────────── */
 .h-scroll {
   display: flex;
