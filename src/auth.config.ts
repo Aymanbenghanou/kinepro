@@ -31,7 +31,6 @@ export const authConfig: NextAuthConfig = {
         token.twoFactorEnabled   = (user as any).twoFactorEnabled
         token.subscriptionStatus = (user as any).subscriptionStatus
         token.trialDaysLeft      = (user as any).trialDaysLeft
-        token.preferredLang      = (user as any).preferredLang ?? 'fr'
       }
       return token
     },
@@ -45,7 +44,6 @@ export const authConfig: NextAuthConfig = {
         session.user.prenom            = token.prenom as string
         session.user.subscriptionStatus = token.subscriptionStatus as string
         session.user.trialDaysLeft     = token.trialDaysLeft as number | null
-        ;(session.user as any).preferredLang = (token.preferredLang as string) ?? 'fr'
       }
       return session
     },

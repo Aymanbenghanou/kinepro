@@ -4,7 +4,6 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import Topbar from '@/components/layout/Topbar'
 import { formatMoney, formatTime } from '@/lib/utils'
-import { translations } from '@/lib/translations'
 import DashboardCharts from '@/components/dashboard/DashboardCharts'
 import FeedbackWidget from '@/components/dashboard/FeedbackWidget'
 import { Calendar, Users, DollarSign, AlertCircle } from 'lucide-react'
@@ -52,8 +51,6 @@ export default async function DashboardPage() {
   const session = await auth()
   if (!session?.user?.cabinetId) redirect('/login')
   const cabinetId = session.user.cabinetId
-  const lang = ((session.user as any)?.preferredLang === 'ar' ? 'ar' : 'fr') as 'fr' | 'ar'
-  const t = translations[lang]
 
   const now        = new Date()
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(),  0,  0,  0)
@@ -141,17 +138,17 @@ export default async function DashboardPage() {
 
   return (
     <div>
-      <Topbar title={t.tableauDeBord} subtitle={t.vueEnsemble} />
+      <Topbar title="Tableau de bord" subtitle="Vue d'ensemble du cabinet" />
       <div style={{ padding: 24 }}>
 
         {/* Stats Cards */}
         <div className="stats-grid-4" style={{ marginBottom: 24 }}>
-          <StatCard title={t.rdvAujourdhui}  value={rdvAujourdHui}                         icon={Calendar}    color="#2563EB" bgColor="#DBEAFE" />
-          <StatCard title={t.patientsActifs} value={patientsActifs}                        icon={Users}       color="#16A34A" bgColor="#DCFCE7" />
-          <StatCard title={t.revenusMois}    value={formatMoney(revenusMonth._sum.montant ?? 0)} icon={DollarSign} color="#F59E0B" bgColor="#FEF3C7" />
+          <StatCard title="RDV aujourd'hui"   value={rdvAujourdHui}                         icon={Calendar}    color="#2563EB" bgColor="#DBEAFE" />
+          <StatCard title="Patients actifs"    value={patientsActifs}                         icon={Users}       color="#16A34A" bgColor="#DCFCE7" />
+          <StatCard title="Revenus du mois"    value={formatMoney(revenusMonth._sum.montant ?? 0)} icon={DollarSign} color="#F59E0B" bgColor="#FEF3C7" />
           <Link href="/facturation?statut=en_attente" style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
             <StatCard
-              title={resteAEncaisser > 0 ? `${t.resteAEncaisser} (${nbFacturesImpayees})` : t.facturesImpayees}
+              title={resteAEncaisser > 0 ? `Reste à encaisser (${nbFacturesImpayees})` : 'Factures impayées'}
               value={resteAEncaisser > 0 ? formatMoney(resteAEncaisser) : nbFacturesImpayees}
               icon={AlertCircle}
               color={resteAEncaisser > 0 ? '#DC2626' : '#16A34A'}
@@ -165,7 +162,7 @@ export default async function DashboardPage() {
 
           {/* Agenda du jour */}
           <div style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, padding: 20 }}>
-            <h2 style={{ fontSize: 16, fontWeight: 600, color: '#0F172A', marginBottom: 16 }}>📅 {t.agendaDuJour}</h2>
+            <h2 style={{ fontSize: 16, fontWeight: 600, color: '#0F172A', marginBottom: 16 }}>📅 Agenda du jour</h2>
             {rdvDuJour.length === 0 ? (
               <p style={{ color: '#64748B', fontSize: 14 }}>Aucun rendez-vous aujourd'hui</p>
             ) : (
@@ -213,7 +210,7 @@ export default async function DashboardPage() {
 
           {/* Patients récents */}
           <div style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, padding: 20 }}>
-            <h2 style={{ fontSize: 16, fontWeight: 600, color: '#0F172A', marginBottom: 16 }}>👥 {t.patientsRecents}</h2>
+            <h2 style={{ fontSize: 16, fontWeight: 600, color: '#0F172A', marginBottom: 16 }}>👥 Patients récents</h2>
             {patientsRecents.length === 0 ? (
               <p style={{ color: '#94A3B8', fontSize: 13 }}>Aucun patient</p>
             ) : (

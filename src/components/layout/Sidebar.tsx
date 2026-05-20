@@ -8,9 +8,26 @@ import {
   UserCheck, BarChart3, Settings, Crown, X, QrCode, Globe,
 } from 'lucide-react'
 import ProfileDropdown from '@/components/ui/ProfileDropdown'
-import LanguageSwitcher from '@/components/LanguageSwitcher'
 import { useSidebar } from '@/lib/sidebar-context'
-import { useTranslation } from '@/hooks/useTranslation'
+
+// ─── Nav items ────────────────────────────────────────────────────────────────
+const navItems = [
+  { icon: LayoutDashboard, label: 'Tableau de bord', href: '/dashboard' },
+  { icon: Calendar,        label: 'Agenda',           href: '/agenda' },
+  { icon: Users,           label: 'Patients',          href: '/patients' },
+  { icon: Clock,           label: 'Séances',           href: '/seances' },
+  { icon: CreditCard,      label: 'Facturation',       href: '/facturation' },
+  { icon: UserCheck,       label: 'Personnel',         href: '/personnel' },
+  { icon: BarChart3,       label: 'Rapports',          href: '/rapports' },
+  { icon: QrCode,          label: 'QR Réception',      href: '/qr/cabinet' },
+]
+
+const parametresSubItems = [
+  { label: 'Configuration',        href: '/parametres' },
+  { label: 'Cabinet',              href: '/parametres/cabinet' },
+  { label: 'Types de séances',     href: '/parametres/types-seances' },
+  { label: '🌐 Réservation en ligne', href: '/parametres/reservation' },
+]
 
 function WhatsAppIcon({ size = 18 }: { size?: number }) {
   return (
@@ -23,26 +40,7 @@ function WhatsAppIcon({ size = 18 }: { size?: number }) {
 export default function Sidebar() {
   const pathname = usePathname()
   const { isOpen, close } = useSidebar()
-  const { t } = useTranslation()
   const [pendingFeedbacks, setPendingFeedbacks] = useState(0)
-
-  const navItems = [
-    { icon: LayoutDashboard, label: t.tableauDeBord,      href: '/dashboard'   },
-    { icon: Calendar,        label: t.agenda,             href: '/agenda'      },
-    { icon: Users,           label: t.patients,           href: '/patients'    },
-    { icon: Clock,           label: t.seances,            href: '/seances'     },
-    { icon: CreditCard,      label: t.facturation,        href: '/facturation' },
-    { icon: UserCheck,       label: t.personnel,          href: '/personnel'   },
-    { icon: BarChart3,       label: t.rapports,           href: '/rapports'    },
-    { icon: QrCode,          label: t.qrReception,        href: '/qr/cabinet'  },
-  ]
-
-  const parametresSubItems = [
-    { label: t.configuration,                         href: '/parametres' },
-    { label: t.cabinet,                                href: '/parametres/cabinet' },
-    { label: t.typesSeances,                           href: '/parametres/types-seances' },
-    { label: `🌐 ${t.reservationEnLigne}`,             href: '/parametres/reservation' },
-  ]
 
   const fetchPending = useCallback(async () => {
     try {
@@ -167,7 +165,7 @@ export default function Sidebar() {
             }`}
           >
             <WhatsAppIcon size={18} />
-            <span style={{ flex: 1 }}>{t.whatsapp}</span>
+            <span style={{ flex: 1 }}>WhatsApp</span>
             {pendingFeedbacks > 0 && (
               <span style={{
                 background: '#25D366', color: 'white',
@@ -191,7 +189,7 @@ export default function Sidebar() {
               }`}
             >
               <Settings size={18} />
-              <span style={{ flex: 1 }}>{t.parametres}</span>
+              <span style={{ flex: 1 }}>Paramètres</span>
             </Link>
             {isParametresActive && (
               <div style={{ marginLeft: 14, marginTop: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -226,14 +224,9 @@ export default function Sidebar() {
             }`}
           >
             <Crown size={18} />
-            {t.abonnement}
+            Abonnement
           </Link>
         </nav>
-
-        {/* Language switcher */}
-        <div style={{ padding: '8px 12px', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'center' }}>
-          <LanguageSwitcher variant="dark" size="sm" />
-        </div>
 
         {/* Footer — profile dropdown */}
         <div className="px-3 py-3 border-t border-blue-800">

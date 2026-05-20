@@ -75,7 +75,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           twoFactorEnabled:   user.twoFactorEnabled,
           subscriptionStatus,
           trialDaysLeft,
-          preferredLang:      (user as any).preferredLang ?? 'fr',
         } as any
       },
     }),

@@ -5,7 +5,6 @@ import { Bell, Search, Clock, Users, MessageSquare, CheckCheck, Menu, ScanLine }
 import { useSession } from 'next-auth/react'
 import { usePathname } from 'next/navigation'
 import ProfileDropdown from '@/components/ui/ProfileDropdown'
-import LanguageSwitcher from '@/components/LanguageSwitcher'
 import { useSidebar } from '@/lib/sidebar-context'
 import dynamic from 'next/dynamic'
 // useSession is kept — used inside NotificationBell for subscription status
@@ -330,9 +329,6 @@ export default function Topbar({ title, subtitle }: TopbarProps) {
         >
           <ScanLine size={20} />
         </button>
-
-        {/* Language switcher */}
-        <LanguageSwitcher variant="light" size="sm" />
 
         {/* Notification bell */}
         <NotificationBell />

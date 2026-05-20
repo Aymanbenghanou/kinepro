@@ -7,27 +7,25 @@ import { formatDate } from '@/lib/utils'
 import { Plus, Search, QrCode } from 'lucide-react'
 import NewPatientWizard from '@/components/patients/NewPatientWizard'
 import dynamic from 'next/dynamic'
-import { useTranslation } from '@/hooks/useTranslation'
 
 const QrCodeModal = dynamic(() => import('@/components/qr/QrCodeModal'), { ssr: false })
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://kinepro-omega.vercel.app'
 
-function StatusBadge({ actif, t }: { actif: boolean; t: any }) {
+function StatusBadge({ actif }: { actif: boolean }) {
   return (
     <span style={{
       background: actif ? '#DCFCE7' : '#F1F5F9',
       color: actif ? '#16A34A' : '#64748B',
       padding: '2px 10px', borderRadius: 999, fontSize: 12, fontWeight: 500,
     }}>
-      {actif ? t.actif : t.inactif}
+      {actif ? 'Actif' : 'Inactif'}
     </span>
   )
 }
 
 export default function PatientsPage() {
   const router = useRouter()
-  const { t } = useTranslation()
   const [patients, setPatients] = useState<any[]>([])
   const [search, setSearch] = useState('')
   const [showWizard, setShowWizard] = useState(false)
@@ -68,7 +66,7 @@ export default function PatientsPage() {
 
   return (
     <div>
-      <Topbar title={t.patients} subtitle={`${patients.length} ${t.patientsAuTotal}`} />
+      <Topbar title="Patients" subtitle={`${patients.length} patients au total`} />
       <div style={{ padding: 24 }}>
 
         {/* Header */}
@@ -77,7 +75,7 @@ export default function PatientsPage() {
             <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
             <input
               type="text"
-              placeholder={t.rechercherPatient}
+              placeholder="Rechercher un patient..."
               value={search}
               onChange={e => { setSearch(e.target.value); setPage(1) }}
               style={{
@@ -98,7 +96,7 @@ export default function PatientsPage() {
               flexShrink: 0,
             }}
           >
-            <Plus size={16} /> {t.nouveauPatient}
+            <Plus size={16} /> Nouveau patient
           </button>
         </div>
 
@@ -108,16 +106,16 @@ export default function PatientsPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-                {[t.patients, t.telephone, t.pathologie, t.seancesCount, t.statut, t.derniereVisite, ''].map(h => (
+                {['Patient', 'Téléphone', 'Pathologie', 'Séances', 'Statut', 'Dernière visite', ''].map(h => (
                   <th key={h} style={{ padding: '12px 16px', fontSize: 12, fontWeight: 600, color: '#64748B', textAlign: 'left' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} style={{ padding: 40, textAlign: 'center', color: '#64748B', fontSize: 14 }}>{t.chargement}</td></tr>
+                <tr><td colSpan={7} style={{ padding: 40, textAlign: 'center', color: '#64748B', fontSize: 14 }}>Chargement...</td></tr>
               ) : paginated.length === 0 ? (
-                <tr><td colSpan={7} style={{ padding: 40, textAlign: 'center', color: '#64748B', fontSize: 14 }}>{t.aucunPatient}</td></tr>
+                <tr><td colSpan={7} style={{ padding: 40, textAlign: 'center', color: '#64748B', fontSize: 14 }}>Aucun patient trouvé</td></tr>
               ) : paginated.map((p: any, i: number) => (
                 <tr key={p.id}
                   onClick={() => router.push(`/patients/${p.id}`)}
@@ -152,13 +150,13 @@ export default function PatientsPage() {
                       {p.seances?.length || 0}
                     </span>
                   </td>
-                  <td style={{ padding: '14px 16px' }}><StatusBadge actif={p.actif} t={t} /></td>
+                  <td style={{ padding: '14px 16px' }}><StatusBadge actif={p.actif} /></td>
                   <td style={{ padding: '14px 16px', fontSize: 13, color: '#64748B' }}>
                     {p.rendezVous?.[0] ? formatDate(p.rendezVous[0].date) : '—'}
                   </td>
                   <td style={{ padding: '14px 16px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span style={{ fontSize: 13, color: '#2563EB', fontWeight: 500 }}>{t.dossier} →</span>
+                      <span style={{ fontSize: 13, color: '#2563EB', fontWeight: 500 }}>Dossier →</span>
                       <button
                         onClick={e => openQr(e, p.id, `${p.prenom} ${p.nom}`)}
                         title="QR Code"
@@ -181,7 +179,7 @@ export default function PatientsPage() {
           {/* Pagination */}
           {totalPages > 1 && (
             <div style={{ padding: '12px 16px', borderTop: '1px solid #E2E8F0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 13, color: '#64748B' }}>{t.page} {page} {t.sur} {totalPages} · {patients.length} {t.resultats}</span>
+              <span style={{ fontSize: 13, color: '#64748B' }}>Page {page} sur {totalPages} · {patients.length} résultats</span>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
                   style={{ padding: '6px 12px', border: '1px solid #E2E8F0', borderRadius: 6, background: 'white', cursor: page === 1 ? 'not-allowed' : 'pointer', color: page === 1 ? '#CBD5E1' : '#374151', fontSize: 13 }}>
@@ -198,7 +196,7 @@ export default function PatientsPage() {
       </div>
 
       {/* FAB: mobile only */}
-      <button className="fab-btn" onClick={() => setShowWizard(true)} aria-label={t.nouveauPatient}>
+      <button className="fab-btn" onClick={() => setShowWizard(true)} aria-label="Nouveau patient">
         +
       </button>
 

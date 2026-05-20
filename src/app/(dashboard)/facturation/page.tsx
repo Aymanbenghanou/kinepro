@@ -9,7 +9,6 @@ import { Plus, X, Download, Search, RotateCcw, Wallet, Eye, CheckCircle2 } from 
 import { generateFacturePDF } from '@/lib/pdf-utils'
 import { STATUT_LABELS, type FactureStatut } from '@/lib/facture-statut'
 import PaymentModal from '@/components/facturation/PaymentModal'
-import { useTranslation } from '@/hooks/useTranslation'
 
 const QrCodeModal = dynamic(() => import('@/components/qr/QrCodeModal'), { ssr: false })
 
@@ -42,7 +41,6 @@ function ProgressBar({ paye, total }: { paye: number; total: number }) {
 }
 
 export default function FacturationPage() {
-  const { t } = useTranslation()
   const [factures, setFactures] = useState<any[]>([])
   const [patients, setPatients] = useState<any[]>([])
   const [praticiens, setPraticiens] = useState<any[]>([])
@@ -136,15 +134,15 @@ export default function FacturationPage() {
 
   return (
     <div>
-      <Topbar title={t.facturation} subtitle={t.facturation} />
+      <Topbar title="Facturation" subtitle="Suivi des paiements et factures" />
       <div style={{ padding: 20 }}>
 
         {/* Stats */}
         <div style={{ display: 'grid', gap: 14, gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', marginBottom: 18 }}>
-          <Stat label={t.totalFacture}     value={formatMoney(totalFacture)} color="#0F172A" bg="#F1F5F9" />
-          <Stat label={t.totalEncaisse}    value={formatMoney(totalEncaisse)} color="#16A34A" bg="#DCFCE7" />
-          <Stat label={t.resteAEncaisser}  value={formatMoney(totalReste)}    color={totalReste > 0 ? '#DC2626' : '#16A34A'} bg={totalReste > 0 ? '#FEE2E2' : '#DCFCE7'} />
-          <Stat label={t.nombreFactures}   value={String(visible.length)}     color="#2563EB" bg="#DBEAFE" />
+          <Stat label="Total facturé"     value={formatMoney(totalFacture)} color="#0F172A" bg="#F1F5F9" />
+          <Stat label="Total encaissé"     value={formatMoney(totalEncaisse)} color="#16A34A" bg="#DCFCE7" />
+          <Stat label="Reste à encaisser"  value={formatMoney(totalReste)}    color={totalReste > 0 ? '#DC2626' : '#16A34A'} bg={totalReste > 0 ? '#FEE2E2' : '#DCFCE7'} />
+          <Stat label="Nombre de factures" value={String(visible.length)}     color="#2563EB" bg="#DBEAFE" />
         </div>
 
         {/* Filters bar */}
@@ -161,7 +159,7 @@ export default function FacturationPage() {
                 onChange={e => { setSearch(e.target.value); setShowAutocomplete(true) }}
                 onFocus={() => setShowAutocomplete(true)}
                 onBlur={() => setTimeout(() => setShowAutocomplete(false), 150)}
-                placeholder={t.rechercherPatient}
+                placeholder="Rechercher un patient…"
                 style={{ ...input, paddingLeft: 36 }}
               />
               {showAutocomplete && matchingPatients.length > 0 && (
@@ -192,27 +190,27 @@ export default function FacturationPage() {
             </div>
 
             <select value={statut} onChange={e => setStatut(e.target.value)} style={select}>
-              <option value="all">{t.tousLesStatuts}</option>
-              <option value="paye">{t.paye}</option>
-              <option value="en_attente">{t.enAttente}</option>
-              <option value="partielle">{t.partiellementPaye}</option>
-              <option value="en_retard">{t.enRetard}</option>
+              <option value="all">Tous les statuts</option>
+              <option value="paye">Payée</option>
+              <option value="en_attente">En attente</option>
+              <option value="partielle">Partiellement payée</option>
+              <option value="en_retard">En retard</option>
             </select>
 
             <input type="date" value={from} onChange={e => setFrom(e.target.value)} style={select} title="Date début" />
             <input type="date" value={to}   onChange={e => setTo(e.target.value)}   style={select} title="Date fin" />
 
             <select value={praticienId} onChange={e => setPraticienId(e.target.value)} style={select}>
-              <option value="all">{t.tousLesPraticiens}</option>
+              <option value="all">Tous les praticiens</option>
               {praticiens.map(p => <option key={p.id} value={p.id}>{p.prenom} {p.nom}</option>)}
             </select>
 
             <button onClick={resetFilters} style={btnGhost}>
-              <RotateCcw size={13} /> {t.reinitialiser}
+              <RotateCcw size={13} /> Réinitialiser
             </button>
 
             <button onClick={() => setShowCreate(true)} style={{ ...btnPrimary, marginLeft: 'auto' }}>
-              <Plus size={15} /> {t.creerFacture}
+              <Plus size={15} /> Créer facture
             </button>
           </div>
         </div>
@@ -223,19 +221,19 @@ export default function FacturationPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13.5 }}>
               <thead>
                 <tr style={{ background: '#F8FAFC', borderBottom: '1.5px solid #E2E8F0' }}>
-                  <th style={th}>{t.patients}</th>
-                  <th style={th}>{t.date}</th>
-                  <th style={{ ...th, textAlign: 'right' }}>{t.montant}</th>
-                  <th style={th}>{t.progression}</th>
-                  <th style={th}>{t.statut}</th>
-                  <th style={{ ...th, textAlign: 'right' }}>{t.actions}</th>
+                  <th style={th}>Patient</th>
+                  <th style={th}>Date</th>
+                  <th style={{ ...th, textAlign: 'right' }}>Montant</th>
+                  <th style={th}>Progression</th>
+                  <th style={th}>Statut</th>
+                  <th style={{ ...th, textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={6} style={{ padding: 36, textAlign: 'center', color: '#94A3B8' }}>{t.chargement}</td></tr>
+                  <tr><td colSpan={6} style={{ padding: 36, textAlign: 'center', color: '#94A3B8' }}>Chargement…</td></tr>
                 ) : visible.length === 0 ? (
-                  <tr><td colSpan={6} style={{ padding: 36, textAlign: 'center', color: '#94A3B8' }}>{t.aucuneFacture}</td></tr>
+                  <tr><td colSpan={6} style={{ padding: 36, textAlign: 'center', color: '#94A3B8' }}>Aucune facture</td></tr>
                 ) : visible.map(f => {
                   const reste = Math.max(0, f.montant - (f.montantPaye ?? 0))
                   return (
@@ -260,11 +258,11 @@ export default function FacturationPage() {
                       <td style={{ ...td, textAlign: 'right' }}>
                         <div style={{ display: 'inline-flex', gap: 6 }}>
                           {reste > 0 && (
-                            <button onClick={() => setPaymentFor(f)} style={actionBtn('#16A34A', '#DCFCE7', '#BBF7D0')} title={t.enregistrerPaiement}>
-                              <Wallet size={13} /> {t.encaisser}
+                            <button onClick={() => setPaymentFor(f)} style={actionBtn('#16A34A', '#DCFCE7', '#BBF7D0')} title="Enregistrer paiement">
+                              <Wallet size={13} /> Encaisser
                             </button>
                           )}
-                          <Link href={`/facturation/${f.id}`} style={actionBtn('#2563EB', '#EFF6FF', '#DBEAFE') as any} title={t.voirDetail}>
+                          <Link href={`/facturation/${f.id}`} style={actionBtn('#2563EB', '#EFF6FF', '#DBEAFE') as any} title="Détail">
                             <Eye size={13} />
                           </Link>
                           <button onClick={() => exportPDF(f)} style={actionBtn('#475569', 'white', '#E2E8F0')} title="PDF">

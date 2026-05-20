@@ -9,7 +9,6 @@ import {
   msgConfirmationRDV, msgRappelRDV, msgFeedbackAuto,
   buildWhatsAppUrl, scoreColor, scoreBadge, scoreCategory,
 } from '@/lib/whatsapp'
-import { useTranslation } from '@/hooks/useTranslation'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://kinepro-omega.vercel.app'
 
@@ -50,7 +49,6 @@ function WhatsAppSvg({ size = 14 }: { size?: number }) {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function WhatsAppCenterPage() {
-  const { t } = useTranslation()
   const [tab, setTab] = useState<Tab>('envoyer')
   const [loading, setLoading] = useState(true)
   const [seances, setSeances] = useState<any[]>([])
@@ -110,15 +108,15 @@ export default function WhatsAppCenterPage() {
   const pendingSeances = seances.filter(s => s.feedbackStatus === 'pending')
 
   const tabs: { id: Tab; label: string; badge?: number; highlight?: boolean }[] = [
-    { id: 'envoyer',    label: `📤 ${t.aEnvoyer}`,     badge: rdvsAujourdhui.length + seancesAttente.length },
-    { id: 'rappels',    label: `🔔 ${t.rappelsDemain}`, badge: rdvsDemain.length },
-    { id: 'ready',      label: `⭐ ${t.pretsFeedback}`, badge: readySeances.length, highlight: readySeances.length > 0 },
-    { id: 'historique', label: `📊 ${t.historique}`,    badge: feedbacks.length },
+    { id: 'envoyer',    label: '📤 À envoyer aujourd\'hui', badge: rdvsAujourdhui.length + seancesAttente.length },
+    { id: 'rappels',    label: '🔔 Rappels demain',         badge: rdvsDemain.length },
+    { id: 'ready',      label: '⭐ Feedback prêt',          badge: readySeances.length, highlight: readySeances.length > 0 },
+    { id: 'historique', label: '📊 Historique',             badge: feedbacks.length },
   ]
 
   return (
     <div>
-      <Topbar title={t.whatsapp} subtitle={t.demanderFeedback} />
+      <Topbar title="WhatsApp Center" subtitle="Messagerie & feedbacks patients" />
       <div style={{ padding: 24 }}>
 
         {/* Tabs */}

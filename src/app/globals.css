@@ -45,11 +45,6 @@ body {
   background-color: #F8FAFC;
 }
 
-/* ─── Arabic font (LTR layout preserved — text only) ────────────────────── */
-html[lang="ar"], html[lang="ar"] body {
-  font-family: 'Cairo', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-}
-
 /* ─── Topbar ─────────────────────────────────────────────────────────────── */
 .topbar {
   height: 64px;

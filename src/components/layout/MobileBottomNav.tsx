@@ -4,19 +4,17 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { LayoutDashboard, Calendar, Users, CreditCard, MoreHorizontal } from 'lucide-react'
 import { useSidebar } from '@/lib/sidebar-context'
-import { useTranslation } from '@/hooks/useTranslation'
+
+const mainTabs = [
+  { icon: LayoutDashboard, label: 'Accueil',     href: '/dashboard'    },
+  { icon: Calendar,        label: 'Agenda',       href: '/agenda'       },
+  { icon: Users,           label: 'Patients',     href: '/patients'     },
+  { icon: CreditCard,      label: 'Facturation',  href: '/facturation'  },
+]
 
 export default function MobileBottomNav() {
   const pathname = usePathname()
   const { open } = useSidebar()
-  const { t } = useTranslation()
-
-  const mainTabs = [
-    { icon: LayoutDashboard, label: t.tableauDeBord, href: '/dashboard'    },
-    { icon: Calendar,        label: t.agenda,         href: '/agenda'       },
-    { icon: Users,           label: t.patients,       href: '/patients'     },
-    { icon: CreditCard,      label: t.facturation,    href: '/facturation'  },
-  ]
 
   return (
     <nav className="mobile-bottom-nav" aria-label="Navigation principale">
