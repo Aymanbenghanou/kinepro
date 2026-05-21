@@ -735,16 +735,24 @@ button, a, [role="button"] {
   }
 
   /* Patient detail header: tighter on mobile (avatar 64, name 17px) */
-  .patient-header-card { padding: 16px !important; border-radius: 14px !important; }
-  .patient-header-card h1 { font-size: 17px !important; line-height: 1.2 !important; }
-  .patient-header-card > div:first-child { gap: 12px !important; }
+  .patient-header-card {
+    padding: 14px !important;
+    border-radius: 14px !important;
+    margin-bottom: 12px !important;
+  }
+  .patient-header-card h1 { font-size: 17px !important; line-height: 1.25 !important; }
+  .patient-header-card > div:first-child { gap: 12px !important; flex-wrap: nowrap !important; }
+  .patient-header-card > div:first-child > div:first-child { gap: 12px !important; }
+  /* Avatar: shrink from 80 to 60 on mobile */
   .patient-header-card > div:first-child > div:first-child > div:first-child {
-    /* avatar: shrink from 80 to 64 on mobile */
-    width: 64px !important; height: 64px !important;
+    width: 60px !important; height: 60px !important;
   }
   .patient-header-card > div:first-child > div:first-child > div:first-child > span {
-    font-size: 22px !important;
+    font-size: 20px !important;
   }
+  /* Info column: never overflow */
+  .patient-header-info { min-width: 0 !important; flex: 1 1 0 !important; overflow: hidden; }
+  .patient-header-info > div { min-width: 0; }
 
   /* Patient detail action grid: column layout per button on mobile */
   .action-grid-mobile > * {

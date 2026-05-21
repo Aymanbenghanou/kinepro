@@ -279,35 +279,53 @@ export default function PatientDetailPage() {
               }}>
                 <span style={{ color: 'white', fontSize: 26, fontWeight: 700 }}>{patient.prenom?.[0]}{patient.nom?.[0]}</span>
               </div>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                  <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0F172A', margin: 0 }}>{patient.prenom} {patient.nom}</h1>
-                  <span style={{ background: patient.actif ? '#DCFCE7' : '#F1F5F9', color: patient.actif ? '#16A34A' : '#64748B', padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 500 }}>
+              <div className="patient-header-info" style={{ flex: 1, minWidth: 0 }}>
+                {/* Line 1: Name only */}
+                <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0F172A', margin: 0, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {patient.prenom} {patient.nom}
+                </h1>
+
+                {/* Line 2: Status + Sexe badges — single line, nowrap */}
+                <div style={{ display: 'flex', flexWrap: 'nowrap', gap: 6, marginTop: 6, overflow: 'hidden' }}>
+                  <span style={{
+                    background: patient.actif ? '#DCFCE7' : '#F1F5F9',
+                    color:      patient.actif ? '#15803D' : '#64748B',
+                    padding: '3px 10px', borderRadius: 999, fontSize: 11.5, fontWeight: 600,
+                    whiteSpace: 'nowrap', flexShrink: 0,
+                  }}>
                     {patient.actif ? '● Actif' : '● Inactif'}
                   </span>
                   {patient.sexe && (
-                    <span style={{ background: '#EFF6FF', color: '#2563EB', padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 500 }}>
+                    <span style={{
+                      background: '#EFF6FF', color: '#2563EB',
+                      padding: '3px 10px', borderRadius: 999, fontSize: 11.5, fontWeight: 600,
+                      whiteSpace: 'nowrap', flexShrink: 0,
+                    }}>
                       {patient.sexe}
                     </span>
                   )}
                 </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, maxWidth: '100%', minWidth: 0 }}>
-                  {age !== null && <span style={{ fontSize: 13, color: '#64748B', display: 'flex', alignItems: 'center', gap: 4 }}><User size={13} /> {age} ans</span>}
+
+                {/* Line 3+: contact meta */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 16px', maxWidth: '100%', minWidth: 0, marginTop: 8 }}>
+                  {age !== null && <span style={{ fontSize: 12.5, color: '#64748B', display: 'flex', alignItems: 'center', gap: 4 }}><User size={13} /> {age} ans</span>}
                   {patient.telephone && (
-                    <a href={`tel:${patient.telephone}`} style={{ fontSize: 13, color: '#2563EB', display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontWeight: 600 }}>
+                    <a href={`tel:${patient.telephone}`} style={{ fontSize: 12.5, color: '#2563EB', display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontWeight: 600 }}>
                       <Phone size={13} /> {patient.telephone}
                     </a>
                   )}
                   {patient.email && (
-                    <span style={{ fontSize: 13, color: '#64748B', display: 'flex', alignItems: 'center', gap: 4, minWidth: 0, maxWidth: '100%', overflowWrap: 'anywhere', wordBreak: 'break-all' }}>
-                      <Mail size={13} style={{ flexShrink: 0 }} /> {patient.email}
+                    <span style={{ fontSize: 12, color: '#64748B', display: 'flex', alignItems: 'center', gap: 4, minWidth: 0, maxWidth: '100%' }}>
+                      <Mail size={13} style={{ flexShrink: 0 }} />
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{patient.email}</span>
                     </span>
                   )}
-                  {patient.ville && <span style={{ fontSize: 13, color: '#64748B', display: 'flex', alignItems: 'center', gap: 4 }}><MapPin size={13} /> {patient.ville}</span>}
+                  {patient.ville && <span style={{ fontSize: 12.5, color: '#64748B', display: 'flex', alignItems: 'center', gap: 4 }}><MapPin size={13} /> {patient.ville}</span>}
                 </div>
+
                 {patient.pathologie && (
                   <div style={{ marginTop: 8 }}>
-                    <span style={{ background: '#FEF3C7', color: '#92400E', padding: '4px 12px', borderRadius: 999, fontSize: 12, fontWeight: 500 }}>
+                    <span style={{ background: '#FEF3C7', color: '#92400E', padding: '4px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600 }}>
                       🩺 {patient.pathologie}
                     </span>
                   </div>
@@ -316,28 +334,28 @@ export default function PatientDetailPage() {
             </div>
             <div className="action-grid-mobile" style={{ display: 'flex', gap: 10, flexShrink: 0, flexWrap: 'wrap' }}>
               <button onClick={openQr}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'white', color: '#374151', border: '1px solid #E2E8F0', borderRadius: 10, padding: '10px 14px', cursor: 'pointer', fontWeight: 500, fontSize: 14 }}>
+                style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'white', color: '#2563EB', border: '1.5px solid #BFDBFE', borderRadius: 10, padding: '10px 14px', cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>
                 <QrCode size={15} /> QR Code
               </button>
               <button onClick={() => generateDossierPatientPDF(patient, cabinet)}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'white', color: '#374151', border: '1px solid #E2E8F0', borderRadius: 10, padding: '10px 16px', cursor: 'pointer', fontWeight: 500, fontSize: 14 }}>
+                style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'white', color: '#DC2626', border: '1.5px solid #FECACA', borderRadius: 10, padding: '10px 16px', cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>
                 <Download size={15} /> PDF
               </button>
               {patient.telephone && (
                 <button onClick={() => setShowExercices(true)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#7C3AED', color: 'white', border: 'none', borderRadius: 10, padding: '10px 18px', cursor: 'pointer', fontWeight: 600, fontSize: 14, boxShadow: '0 2px 8px rgba(124,58,237,0.25)' }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#2563EB', color: 'white', border: 'none', borderRadius: 10, padding: '10px 18px', cursor: 'pointer', fontWeight: 700, fontSize: 14, boxShadow: '0 2px 8px rgba(37,99,235,0.25)' }}>
                   💪 Exercices
                 </button>
               )}
               <button onClick={() => setShowPlanifier(true)}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#2563EB', color: 'white', border: 'none', borderRadius: 10, padding: '10px 18px', cursor: 'pointer', fontWeight: 600, fontSize: 14, boxShadow: '0 2px 8px rgba(37,99,235,0.25)' }}>
+                style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#1E293B', color: 'white', border: 'none', borderRadius: 10, padding: '10px 18px', cursor: 'pointer', fontWeight: 700, fontSize: 14, boxShadow: '0 2px 8px rgba(30,41,59,0.25)' }}>
                 <Calendar size={16} /> Planifier
               </button>
             </div>
           </div>
 
-          {/* Quick stats */}
-          <div className="stats-grid-4" style={{ gap: 12, marginTop: 20, paddingTop: 20, borderTop: '1px solid #F1F5F9' }}>
+          {/* Quick stats — desktop only (mobile shows them inside the Séances tab) */}
+          <div className="stats-grid-4 desktop-only" style={{ gap: 12, marginTop: 20, paddingTop: 20, borderTop: '1px solid #F1F5F9' }}>
             {[
               { label: 'Séances réalisées', value: seancesRealisees.length, color: '#2563EB' },
               { label: 'Total séances', value: patient.seances?.length || 0, color: '#0F172A' },
