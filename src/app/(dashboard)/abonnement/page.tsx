@@ -41,9 +41,13 @@ function PlanCard({
     }} onClick={onSelect}>
       {highlight && (
         <div style={{
-          position: 'absolute', top: -14, left: '50%', transform: 'translateX(-50%)',
+          position: 'absolute', top: -14, left: 12, right: 12,
           background: '#2563EB', color: 'white',
-          fontSize: 11, fontWeight: 700, padding: '3px 14px', borderRadius: 99,
+          fontSize: 10.5, fontWeight: 700,
+          padding: '3px 10px', borderRadius: 99,
+          textAlign: 'center',
+          maxWidth: 'calc(100% - 24px)',
+          overflow: 'hidden', textOverflow: 'ellipsis',
           whiteSpace: 'nowrap',
         }}>
           ⭐ MEILLEUR RAPPORT QUALITÉ-PRIX
@@ -51,9 +55,18 @@ function PlanCard({
       )}
       <div style={{ marginBottom: 16 }}>
         <h3 style={{ fontSize: 18, fontWeight: 700, color: '#0F172A', margin: '0 0 4px' }}>{name}</h3>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-          <span style={{ fontSize: 32, fontWeight: 800, color: '#2563EB' }}>{price}</span>
-          <span style={{ fontSize: 14, color: '#64748B' }}>MAD / {period}</span>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'nowrap', minWidth: 0 }}>
+          <span style={{
+            fontSize: 'clamp(24px, 7vw, 32px)',
+            fontWeight: 800, color: '#2563EB',
+            whiteSpace: 'nowrap',
+          }}>
+            {/* espace insécable U+00A0 pour empêcher le retour à la ligne dans "2 499" */}
+            {price.replace(/ /g, ' ')}
+          </span>
+          <span style={{ fontSize: 13, color: '#64748B', whiteSpace: 'nowrap' }}>
+            MAD / {period}
+          </span>
         </div>
       </div>
       <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 20px', display: 'flex', flexDirection: 'column', gap: 8 }}>

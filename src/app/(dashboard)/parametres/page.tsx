@@ -349,32 +349,42 @@ Merci pour votre confiance !
               <h2 style={{ fontSize: 16, fontWeight: 700, color: '#0F172A', margin: 0 }}>Types de séances</h2>
               <p style={{ fontSize: 13, color: '#64748B', margin: '4px 0 0' }}>Durées et tarifs par défaut</p>
             </div>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
-                  {['Type de séance', 'Durée par défaut', 'Tarif (MAD)'].map(h => (
-                    <th key={h} style={{ padding: '12px 20px', fontSize: 12, fontWeight: 600, color: '#64748B', textAlign: 'left' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {TYPES_SEANCE_DEFAULT.map(t => (
-                  <tr key={t.nom} style={{ borderBottom: '1px solid #F1F5F9' }}>
-                    <td style={{ padding: '14px 20px' }}>
-                      <span style={{ fontWeight: 500, color: '#0F172A', fontSize: 14 }}>{t.nom}</span>
-                    </td>
-                    <td style={{ padding: '14px 20px' }}>
-                      <span style={{ background: '#DBEAFE', color: '#2563EB', padding: '3px 10px', borderRadius: 999, fontSize: 13, fontWeight: 500 }}>
-                        {t.duree} min
-                      </span>
-                    </td>
-                    <td style={{ padding: '14px 20px' }}>
-                      <span style={{ fontSize: 14, fontWeight: 600, color: '#0F172A' }}>{t.tarif} MAD</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            {/* Flex row layout — wraps cleanly on mobile, identical look on desktop */}
+            <div>
+              {TYPES_SEANCE_DEFAULT.map((t, i) => (
+                <div key={t.nom} style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  padding: '14px 16px', minWidth: 0,
+                  borderBottom: i < TYPES_SEANCE_DEFAULT.length - 1 ? '1px solid #F1F5F9' : 'none',
+                }}>
+                  {/* Nom (peut wrap) */}
+                  <span style={{
+                    flex: 1, minWidth: 0,
+                    fontWeight: 500, color: '#0F172A', fontSize: 14,
+                    overflowWrap: 'anywhere', wordBreak: 'break-word',
+                  }}>
+                    {t.nom}
+                  </span>
+                  {/* Pill durée */}
+                  <span style={{
+                    background: '#DBEAFE', color: '#2563EB',
+                    padding: '3px 10px', borderRadius: 999,
+                    fontSize: 13, fontWeight: 500,
+                    whiteSpace: 'nowrap', flexShrink: 0,
+                  }}>
+                    {t.duree} min
+                  </span>
+                  {/* Tarif */}
+                  <span style={{
+                    fontSize: 14, fontWeight: 600, color: '#0F172A',
+                    whiteSpace: 'nowrap', flexShrink: 0,
+                    minWidth: 70, textAlign: 'right',
+                  }}>
+                    {t.tarif} MAD
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
