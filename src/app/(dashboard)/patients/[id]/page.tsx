@@ -12,6 +12,7 @@ import {
 import ExercicesModal from '@/components/whatsapp/ExercicesModal'
 import { generateDossierPatientPDF } from '@/lib/pdf-utils'
 import ProgressionTab from '@/components/patients/ProgressionTab'
+import MobileProgressionTab from '@/components/patients/MobileProgressionTab'
 import DocumentsTab from '@/components/patients/DocumentsTab'
 import ExerciseProgramModal from '@/components/exercise-program/ExerciseProgramModal'
 import { formatWhatsAppMessage, waUrl } from '@/lib/exercise-program'
@@ -720,9 +721,14 @@ export default function PatientDetailPage() {
         )}
 
         {/* ── Tab: Progression ── */}
-        {activeTab === 'progression' && (
-          <ProgressionTab patient={patient} onScoresSaved={fetchPatient} />
-        )}
+        {activeTab === 'progression' && (<>
+          <div className="mobile-only">
+            <MobileProgressionTab patient={patient} onScoresSaved={fetchPatient} />
+          </div>
+          <div className="desktop-only">
+            <ProgressionTab patient={patient} onScoresSaved={fetchPatient} />
+          </div>
+        </>)}
 
         {/* ── Tab: Documents ── */}
         {activeTab === 'documents' && (
