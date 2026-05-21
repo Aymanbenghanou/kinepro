@@ -315,7 +315,7 @@ export default function DocumentsTab({ patientId }: { patientId: string }) {
   const filtered = typeFilter === 'tous' ? docs : docs.filter(d => d.type === typeFilter)
 
   return (
-    <div>
+    <div className="documents-tab">
       {/* Upload zone */}
       <UploadZone patientId={patientId} onUploaded={fetchDocs} />
 
