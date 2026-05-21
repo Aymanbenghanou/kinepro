@@ -152,14 +152,15 @@ export default async function DashboardPage() {
           <div style={{ fontSize: 13, color: '#64748B', marginTop: 4, textTransform: 'capitalize' }}>{greetingDate}</div>
         </div>
 
-        {/* ── MOBILE-ONLY horizontal stats row ── */}
-        <div className="mobile-only">
-          <div className="h-scroll" style={{ marginBottom: 4 }}>
-            <MobileStat icon="📅" value={String(rdvAujourdHui)}                                    label="RDV aujourd'hui" color="#2563EB" />
-            <MobileStat icon="👥" value={String(patientsActifs)}                                   label="Patients actifs" color="#16A34A" />
-            <MobileStat icon="💰" value={formatMoney(revenusMonth._sum.montant ?? 0)}              label="Ce mois"         color="#F59E0B" />
-            <MobileStat icon="⚠️" value={resteAEncaisser > 0 ? formatMoney(resteAEncaisser) : '0'} label={resteAEncaisser > 0 ? `Reste à encaisser (${nbFacturesImpayees})` : 'Tout est payé'} color={resteAEncaisser > 0 ? '#DC2626' : '#16A34A'} href="/facturation?statut=en_attente" />
-          </div>
+        {/* ── MOBILE-ONLY 2×2 stats grid ── */}
+        <div className="mobile-only" style={{
+          display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)',
+          gap: 10, marginBottom: 14,
+        }}>
+          <MobileStat icon="📅" value={String(rdvAujourdHui)}                                    label="RDV aujourd'hui" color="#2563EB" />
+          <MobileStat icon="👥" value={String(patientsActifs)}                                   label="Patients actifs" color="#16A34A" />
+          <MobileStat icon="💰" value={formatMoney(revenusMonth._sum.montant ?? 0)}              label="Ce mois"         color="#F59E0B" />
+          <MobileStat icon="⚠️" value={resteAEncaisser > 0 ? formatMoney(resteAEncaisser) : '0'} label={resteAEncaisser > 0 ? 'À encaisser' : 'Tout payé'} color={resteAEncaisser > 0 ? '#DC2626' : '#16A34A'} href="/facturation?statut=en_attente" />
         </div>
 
         {/* ── MOBILE-ONLY quick actions 2×2 ── */}
@@ -324,16 +325,17 @@ function MobileStat({ icon, value, label, color, href }: {
 }) {
   const inner = (
     <div style={{
-      width: 150, padding: 14,
+      width: '100%', padding: 12,
       background: 'white', border: '1px solid #E2E8F0',
-      borderRadius: 14, display: 'flex', flexDirection: 'column', gap: 6,
+      borderRadius: 14, display: 'flex', flexDirection: 'column', gap: 4,
+      minWidth: 0, boxSizing: 'border-box',
     }}>
       <div style={{ fontSize: 22 }}>{icon}</div>
-      <div style={{ fontSize: 18, fontWeight: 800, color, lineHeight: 1.1 }}>{value}</div>
-      <div style={{ fontSize: 11.5, color: '#64748B', lineHeight: 1.25 }}>{label}</div>
+      <div style={{ fontSize: 20, fontWeight: 800, color, lineHeight: 1.1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value}</div>
+      <div style={{ fontSize: 11, color: '#64748B', lineHeight: 1.25 }}>{label}</div>
     </div>
   )
-  if (href) return <Link href={href} style={{ textDecoration: 'none' }}>{inner}</Link>
+  if (href) return <Link href={href} style={{ textDecoration: 'none', display: 'block' }}>{inner}</Link>
   return inner
 }
 

@@ -150,6 +150,20 @@ button, a, [role="button"] {
 .patient-tabs::-webkit-scrollbar {
   display: none; /* Chrome/Safari */
 }
+@media (max-width: 768px) {
+  .patient-tabs {
+    position: sticky;
+    top: 56px;
+    z-index: 20;
+    margin-left: -16px !important;
+    margin-right: -16px !important;
+    border-radius: 0 !important;
+    border-left: none !important;
+    border-right: none !important;
+    border-top: none !important;
+    padding: 6px 12px !important;
+  }
+}
 
 /* ─── Page header: search + action row ───────────────────────────────────── */
 .page-header-row {
@@ -481,6 +495,40 @@ button, a, [role="button"] {
   .topbar-hamburger { display: none !important; }
 }
 
+/* ─── Paramètres page tabs (scrollable pills, all sizes) ────────────── */
+.params-tabs {
+  display: flex;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  gap: 8px;
+  padding: 4px 0 16px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #F1F5F9;
+  touch-action: pan-x pan-y;
+}
+.params-tabs::-webkit-scrollbar { display: none; }
+.param-tab {
+  flex-shrink: 0;
+  white-space: nowrap;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1.5px solid #E2E8F0;
+  background: white;
+  color: #64748B;
+  cursor: pointer;
+  min-height: 38px;
+  transition: all 0.15s;
+}
+.param-tab:active { transform: scale(0.97); }
+.param-tab.active {
+  background: #2563EB;
+  color: white;
+  border-color: #2563EB;
+}
+
 /* ─── Text overflow safety (global) ──────────────────────────────────── */
 .truncate-mobile {
   overflow: hidden;
@@ -519,6 +567,31 @@ button, a, [role="button"] {
     margin-bottom: 28px !important;
   }
   .pricing-grid > * { width: 100% !important; flex: none !important; }
+
+  /* Stack 2-column form rows on mobile */
+  .form-row-2col {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+  .form-row-2col > * { width: 100% !important; max-width: 100% !important; }
+
+  /* Inputs always full-width + box-sizing protected */
+  input, select, textarea {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Patient detail action grid: column layout per button on mobile */
+  .action-grid-mobile > * {
+    flex-direction: column !important;
+    gap: 4px !important;
+    padding: 12px 8px !important;
+    min-height: 64px !important;
+    font-size: 12px !important;
+    border-radius: 12px !important;
+    line-height: 1.2;
+  }
 }
 /* Desktop: hide short, show full */
 .tab-label-short { display: none; }

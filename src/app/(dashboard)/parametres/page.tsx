@@ -120,11 +120,11 @@ export default function ParametresPage() {
   }
 
   const tabs: { key: Tab; label: string }[] = [
-    { key: 'cabinet',        label: '🏥 Infos cabinet' },
-    { key: 'communications', label: '📱 WhatsApp & Avis' },
-    { key: 'seances',        label: '⚡ Types de séances' },
+    { key: 'cabinet',        label: '🏥 Cabinet' },
+    { key: 'communications', label: '💬 WhatsApp' },
+    { key: 'seances',        label: '⚡ Séances' },
     { key: 'salles',         label: '🚪 Salles' },
-    { key: 'notifications',  label: '🔔 Notifications' },
+    { key: 'notifications',  label: '🔔 Notifs' },
   ]
 
   if (loading) {
@@ -144,16 +144,13 @@ export default function ParametresPage() {
       <div style={{ padding: 24 }}>
 
         {/* Tabs */}
-        <div style={{ display: 'flex', gap: 4, marginBottom: 28, background: '#F1F5F9', padding: 4, borderRadius: 10, width: 'fit-content' }}>
+        <div className="params-tabs">
           {tabs.map(tab => (
-            <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-              style={{
-                padding: '8px 18px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                fontWeight: 500, fontSize: 13,
-                background: activeTab === tab.key ? 'white' : 'transparent',
-                color: activeTab === tab.key ? '#0F172A' : '#64748B',
-                boxShadow: activeTab === tab.key ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-              }}>
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`param-tab${activeTab === tab.key ? ' active' : ''}`}
+            >
               {tab.label}
             </button>
           ))}
@@ -178,7 +175,7 @@ export default function ParametresPage() {
                   placeholder="Ex: 45 Avenue Hassan II, Casablanca 20000"
                   style={inputStyle} />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div className="form-row-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
                   <label style={labelStyle}>Téléphone</label>
                   <input value={cabinet.telephone}
