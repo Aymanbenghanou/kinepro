@@ -1,12 +1,24 @@
 import NextAuth from 'next-auth'
-import { NextResponse } from 'next/server'
+import { NextResponse, userAgent } from 'next/server'
 import { authConfig } from './auth.config'
 
 const { auth } = NextAuth(authConfig)
 
+/** Desktop paths that have a /m/* mobile counterpart. */
+const MOBILE_REDIRECTS: Record<string, string> = {
+  '/dashboard':   '/m/dashboard',
+  '/agenda':      '/m/agenda',
+  '/patients':    '/m/patients',
+  '/seances':     '/m/seances',
+  '/facturation': '/m/facturation',
+  '/whatsapp':    '/m/whatsapp',
+}
+
 export default auth(function middleware(req) {
   const session = req.auth
   const { pathname } = req.nextUrl
+  const ua = userAgent(req)
+  const isMobile = ua.device.type === 'mobile' || ua.device.type === 'tablet'
 
   // Root landing page — always public (no redirect even if logged in)
   if (pathname === '/') return NextResponse.next()
@@ -21,7 +33,9 @@ export default auth(function middleware(req) {
   const authPaths = ['/login', '/register']
   if (authPaths.some(p => pathname.startsWith(p))) {
     if (session) {
-      const dest = session.user.role === 'SUPER_ADMIN' ? '/super-admin' : '/dashboard'
+      let dest: string
+      if (session.user.role === 'SUPER_ADMIN') dest = '/super-admin'
+      else dest = isMobile ? '/m/dashboard' : '/dashboard'
       return NextResponse.redirect(new URL(dest, req.url))
     }
     return NextResponse.next()
@@ -36,7 +50,23 @@ export default auth(function middleware(req) {
 
   // Super admin guard
   if (pathname.startsWith('/super-admin') && session.user.role !== 'SUPER_ADMIN') {
-    return NextResponse.redirect(new URL('/dashboard', req.url))
+    return NextResponse.redirect(new URL(isMobile ? '/m/dashboard' : '/dashboard', req.url))
+  }
+
+  // ── Mobile / desktop route routing ──────────────────────────────────────
+  // Mobile users on a desktop route → bounce them to the /m/* equivalent.
+  if (isMobile && session.user.role !== 'SUPER_ADMIN') {
+    if (MOBILE_REDIRECTS[pathname]) {
+      return NextResponse.redirect(new URL(MOBILE_REDIRECTS[pathname], req.url))
+    }
+    if (pathname.startsWith('/patients/')) {
+      return NextResponse.redirect(new URL(pathname.replace('/patients/', '/m/patients/'), req.url))
+    }
+  }
+
+  // Desktop users on a /m/* mobile route → strip the /m prefix.
+  if (!isMobile && pathname.startsWith('/m/')) {
+    return NextResponse.redirect(new URL(pathname.replace(/^\/m/, ''), req.url))
   }
 
   return NextResponse.next()
