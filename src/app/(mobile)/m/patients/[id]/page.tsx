@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, use as usePromise } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef, use as usePromise } from 'react'
 import Link from 'next/link'
 import MobileTopbar from '@/components/mobile/MobileTopbar'
 import { QrCode, Download, Calendar } from 'lucide-react'
@@ -18,11 +18,37 @@ const avatarColor = (n: string) => AVATAR_COLORS[(n?.charCodeAt(0) ?? 0) % AVATA
 const TABS = ['Infos', 'Séances', 'Factures', 'Progrès', 'Docs', 'QR'] as const
 type TabId = typeof TABS[number]
 
+const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ?? 'djouneyaq'
+const UPLOAD_PRESET = 'kinepro_docs'
+const MAX_SIZE_MB = 10
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://kinepro-omega.vercel.app'
+
+function fmtDate(d: string | Date): string {
+  return new Date(d).toLocaleDateString('fr-MA', { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
+function fmtMoney(n: number): string {
+  return `${(n || 0).toLocaleString('fr-MA')} MAD`
+}
+
 export default function MobilePatientDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = usePromise(params)
   const [patient, setPatient] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading]   = useState(true)
   const [activeTab, setActiveTab] = useState<TabId>('Infos')
+
+  // Progrès — score input state
+  const [scores, setScores] = useState<{ douleur: number|null; mobilite: number|null; force: number|null }>({
+    douleur: null, mobilite: null, force: null,
+  })
+  const [savingScores, setSavingScores] = useState(false)
+  const [scoresSaved,  setScoresSaved]  = useState(false)
+
+  // Docs state
+  const [docs, setDocs] = useState<any[]>([])
+  const [docFilter, setDocFilter] = useState<'Tous' | 'Ordonnances' | 'Radios' | 'Autres'>('Tous')
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const fileInput = useRef<HTMLInputElement | null>(null)
 
   const fetchPatient = useCallback(async () => {
     setLoading(true)
@@ -34,7 +60,113 @@ export default function MobilePatientDetailPage({ params }: { params: Promise<{ 
     setLoading(false)
   }, [id])
 
+  const fetchDocs = useCallback(async () => {
+    try {
+      const r = await fetch(`/api/patients/${id}/documents`)
+      const d = await r.json()
+      if (Array.isArray(d)) setDocs(d)
+    } catch {}
+  }, [id])
+
   useEffect(() => { fetchPatient() }, [fetchPatient])
+  useEffect(() => { if (activeTab === 'Docs') fetchDocs() }, [activeTab, fetchDocs])
+
+  // ── Derived data ──────────────────────────────────────────────────────────
+  const seances = patient?.seances ?? []
+  const factures = patient?.factures ?? []
+  const feedbacks = patient?.feedbacks ?? []
+
+  const seancesRealisees   = seances.filter((s: any) => s.statut === 'realisee').length
+  const seancesPrescrites  = patient?.nbSeancesPrescrites ?? seances.length ?? 0
+  const seancesRestantes   = Math.max(0, seancesPrescrites - seancesRealisees)
+  const progressionTraitement = seancesPrescrites > 0 ? Math.round((seancesRealisees / seancesPrescrites) * 100) : 0
+
+  const totalFacture = factures.reduce((s: number, f: any) => s + (f.montant || 0), 0)
+  const totalPaye    = factures.reduce((s: number, f: any) => s + (f.montantPaye ?? (f.statut === 'paye' ? f.montant : 0)), 0)
+  const resteTotal   = Math.max(0, totalFacture - totalPaye)
+
+  const scoredAsc = useMemo(() => [...seances]
+    .filter((s: any) => typeof s.douleurScore === 'number' || typeof s.mobiliteScore === 'number')
+    .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime()), [seances])
+  const douleurArr  = scoredAsc.filter((s: any) => typeof s.douleurScore  === 'number').map((s: any) => s.douleurScore)
+  const mobiliteArr = scoredAsc.filter((s: any) => typeof s.mobiliteScore === 'number').map((s: any) => s.mobiliteScore)
+  const initialDouleur = douleurArr[0] ?? null
+  const lastDouleur    = douleurArr[douleurArr.length - 1] ?? null
+  const lastMobilite   = mobiliteArr[mobiliteArr.length - 1] ?? null
+  const progressPct = initialDouleur && lastDouleur != null && initialDouleur > 0
+    ? Math.max(0, Math.round(((initialDouleur - lastDouleur) / initialDouleur) * 100))
+    : 0
+
+  const fbScores = feedbacks.map((f: any) => f.score).filter((n: any) => typeof n === 'number')
+  const sScores  = seances.map((s: any) => s.scorePatient).filter((n: any) => typeof n === 'number')
+  const allScores = fbScores.length ? fbScores : sScores
+  const avgScore = allScores.length
+    ? Math.round((allScores.reduce((a: number, b: number) => a + b, 0) / allScores.length) * 10) / 10
+    : null
+
+  const lastRealiseId = useMemo(() => {
+    const r = seances.filter((s: any) => s.statut === 'realisee')
+    return r[r.length - 1]?.id ?? r[0]?.id ?? null
+  }, [seances])
+
+  const filteredDocs = useMemo(() => {
+    if (docFilter === 'Tous')        return docs
+    if (docFilter === 'Ordonnances') return docs.filter(d => d.type === 'ordonnance')
+    if (docFilter === 'Radios')      return docs.filter(d => d.type === 'radio' || d.type === 'irm')
+    if (docFilter === 'Autres')      return docs.filter(d => d.type !== 'ordonnance' && d.type !== 'radio' && d.type !== 'irm')
+    return docs
+  }, [docs, docFilter])
+
+  // ── Actions ───────────────────────────────────────────────────────────────
+  async function saveScores() {
+    if (!lastRealiseId) return
+    if (scores.douleur == null && scores.mobilite == null && scores.force == null) return
+    setSavingScores(true)
+    try {
+      const body: any = {}
+      if (scores.douleur  != null) body.douleurScore  = scores.douleur
+      if (scores.mobilite != null) body.mobiliteScore = scores.mobilite
+      if (scores.force    != null) body.forceScore    = scores.force
+      await fetch(`/api/seances/${lastRealiseId}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      setScoresSaved(true)
+      setTimeout(() => setScoresSaved(false), 2500)
+      await fetchPatient()
+    } finally { setSavingScores(false) }
+  }
+
+  async function handleFileUpload(file: File) {
+    setUploadError(null)
+    if (file.size > MAX_SIZE_MB * 1024 * 1024) { setUploadError(`Max ${MAX_SIZE_MB} MB`); return }
+    const ok = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp']
+    if (!ok.includes(file.type)) { setUploadError('PDF/JPG/PNG uniquement'); return }
+    setUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      fd.append('upload_preset', UPLOAD_PRESET)
+      fd.append('folder', 'kinepro/documents')
+      const c = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`, { method: 'POST', body: fd })
+      const cd = await c.json()
+      if (!c.ok) throw new Error(cd.error?.message || 'Erreur Cloudinary')
+      const db = await fetch(`/api/patients/${id}/documents`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nom: file.name.replace(/\.[^/.]+$/, ''),
+          type: 'autre', url: cd.secure_url, size: cd.bytes,
+        }),
+      })
+      if (!db.ok) throw new Error('Échec sauvegarde')
+      await fetchDocs()
+    } catch (e) {
+      setUploadError(e instanceof Error ? e.message : 'Erreur')
+    } finally {
+      setUploading(false)
+      if (fileInput.current) fileInput.current.value = ''
+    }
+  }
 
   if (loading) return (
     <div>
@@ -51,12 +183,13 @@ export default function MobilePatientDetailPage({ params }: { params: Promise<{ 
 
   const age = patient.dateNaissance ? Math.floor((Date.now() - new Date(patient.dateNaissance).getTime()) / (365.25 * 86400000)) : null
   const av = avatarColor(patient.nom)
+  const qrUrl = patient.publicToken ? `${APP_URL}/patient-public/${patient.publicToken}` : null
 
   return (
     <div>
       <MobileTopbar title={`${patient.prenom} ${patient.nom}`} subtitle="Dossier patient" back={{ href: '/m/patients', label: 'Patients' }} />
 
-      {/* Tabs — sticky scrollable pills */}
+      {/* Tabs */}
       <div style={{
         position: 'sticky', top: 56, zIndex: 20,
         background: 'white', borderBottom: '0.5px solid #E2E8F0',
@@ -81,10 +214,9 @@ export default function MobilePatientDetailPage({ params }: { params: Promise<{ 
         })}
       </div>
 
-      {/* INFOS TAB */}
+      {/* ── INFOS TAB ─────────────────────────────────────────────────── */}
       {activeTab === 'Infos' && (
         <div style={{ padding: '12px 16px' }}>
-          {/* Header card */}
           <div style={{ background: 'white', borderRadius: 16, border: '0.5px solid #E2E8F0', overflow: 'hidden', marginBottom: 8 }}>
             <div style={{ padding: 16, display: 'flex', alignItems: 'center', gap: 14 }}>
               <div style={{
@@ -144,7 +276,6 @@ export default function MobilePatientDetailPage({ params }: { params: Promise<{ 
               </div>
             )}
 
-            {/* 2×2 actions */}
             <div style={{
               display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
               gap: 8, padding: 12, borderTop: '0.5px solid #F1F5F9',
@@ -164,7 +295,6 @@ export default function MobilePatientDetailPage({ params }: { params: Promise<{ 
             </div>
           </div>
 
-          {/* Info rows */}
           <div style={{ background: 'white', borderRadius: 16, border: '0.5px solid #E2E8F0', overflow: 'hidden' }}>
             <InfoRow label="Email"             value={patient.email}            link={patient.email ? `mailto:${patient.email}` : undefined} />
             <InfoRow label="Adresse"           value={patient.adresse} />
@@ -180,30 +310,399 @@ export default function MobilePatientDetailPage({ params }: { params: Promise<{ 
         </div>
       )}
 
-      {/* OTHER TABS: deep-link to desktop dossier for now */}
-      {activeTab !== 'Infos' && (
-        <div style={{ padding: '24px 16px', textAlign: 'center' }}>
-          <div style={{
-            background: 'white', borderRadius: 14, border: '0.5px solid #E2E8F0',
-            padding: '32px 20px',
-          }}>
-            <div style={{ fontSize: 14, color: '#64748B', marginBottom: 14 }}>
-              L'onglet <strong style={{ color: '#0F172A' }}>{activeTab}</strong> arrive bientôt sur mobile.
+      {/* ── SÉANCES TAB ────────────────────────────────────────────────── */}
+      {activeTab === 'Séances' && (
+        <div style={{ padding: '12px 16px' }}>
+          {/* Progress bar */}
+          <div style={{ background: 'white', borderRadius: 12, border: '0.5px solid #E2E8F0', padding: 12, marginBottom: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <span style={{ fontSize: 12, fontWeight: 500, color: '#334155' }}>Progression traitement</span>
+              <span style={{ fontSize: 12, fontWeight: 500, color: '#2563EB', whiteSpace: 'nowrap' }}>
+                {seancesRealisees} / {seancesPrescrites}
+              </span>
             </div>
-            <Link href={`/patients/${id}`} style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              background: '#2563EB', color: 'white', borderRadius: 10,
-              padding: '10px 18px', fontSize: 13, fontWeight: 600,
-              textDecoration: 'none',
-            }}>
-              Ouvrir le dossier complet →
-            </Link>
+            <div style={{ height: 6, background: '#F1F5F9', borderRadius: 999, overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${progressionTraitement}%`, background: '#2563EB', borderRadius: 999, transition: 'width 0.4s' }} />
+            </div>
+            <p style={{ fontSize: 10, color: '#94A3B8', margin: '4px 0 0' }}>
+              {seancesRestantes} séances restantes
+            </p>
+          </div>
+
+          {seances.length === 0 ? (
+            <div style={{ textAlign: 'center', fontSize: 13, color: '#94A3B8', padding: 16 }}>
+              Aucune séance enregistrée
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {seances.map((s: any) => {
+                const pill =
+                  s.statut === 'realisee' ? { bg: '#F0FDF4', color: '#15803D', label: '✓ Réalisée' } :
+                  s.statut === 'annulee'  ? { bg: '#FEE2E2', color: '#B91C1C', label: '✕ Annulée'  } :
+                                            { bg: '#FFFBEB', color: '#B45309', label: '⏳ En attente' }
+                return (
+                  <div key={s.id} style={{ background: 'white', borderRadius: 12, border: '0.5px solid #E2E8F0', overflow: 'hidden' }}>
+                    <div style={{ padding: 14 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
+                        <span style={{ fontSize: 13, fontWeight: 500, color: '#0F172A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {s.typeSeance}
+                        </span>
+                        <span style={{ fontSize: 10, fontWeight: 500, padding: '2px 8px', borderRadius: 999, background: pill.bg, color: pill.color, flexShrink: 0, whiteSpace: 'nowrap' }}>
+                          {pill.label}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', gap: 12, fontSize: 11, color: '#64748B', flexWrap: 'wrap' }}>
+                        <span>📅 {fmtDate(s.date)}</span>
+                        <span>⏱ {s.duree} min</span>
+                        {s.praticien && <span>👨‍⚕️ Dr. {s.praticien.prenom}</span>}
+                      </div>
+                      {typeof s.scorePatient === 'number' && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                          <span style={{ fontSize: 10, color: '#94A3B8' }}>Feedback :</span>
+                          <span style={{
+                            fontSize: 12, fontWeight: 600,
+                            color: s.scorePatient >= 8 ? '#16A34A' : s.scorePatient >= 5 ? '#D97706' : '#DC2626',
+                            whiteSpace: 'nowrap',
+                          }}>
+                            {s.scorePatient}/10
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', borderTop: '0.5px solid #F1F5F9' }}>
+                      <Link href={`/patients/${id}`} style={cellBtn('#2563EB')}>⭐ Feedback</Link>
+                      <div style={{ width: 1, background: '#F1F5F9' }} />
+                      <Link href={`/patients/${id}`} style={cellBtn('#64748B')}>💪 Programme</Link>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── FACTURES TAB ───────────────────────────────────────────────── */}
+      {activeTab === 'Factures' && (
+        <div style={{ padding: '12px 16px' }}>
+          {/* Summary bar */}
+          <div style={{ background: 'white', borderRadius: 12, border: '0.5px solid #E2E8F0', padding: 12, marginBottom: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8, textAlign: 'center' }}>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{fmtMoney(totalFacture)}</div>
+                <div style={{ fontSize: 10, color: '#64748B', marginTop: 2 }}>Total</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: '#16A34A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{fmtMoney(totalPaye)}</div>
+                <div style={{ fontSize: 10, color: '#64748B', marginTop: 2 }}>Payé</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: resteTotal > 0 ? '#DC2626' : '#94A3B8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{fmtMoney(resteTotal)}</div>
+                <div style={{ fontSize: 10, color: '#64748B', marginTop: 2 }}>Reste</div>
+              </div>
+            </div>
+          </div>
+
+          {factures.length === 0 ? (
+            <div style={{ textAlign: 'center', fontSize: 13, color: '#94A3B8', padding: 16 }}>
+              Aucune facture
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {factures.map((f: any) => {
+                const paye  = f.montantPaye ?? (f.statut === 'paye' ? f.montant : 0)
+                const total = f.montant ?? 0
+                const reste = Math.max(0, total - paye)
+                const isPaid    = paye >= total && total > 0
+                const isPartial = paye > 0 && paye < total
+                const pill = isPaid    ? { bg: '#F0FDF4', color: '#15803D', label: '✓ Payée' } :
+                             isPartial ? { bg: '#FFFBEB', color: '#B45309', label: '🔶 Partielle' } :
+                             f.statut === 'en_retard' ? { bg: '#FEE2E2', color: '#B91C1C', label: '🔴 En retard' } :
+                                                        { bg: '#FFFBEB', color: '#B45309', label: '⏳ En attente' }
+                return (
+                  <div key={f.id} style={{ background: 'white', borderRadius: 12, border: '0.5px solid #E2E8F0', overflow: 'hidden' }}>
+                    <div style={{ padding: 12 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
+                        <span style={{ fontSize: 13, fontWeight: 500, color: '#0F172A', whiteSpace: 'nowrap' }}>
+                          Facture #{f.id.slice(-4)}
+                        </span>
+                        <span style={{ fontSize: 10, fontWeight: 500, padding: '2px 8px', borderRadius: 999, background: pill.bg, color: pill.color, flexShrink: 0, whiteSpace: 'nowrap' }}>
+                          {pill.label}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 11, color: '#64748B', marginBottom: 8 }}>
+                        📅 {fmtDate(f.dateEmise ?? f.createdAt)}
+                      </div>
+                      {isPartial ? (
+                        <>
+                          <div style={{ height: 6, background: '#F1F5F9', borderRadius: 999, overflow: 'hidden', marginBottom: 4 }}>
+                            <div style={{ height: '100%', width: `${(paye / total) * 100}%`, background: '#F59E0B', borderRadius: 999 }} />
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
+                            <span style={{ color: '#64748B' }}>{fmtMoney(paye)} / {fmtMoney(total)}</span>
+                            <span style={{ color: '#DC2626', fontWeight: 500, whiteSpace: 'nowrap' }}>Reste : {fmtMoney(reste)}</span>
+                          </div>
+                        </>
+                      ) : (
+                        <div style={{ fontSize: 15, fontWeight: 600, color: '#0F172A', whiteSpace: 'nowrap' }}>{fmtMoney(total)}</div>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', borderTop: '0.5px solid #F1F5F9' }}>
+                      {!isPaid && (
+                        <>
+                          <Link href={`/facturation/${f.id}`} style={cellBtn('#16A34A')}>💰 Payer</Link>
+                          <div style={{ width: 1, background: '#F1F5F9' }} />
+                        </>
+                      )}
+                      <Link href={`/facturation/${f.id}`} style={cellBtn('#2563EB')}>📄 PDF</Link>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── PROGRÈS TAB ────────────────────────────────────────────────── */}
+      {activeTab === 'Progrès' && (
+        <div style={{ padding: '12px 16px' }}>
+          {/* KPI 2×2 */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8, marginBottom: 8 }}>
+            <Kpi label="Douleur" color="#EF4444">
+              <span style={{ whiteSpace: 'nowrap' }}>{lastDouleur ?? '—'}/10</span>
+              {initialDouleur != null && lastDouleur != null && (initialDouleur - lastDouleur) > 0 && (
+                <p style={{ fontSize: 10, color: '#16A34A', fontWeight: 500, margin: '4px 0 0' }}>
+                  ↓ -{initialDouleur - lastDouleur} pts
+                </p>
+              )}
+            </Kpi>
+            <Kpi label="Progression" color="#16A34A">
+              <span style={{ whiteSpace: 'nowrap' }}>{progressPct}%</span>
+              <div style={{ height: 4, background: '#F1F5F9', borderRadius: 999, overflow: 'hidden', marginTop: 8 }}>
+                <div style={{ height: '100%', width: `${progressPct}%`, background: '#22C55E', borderRadius: 999 }} />
+              </div>
+            </Kpi>
+            <Kpi label="Mobilité" color="#2563EB">
+              <span style={{ whiteSpace: 'nowrap' }}>{lastMobilite ?? '—'}/10</span>
+            </Kpi>
+            <Kpi label="Satisfaction" color="#F59E0B">
+              <span style={{ whiteSpace: 'nowrap' }}>{avgScore ?? '—'}/10</span>
+              <p style={{ fontSize: 10, color: '#94A3B8', margin: '4px 0 0' }}>moy. feedbacks</p>
+            </Kpi>
+          </div>
+
+          {/* Score input */}
+          <div style={{ background: 'white', borderRadius: 12, border: '0.5px solid #E2E8F0', padding: 12, marginBottom: 12 }}>
+            <p style={{ fontSize: 12, fontWeight: 500, color: '#0F172A', margin: '0 0 12px' }}>
+              {lastRealiseId ? `Enregistrer scores — Séance ${seancesRealisees}` : 'Enregistrer scores'}
+            </p>
+            {!lastRealiseId ? (
+              <p style={{ fontSize: 12, color: '#94A3B8', margin: 0 }}>Aucune séance réalisée à scorer.</p>
+            ) : (<>
+              {(['douleur', 'mobilite', 'force'] as const).map(metric => (
+                <div key={metric} style={{ marginBottom: 12 }}>
+                  <p style={{ fontSize: 11, fontWeight: 500, color: '#475569', textTransform: 'capitalize', margin: '0 0 8px' }}>{metric}</p>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {[1,2,3,4,5,6,7,8,9,10].map(n => {
+                      const active = scores[metric] === n
+                      const palette = metric === 'douleur'
+                        ? { bg: '#FEE2E2', text: '#B91C1C', border: '#F87171' }
+                        : metric === 'mobilite'
+                          ? { bg: '#DBEAFE', text: '#1D4ED8', border: '#60A5FA' }
+                          : { bg: '#DCFCE7', text: '#15803D', border: '#4ADE80' }
+                      return (
+                        <button key={n} onClick={() => setScores(p => ({ ...p, [metric]: n }))}
+                          style={{
+                            width: 28, height: 28, borderRadius: '50%',
+                            fontSize: 11, fontWeight: 500,
+                            flexShrink: 0, cursor: 'pointer',
+                            border: '1px solid',
+                            background:    active ? palette.bg     : '#F8FAFC',
+                            color:         active ? palette.text   : '#64748B',
+                            borderColor:   active ? palette.border : '#E2E8F0',
+                            WebkitTapHighlightColor: 'transparent',
+                          }}>
+                          {n}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
+              <button onClick={saveScores} disabled={savingScores}
+                style={{
+                  width: '100%', height: 40, borderRadius: 12,
+                  background: scoresSaved ? '#16A34A' : '#2563EB',
+                  color: 'white', border: 'none',
+                  fontSize: 13, fontWeight: 500, marginTop: 4,
+                  cursor: savingScores ? 'wait' : 'pointer',
+                  opacity: savingScores ? 0.7 : 1,
+                }}>
+                {scoresSaved ? '✓ Enregistré' : savingScores ? 'Enregistrement…' : 'Enregistrer'}
+              </button>
+            </>)}
+          </div>
+        </div>
+      )}
+
+      {/* ── DOCS TAB ───────────────────────────────────────────────────── */}
+      {activeTab === 'Docs' && (
+        <div style={{ padding: '12px 16px' }}>
+          {/* Upload zone */}
+          <div style={{
+            background: 'white', borderRadius: 12,
+            border: '2px dashed #E2E8F0', padding: 16,
+            textAlign: 'center', marginBottom: 12,
+          }}>
+            <p style={{ fontSize: 20, margin: '0 0 4px' }}>📎</p>
+            <p style={{ fontSize: 12, fontWeight: 500, color: '#475569', margin: 0 }}>Ajouter un document</p>
+            <p style={{ fontSize: 10, color: '#94A3B8', margin: '4px 0 0' }}>PDF, JPG, PNG · max {MAX_SIZE_MB} MB</p>
+            <button
+              onClick={() => fileInput.current?.click()} disabled={uploading}
+              style={{
+                marginTop: 8, background: '#2563EB', color: 'white',
+                padding: '6px 16px', borderRadius: 8,
+                fontSize: 12, fontWeight: 500,
+                border: 'none', cursor: uploading ? 'wait' : 'pointer',
+                opacity: uploading ? 0.7 : 1,
+              }}>
+              {uploading ? 'Envoi…' : '+ Uploader'}
+            </button>
+            <input ref={fileInput} type="file"
+              accept="application/pdf,image/jpeg,image/png,image/webp"
+              style={{ display: 'none' }}
+              onChange={e => { const f = e.target.files?.[0]; if (f) handleFileUpload(f) }}
+            />
+            {uploadError && (
+              <p style={{ fontSize: 11, color: '#DC2626', fontWeight: 500, margin: '8px 0 0' }}>{uploadError}</p>
+            )}
+          </div>
+
+          {/* Filter chips */}
+          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', marginBottom: 12 }}>
+            {(['Tous', 'Ordonnances', 'Radios', 'Autres'] as const).map(f => {
+              const active = docFilter === f
+              return (
+                <button key={f} onClick={() => setDocFilter(f)}
+                  style={{
+                    flexShrink: 0, padding: '6px 14px', borderRadius: 999,
+                    fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap',
+                    border: 'none', cursor: 'pointer',
+                    background: active ? '#2563EB' : '#F1F5F9',
+                    color:      active ? 'white'   : '#64748B',
+                  }}>
+                  {f}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Doc cards */}
+          {filteredDocs.length === 0 ? (
+            <div style={{ textAlign: 'center', fontSize: 13, color: '#94A3B8', padding: 16 }}>
+              Aucun document
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
+              {filteredDocs.map((doc: any) => {
+                const dtBg =
+                  doc.type === 'ordonnance' ? '#EFF6FF' :
+                  doc.type === 'radio' || doc.type === 'irm' ? '#F0F9FF' :
+                  doc.type === 'compte_rendu' ? '#FFFBEB' : '#F8FAFC'
+                const dtIcon =
+                  doc.type === 'ordonnance' ? '📋' :
+                  doc.type === 'radio' || doc.type === 'irm' ? '🩻' :
+                  doc.type === 'compte_rendu' ? '📄' : '📎'
+                return (
+                  <div key={doc.id} style={{ background: 'white', borderRadius: 12, border: '0.5px solid #E2E8F0', overflow: 'hidden', minWidth: 0 }}>
+                    <div style={{ padding: 12, textAlign: 'center' }}>
+                      <div style={{
+                        width: 40, height: 40, borderRadius: 12,
+                        background: dtBg,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 20, margin: '0 auto 8px',
+                      }}>
+                        {dtIcon}
+                      </div>
+                      <p style={{
+                        fontSize: 11, fontWeight: 500, color: '#0F172A',
+                        margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>
+                        {doc.nom}
+                      </p>
+                      <p style={{ fontSize: 10, color: '#94A3B8', margin: '2px 0 0' }}>
+                        {fmtDate(doc.createdAt)}
+                      </p>
+                    </div>
+                    <div style={{ display: 'flex', borderTop: '0.5px solid #F1F5F9' }}>
+                      <a href={doc.url} target="_blank" rel="noopener noreferrer"
+                        style={{ flex: 1, padding: '8px 4px', textAlign: 'center', fontSize: 11, fontWeight: 500, color: '#2563EB', textDecoration: 'none' }}>
+                        👁 Voir
+                      </a>
+                      <div style={{ width: 1, background: '#F1F5F9' }} />
+                      <a href={doc.url} download
+                        style={{ flex: 1, padding: '8px 4px', textAlign: 'center', fontSize: 11, fontWeight: 500, color: '#64748B', textDecoration: 'none' }}>
+                        ⬇
+                      </a>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── QR TAB ──────────────────────────────────────────────────────── */}
+      {activeTab === 'QR' && (
+        <div style={{ padding: '12px 16px' }}>
+          <div style={{ background: 'white', borderRadius: 16, border: '0.5px solid #E2E8F0', padding: 24, textAlign: 'center' }}>
+            <p style={{ fontSize: 14, fontWeight: 500, color: '#0F172A', margin: '0 0 16px' }}>QR Code patient</p>
+            {qrUrl ? (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(qrUrl)}`}
+                  alt="QR Code patient" width={160} height={160}
+                  style={{ display: 'inline-block', borderRadius: 8 }}
+                />
+                <p style={{ fontSize: 15, fontWeight: 500, color: '#0F172A', margin: '12px 0 2px' }}>
+                  {patient.prenom} {patient.nom}
+                </p>
+                <p style={{ fontSize: 12, color: '#94A3B8', margin: 0 }}>
+                  Patient #{patient.id.slice(-4)}
+                </p>
+                <div style={{ marginTop: 16, display: 'flex', gap: 8, justifyContent: 'center' }}>
+                  <a href={`https://api.qrserver.com/v1/create-qr-code/?size=512x512&data=${encodeURIComponent(qrUrl)}&download=1`}
+                    download={`qr-${patient.prenom}-${patient.nom}.png`}
+                    style={{
+                      background: '#EFF6FF', color: '#2563EB',
+                      padding: '8px 18px', borderRadius: 12,
+                      fontSize: 12, fontWeight: 500, textDecoration: 'none',
+                    }}>
+                    📥 Télécharger
+                  </a>
+                  <Link href={`/patients/${id}`} style={{
+                    background: '#F1F5F9', color: '#475569',
+                    padding: '8px 18px', borderRadius: 12,
+                    fontSize: 12, fontWeight: 500, textDecoration: 'none',
+                  }}>
+                    🖨️ Imprimer
+                  </Link>
+                </div>
+              </>
+            ) : (
+              <p style={{ fontSize: 12, color: '#94A3B8' }}>QR non disponible pour ce patient.</p>
+            )}
           </div>
         </div>
       )}
     </div>
   )
 }
+
+// ── Sub-components ──────────────────────────────────────────────────────────
 
 function actionBtn(opts: { bg: string; color: string; border?: string }): React.CSSProperties {
   return {
@@ -212,8 +711,16 @@ function actionBtn(opts: { bg: string; color: string; border?: string }): React.
     background: opts.bg, color: opts.color,
     border: opts.border || 'none',
     fontSize: 13, fontWeight: 500,
+    textDecoration: 'none', minWidth: 0,
+  }
+}
+
+function cellBtn(color: string): React.CSSProperties {
+  return {
+    flex: 1, padding: '10px 4px', textAlign: 'center',
+    fontSize: 12, fontWeight: 500, color,
     textDecoration: 'none',
-    minWidth: 0,
+    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
   }
 }
 
@@ -226,17 +733,18 @@ function InfoRow({ label, value, link, last }: {
     : value
   return (
     <div style={{ padding: '12px 16px', borderBottom: last ? 'none' : '0.5px solid #F8FAFC' }}>
-      <div style={{
-        fontSize: 11, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.5,
-        fontWeight: 500, marginBottom: 3,
-      }}>
-        {label}
-      </div>
-      <div style={{
-        fontSize: 14, color: '#0F172A',
-        overflowWrap: 'anywhere', wordBreak: 'break-word',
-      }}>
-        {content}
+      <div style={{ fontSize: 11, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 500, marginBottom: 3 }}>{label}</div>
+      <div style={{ fontSize: 14, color: '#0F172A', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{content}</div>
+    </div>
+  )
+}
+
+function Kpi({ label, color, children }: { label: string; color: string; children: React.ReactNode }) {
+  return (
+    <div style={{ background: 'white', borderRadius: 12, border: '0.5px solid #E2E8F0', padding: 12, minWidth: 0, overflow: 'hidden' }}>
+      <p style={{ fontSize: 10, fontWeight: 500, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.5, margin: '0 0 8px' }}>{label}</p>
+      <div style={{ fontSize: 20, fontWeight: 600, color, lineHeight: 1.1, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        {children}
       </div>
     </div>
   )
