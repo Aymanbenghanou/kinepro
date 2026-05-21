@@ -12,20 +12,6 @@ const QrCodeModal = dynamic(() => import('@/components/qr/QrCodeModal'), { ssr: 
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://kinepro-omega.vercel.app'
 
-// ── Avatar color palette: stable per-name color hash ──
-const AVATAR_COLORS = [
-  { bg: '#DBEAFE', text: '#1D4ED8' },
-  { bg: '#DCFCE7', text: '#15803D' },
-  { bg: '#FEF3C7', text: '#B45309' },
-  { bg: '#F3E8FF', text: '#7C3AED' },
-  { bg: '#FFE4E6', text: '#BE123C' },
-  { bg: '#E0F2FE', text: '#0369A1' },
-]
-function getAvatarColor(name: string) {
-  const idx = (name?.charCodeAt(0) ?? 0) % AVATAR_COLORS.length
-  return AVATAR_COLORS[idx]
-}
-
 function StatusBadge({ actif }: { actif: boolean }) {
   return (
     <span style={{
@@ -45,7 +31,6 @@ export default function PatientsPage() {
   const [showWizard, setShowWizard] = useState(false)
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
-  const [filter, setFilter] = useState<'all' | 'actif' | 'nouveau' | 'en_cours' | 'termine'>('all')
   const PER_PAGE = 10
   const [qrTarget, setQrTarget] = useState<{ patientId: string; nom: string } | null>(null)
   const [qrToken, setQrToken] = useState<string | null>(null)
@@ -76,21 +61,8 @@ export default function PatientsPage() {
 
   useEffect(() => { fetchPatients() }, [fetchPatients])
 
-  // Apply status filter (client-side). "actif" maps to p.actif === true.
-  // The other variants ("nouveau", "en_cours", "termine") are based on
-  // séance count and the patient's createdAt date as a sensible default.
-  const filtered = patients.filter(p => {
-    if (filter === 'all') return true
-    if (filter === 'actif') return p.actif === true
-    const sCount = p.seances?.length ?? 0
-    const isRecent = p.createdAt && (Date.now() - new Date(p.createdAt).getTime()) < 30 * 86400000
-    if (filter === 'nouveau')  return sCount === 0 || isRecent
-    if (filter === 'en_cours') return sCount > 0 && (p.nbSeancesPrescrites ? sCount < p.nbSeancesPrescrites : true)
-    if (filter === 'termine')  return p.nbSeancesPrescrites && sCount >= p.nbSeancesPrescrites
-    return true
-  })
-  const totalPages = Math.ceil(filtered.length / PER_PAGE)
-  const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE)
+  const totalPages = Math.ceil(patients.length / PER_PAGE)
+  const paginated = patients.slice((page - 1) * PER_PAGE, page * PER_PAGE)
 
   return (
     <div>
@@ -129,145 +101,7 @@ export default function PatientsPage() {
         </div>
 
         {/* Table */}
-        {/* ── MOBILE: sticky search + filter chips + count ───────── */}
-        <div className="mobile-only" style={{
-          position: 'sticky', top: 56, zIndex: 20,
-          background: '#F8FAFC',
-          margin: '-16px -16px 4px',
-          padding: '10px 16px 4px',
-        }}>
-          <div style={{ position: 'relative', marginBottom: 8 }}>
-            <Search size={16} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
-            <input
-              type="text"
-              placeholder="Rechercher un patient..."
-              value={search}
-              onChange={e => { setSearch(e.target.value); setPage(1) }}
-              style={{
-                width: '100%', paddingLeft: 36, paddingRight: search ? 36 : 14,
-                paddingTop: 11, paddingBottom: 11,
-                background: '#F1F5F9', border: '1px solid #E2E8F0',
-                borderRadius: 12, fontSize: 16, outline: 'none',
-                color: '#0F172A', boxSizing: 'border-box',
-              }}
-            />
-            {search && (
-              <button onClick={() => { setSearch(''); setPage(1) }}
-                aria-label="Effacer"
-                style={{
-                  position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
-                  width: 26, height: 26, borderRadius: '50%',
-                  background: '#CBD5E1', color: 'white', border: 'none',
-                  fontSize: 14, lineHeight: 1, cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>×</button>
-            )}
-          </div>
-
-          {/* Filter chips — horizontal scroll */}
-          <div className="fchips" style={{ padding: 0, margin: 0 }}>
-            {([
-              ['all',      'Tous'],
-              ['actif',    'Actif'],
-              ['nouveau',  'Nouveau'],
-              ['en_cours', 'En cours'],
-              ['termine',  'Terminé'],
-            ] as const).map(([key, label]) => (
-              <button key={key}
-                onClick={() => { setFilter(key as any); setPage(1) }}
-                className={`fchip${filter === key ? ' active' : ''}`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
-          <div style={{ fontSize: 12, color: '#64748B', padding: '6px 0 0', fontWeight: 600 }}>
-            {filtered.length} {filtered.length > 1 ? 'patients' : 'patient'}
-            {filter !== 'all' && <span style={{ color: '#94A3B8' }}> · filtre : {filter}</span>}
-          </div>
-        </div>
-
-        {/* ── MOBILE: card list ─────────────────────────────────── */}
-        <div className="mobile-only mlist">
-          {loading ? (
-            <div style={{ padding: 40, textAlign: 'center', color: '#94A3B8', fontSize: 14 }}>Chargement…</div>
-          ) : paginated.length === 0 ? (
-            <div style={{ padding: 40, textAlign: 'center', color: '#94A3B8', fontSize: 14 }}>Aucun patient trouvé</div>
-          ) : paginated.map((p: any) => {
-            const waPhone = p.telephone ? p.telephone.replace(/[\s\-\+]/g, '').replace(/^0/, '212') : null
-            const av = getAvatarColor(p.nom || p.prenom || '?')
-            const seancesCount = p.seances?.length ?? 0
-            const lastVisit = p.rendezVous?.[0]?.date
-            return (
-              <a key={p.id} href={`/patients/${p.id}`} className="mcard" style={{ paddingBottom: 12 }}>
-                {/* Row 1: avatar + name/meta + status + chevron */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{
-                    width: 44, height: 44, borderRadius: '50%',
-                    background: av.bg, color: av.text,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontWeight: 800, fontSize: 14, flexShrink: 0,
-                  }}>
-                    {p.prenom?.[0]}{p.nom?.[0]}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: '#0F172A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {p.prenom} {p.nom}
-                    </div>
-                    {p.telephone && (
-                      <div style={{ fontSize: 11, color: '#64748B', display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-                        📞 {p.telephone}
-                      </div>
-                    )}
-                    {p.pathologie && (
-                      <div style={{ fontSize: 11, color: '#64748B', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 2 }}>
-                        {p.pathologie}
-                      </div>
-                    )}
-                  </div>
-                  <span style={{
-                    fontSize: 10, fontWeight: 700,
-                    padding: '3px 9px', borderRadius: 999,
-                    background: p.actif ? '#DCFCE7' : '#F1F5F9',
-                    color:      p.actif ? '#15803D' : '#64748B',
-                    flexShrink: 0,
-                  }}>
-                    {p.actif ? 'Actif' : 'Inactif'}
-                  </span>
-                </div>
-
-                {/* Footer: séances count + last visit */}
-                {(seancesCount > 0 || lastVisit) && (
-                  <div style={{
-                    borderTop: '1px solid #F1F5F9',
-                    paddingTop: 8, marginTop: 10,
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    fontSize: 11, color: '#94A3B8',
-                  }}>
-                    <span>{seancesCount} séance{seancesCount > 1 ? 's' : ''}</span>
-                    {lastVisit && <span>Dernière visite : {formatDate(lastVisit)}</span>}
-                  </div>
-                )}
-
-                {/* Inline action row */}
-                <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
-                  {waPhone && (
-                    <a href={`https://wa.me/${waPhone}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="mcard-btn success">
-                      💬 WhatsApp
-                    </a>
-                  )}
-                  <button onClick={e => { e.preventDefault(); e.stopPropagation(); openQr(e, p.id, `${p.prenom} ${p.nom}`) }} className="mcard-btn">
-                    <QrCode size={13} /> QR
-                  </button>
-                </div>
-              </a>
-            )
-          })}
-        </div>
-
-        {/* ── DESKTOP: table ─────────────────────────────────── */}
-        <div className="table-container desktop-only">
+        <div className="table-container">
           <div className="table-scroll">
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>

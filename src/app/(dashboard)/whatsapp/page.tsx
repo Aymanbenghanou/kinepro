@@ -7,8 +7,7 @@ import WhatsAppButton from '@/components/whatsapp/WhatsAppButton'
 import FeedbackModal from '@/components/whatsapp/FeedbackWidget'
 import {
   msgConfirmationRDV, msgRappelRDV, msgFeedbackAuto,
-  buildWhatsAppUrl, formatPhoneForWhatsApp,
-  scoreColor, scoreBadge, scoreCategory,
+  buildWhatsAppUrl, scoreColor, scoreBadge, scoreCategory,
 } from '@/lib/whatsapp'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://kinepro-omega.vercel.app'
@@ -109,10 +108,10 @@ export default function WhatsAppCenterPage() {
   const pendingSeances = seances.filter(s => s.feedbackStatus === 'pending')
 
   const tabs: { id: Tab; label: string; badge?: number; highlight?: boolean }[] = [
-    { id: 'envoyer',    label: "📤 Aujourd'hui", badge: rdvsAujourdhui.length + seancesAttente.length },
-    { id: 'rappels',    label: '🔔 Rappels',     badge: rdvsDemain.length },
-    { id: 'ready',      label: '⭐ Feedback',    badge: readySeances.length, highlight: readySeances.length > 0 },
-    { id: 'historique', label: '📊 Historique',  badge: feedbacks.length },
+    { id: 'envoyer',    label: '📤 À envoyer aujourd\'hui', badge: rdvsAujourdhui.length + seancesAttente.length },
+    { id: 'rappels',    label: '🔔 Rappels demain',         badge: rdvsDemain.length },
+    { id: 'ready',      label: '⭐ Feedback prêt',          badge: readySeances.length, highlight: readySeances.length > 0 },
+    { id: 'historique', label: '📊 Historique',             badge: feedbacks.length },
   ]
 
   return (
@@ -120,22 +119,21 @@ export default function WhatsAppCenterPage() {
       <Topbar title="WhatsApp Center" subtitle="Messagerie & feedbacks patients" />
       <div style={{ padding: 24 }}>
 
-        {/* Tabs — scrollable pill row (mobile-safe) */}
-        <div className="params-tabs" style={{ marginBottom: 16 }}>
+        {/* Tabs */}
+        <div style={{ display: 'flex', gap: 4, marginBottom: 24, background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, padding: 4 }}>
           {tabs.map(t => {
             const isActive    = tab === t.id
             const isHighlight = t.highlight && !isActive
             return (
-              <button
-                key={t.id}
-                onClick={() => setTab(t.id)}
-                className={`param-tab${isActive ? ' active' : ''}`}
+              <button key={t.id} onClick={() => setTab(t.id)}
                 style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 6,
-                  ...(isHighlight ? { background: '#F5F3FF', color: '#7C3AED', borderColor: '#7C3AED' } : null),
-                  ...(isActive ? { background: '#7C3AED', borderColor: '#7C3AED' } : null),
-                }}
-              >
+                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                  padding: '10px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                  background: isActive ? '#7C3AED' : isHighlight ? '#F5F3FF' : 'transparent',
+                  color: isActive ? 'white' : isHighlight ? '#7C3AED' : '#64748B',
+                  fontWeight: isActive || isHighlight ? 600 : 400,
+                  fontSize: 13, transition: 'all 0.15s',
+                }}>
                 {t.label}
                 {t.badge !== undefined && t.badge > 0 && (
                   <span style={{
@@ -157,130 +155,8 @@ export default function WhatsAppCenterPage() {
         ) : (
           <>
             {/* ── Tab 1: À envoyer aujourd'hui ── */}
-            {tab === 'envoyer' && (<>
-
-            {/* MOBILE — mockup-styled card list */}
-            <div className="mobile-only" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {/* Section: Confirmations RDV */}
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                📅 Confirmations RDV — {rdvsAujourdhui.length}
-              </div>
-              {rdvsAujourdhui.length === 0 ? (
-                <div style={{ background: 'white', borderRadius: 12, border: '1px solid #E2E8F0', padding: 16, fontSize: 13, color: '#94A3B8', textAlign: 'center' }}>
-                  Aucun RDV aujourd'hui
-                </div>
-              ) : rdvsAujourdhui.map((rdv: any) => (
-                <div key={rdv.id} style={{ background: 'white', borderRadius: 12, border: '1px solid #E2E8F0', overflow: 'hidden' }}>
-                  <div style={{ padding: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{
-                      width: 38, height: 38, borderRadius: '50%',
-                      background: '#DBEAFE', color: '#1D4ED8',
-                      fontSize: 13, fontWeight: 600, flexShrink: 0,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>
-                      {rdv.patient?.prenom?.[0]}{rdv.patient?.nom?.[0]}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: '#0F172A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {rdv.patient?.prenom} {rdv.patient?.nom}
-                      </div>
-                      <div style={{ fontSize: 11, color: '#64748B', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        📅 {formatTime(rdv.date)} · {rdv.typeSeance} · {rdv.duree || 45} min
-                      </div>
-                    </div>
-                    <span style={{ background: '#EFF6FF', color: '#1D4ED8', fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, flexShrink: 0 }}>
-                      {formatTime(rdv.date)}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', borderTop: '1px solid #F1F5F9' }}>
-                    {rdv.patient?.telephone ? (
-                      <a
-                        href={buildWhatsAppUrl(
-                          formatPhoneForWhatsApp(rdv.patient.telephone),
-                          msgConfirmationRDV({
-                            prenom: rdv.patient.prenom,
-                            date: new Date(rdv.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }),
-                            heure: formatTime(rdv.date),
-                            typeSeance: rdv.typeSeance,
-                            praticien: rdv.praticien ? `${rdv.praticien.prenom} ${rdv.praticien.nom}` : '',
-                            duree: rdv.duree || 45,
-                          })
-                        )}
-                        target="_blank" rel="noopener noreferrer"
-                        style={{ flex: 1, padding: 10, textAlign: 'center', textDecoration: 'none', color: '#16A34A', fontSize: 12, fontWeight: 600 }}
-                      >
-                        📱 Confirmer
-                      </a>
-                    ) : (
-                      <span style={{ flex: 1, padding: 10, textAlign: 'center', color: '#CBD5E1', fontSize: 12 }}>Pas de tél.</span>
-                    )}
-                    <div style={{ width: 1, background: '#F1F5F9' }} />
-                    <button style={{ flex: 1, padding: 10, background: 'transparent', border: 'none', color: '#64748B', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                      ✓ Fait
-                    </button>
-                  </div>
-                </div>
-              ))}
-
-              {/* Section: Séances sans feedback */}
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#0F172A', display: 'flex', alignItems: 'center', gap: 6, marginTop: 12 }}>
-                ⚡ Séances sans feedback — {seancesAttente.length}
-              </div>
-              {seancesAttente.length === 0 ? (
-                <div style={{ background: '#F0FDF4', borderRadius: 12, border: '1px solid #BBF7D0', padding: 14, fontSize: 12, color: '#15803D', textAlign: 'center', fontWeight: 600 }}>
-                  ✓ Tous les feedbacks ont été enregistrés
-                </div>
-              ) : seancesAttente.map((s: any) => {
-                const ready = s.feedbackStatus === 'ready'
-                return (
-                  <div key={s.id} style={{ background: 'white', borderRadius: 12, border: '1px solid #E2E8F0', overflow: 'hidden' }}>
-                    <div style={{ padding: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div style={{
-                        width: 38, height: 38, borderRadius: '50%',
-                        background: ready ? '#F3E8FF' : '#FEF3C7',
-                        color:      ready ? '#7C3AED' : '#B45309',
-                        fontSize: 13, fontWeight: 600, flexShrink: 0,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}>
-                        {s.patient?.prenom?.[0]}{s.patient?.nom?.[0]}
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, color: '#0F172A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {s.patient?.prenom} {s.patient?.nom}
-                        </div>
-                        <div style={{ fontSize: 11, color: '#64748B', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {s.typeSeance} · terminée à {formatTime(s.date)}
-                        </div>
-                      </div>
-                      <span style={{
-                        fontSize: 10, fontWeight: 600,
-                        padding: '2px 8px', borderRadius: 20,
-                        background: ready ? '#F5F3FF' : '#FFFBEB',
-                        color:      ready ? '#7C3AED' : '#B45309',
-                        flexShrink: 0, whiteSpace: 'nowrap',
-                      }}>
-                        {ready ? 'Prêt 🌟' : 'En attente'}
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', borderTop: '1px solid #F1F5F9' }}>
-                      <button
-                        onClick={() => setFeedbackTarget({ seance: s, patient: s.patient })}
-                        style={{ flex: 1, padding: 10, background: 'transparent', border: 'none', cursor: 'pointer', color: ready ? '#16A34A' : '#D97706', fontSize: 12, fontWeight: 600 }}
-                      >
-                        ⚡ Feedback
-                      </button>
-                      <div style={{ width: 1, background: '#F1F5F9' }} />
-                      <button style={{ flex: 1, padding: 10, background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748B', fontSize: 12, fontWeight: 600 }}>
-                        {ready ? 'Ignorer' : 'Plus tard'}
-                      </button>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-
-            {/* DESKTOP — existing content */}
-            <div className="desktop-only" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            {tab === 'envoyer' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
                 {/* Today's RDVs — send confirmation */}
                 <section>
@@ -361,7 +237,7 @@ export default function WhatsAppCenterPage() {
                   )}
                 </section>
               </div>
-            </>)}
+            )}
 
             {/* ── Tab 2: Rappels demain ── */}
             {tab === 'rappels' && (

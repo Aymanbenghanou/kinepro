@@ -12,9 +12,7 @@ import {
 import ExercicesModal from '@/components/whatsapp/ExercicesModal'
 import { generateDossierPatientPDF } from '@/lib/pdf-utils'
 import ProgressionTab from '@/components/patients/ProgressionTab'
-import MobileProgressionTab from '@/components/patients/MobileProgressionTab'
 import DocumentsTab from '@/components/patients/DocumentsTab'
-import MobileDocumentsTab from '@/components/patients/MobileDocumentsTab'
 import ExerciseProgramModal from '@/components/exercise-program/ExerciseProgramModal'
 import { formatWhatsAppMessage, waUrl } from '@/lib/exercise-program'
 import dynamic from 'next/dynamic'
@@ -26,14 +24,14 @@ const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://kinepro-omega.vercel
 // ─── Types ───────────────────────────────────────────────────────────────────
 type TabId = 'informations' | 'seances' | 'plan' | 'facturation' | 'progression' | 'documents' | 'programmes'
 
-const TABS: { id: TabId; label: string; short: string; icon: any }[] = [
-  { id: 'informations', label: 'Informations',       short: 'Info',     icon: User },
-  { id: 'seances',      label: 'Séances',            short: 'Séances',  icon: Clock },
-  { id: 'plan',         label: 'Plan de traitement', short: 'Plan',     icon: Target },
-  { id: 'programmes',   label: 'Programmes',         short: 'Progr.',   icon: Sparkles },
-  { id: 'facturation',  label: 'Facturation',        short: 'Factures', icon: CreditCard },
-  { id: 'progression',  label: 'Progression',        short: 'Progrès',  icon: BarChart2 },
-  { id: 'documents',    label: 'Documents',           short: 'Docs',     icon: FileText },
+const TABS: { id: TabId; label: string; icon: any }[] = [
+  { id: 'informations', label: 'Informations',       icon: User },
+  { id: 'seances',      label: 'Séances',            icon: Clock },
+  { id: 'plan',         label: 'Plan de traitement', icon: Target },
+  { id: 'programmes',   label: 'Programmes',         icon: Sparkles },
+  { id: 'facturation',  label: 'Facturation',        icon: CreditCard },
+  { id: 'progression',  label: 'Progression',        icon: BarChart2 },
+  { id: 'documents',    label: 'Documents',           icon: FileText },
 ]
 
 function Badge({ label, bg, color }: { label: string; bg: string; color: string }) {
@@ -270,8 +268,8 @@ export default function PatientDetailPage() {
           <ArrowLeft size={14} /> Retour aux patients
         </button>
 
-        {/* Header card — desktop only (mobile renders a different header inside the Infos tab) */}
-        <div className="patient-header-card desktop-only" style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: 16, padding: 24, marginBottom: 20 }}>
+        {/* Header card */}
+        <div style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: 16, padding: 24, marginBottom: 20 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
             <div style={{ display: 'flex', gap: 18, alignItems: 'center', flex: 1, minWidth: 0 }}>
               {/* Avatar */}
@@ -281,83 +279,57 @@ export default function PatientDetailPage() {
               }}>
                 <span style={{ color: 'white', fontSize: 26, fontWeight: 700 }}>{patient.prenom?.[0]}{patient.nom?.[0]}</span>
               </div>
-              <div className="patient-header-info" style={{ flex: 1, minWidth: 0 }}>
-                {/* Line 1: Name only */}
-                <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0F172A', margin: 0, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {patient.prenom} {patient.nom}
-                </h1>
-
-                {/* Line 2: Status + Sexe badges — single line, nowrap */}
-                <div style={{ display: 'flex', flexWrap: 'nowrap', gap: 6, marginTop: 6, overflow: 'hidden' }}>
-                  <span style={{
-                    background: patient.actif ? '#DCFCE7' : '#F1F5F9',
-                    color:      patient.actif ? '#15803D' : '#64748B',
-                    padding: '3px 10px', borderRadius: 999, fontSize: 11.5, fontWeight: 600,
-                    whiteSpace: 'nowrap', flexShrink: 0,
-                  }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                  <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0F172A', margin: 0 }}>{patient.prenom} {patient.nom}</h1>
+                  <span style={{ background: patient.actif ? '#DCFCE7' : '#F1F5F9', color: patient.actif ? '#16A34A' : '#64748B', padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 500 }}>
                     {patient.actif ? '● Actif' : '● Inactif'}
                   </span>
                   {patient.sexe && (
-                    <span style={{
-                      background: '#EFF6FF', color: '#2563EB',
-                      padding: '3px 10px', borderRadius: 999, fontSize: 11.5, fontWeight: 600,
-                      whiteSpace: 'nowrap', flexShrink: 0,
-                    }}>
+                    <span style={{ background: '#EFF6FF', color: '#2563EB', padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 500 }}>
                       {patient.sexe}
                     </span>
                   )}
                 </div>
-
-                {/* Line 3+: contact meta */}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 16px', maxWidth: '100%', minWidth: 0, marginTop: 8 }}>
-                  {age !== null && <span style={{ fontSize: 12.5, color: '#64748B', display: 'flex', alignItems: 'center', gap: 4 }}><User size={13} /> {age} ans</span>}
-                  {patient.telephone && (
-                    <a href={`tel:${patient.telephone}`} style={{ fontSize: 12.5, color: '#2563EB', display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none', fontWeight: 600 }}>
-                      <Phone size={13} /> {patient.telephone}
-                    </a>
-                  )}
-                  {patient.email && (
-                    <span style={{ fontSize: 12, color: '#64748B', display: 'flex', alignItems: 'center', gap: 4, minWidth: 0, maxWidth: '100%' }}>
-                      <Mail size={13} style={{ flexShrink: 0 }} />
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{patient.email}</span>
-                    </span>
-                  )}
-                  {patient.ville && <span style={{ fontSize: 12.5, color: '#64748B', display: 'flex', alignItems: 'center', gap: 4 }}><MapPin size={13} /> {patient.ville}</span>}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+                  {age !== null && <span style={{ fontSize: 13, color: '#64748B', display: 'flex', alignItems: 'center', gap: 4 }}><User size={13} /> {age} ans</span>}
+                  {patient.telephone && <span style={{ fontSize: 13, color: '#64748B', display: 'flex', alignItems: 'center', gap: 4 }}><Phone size={13} /> {patient.telephone}</span>}
+                  {patient.email && <span style={{ fontSize: 13, color: '#64748B', display: 'flex', alignItems: 'center', gap: 4 }}><Mail size={13} /> {patient.email}</span>}
+                  {patient.ville && <span style={{ fontSize: 13, color: '#64748B', display: 'flex', alignItems: 'center', gap: 4 }}><MapPin size={13} /> {patient.ville}</span>}
                 </div>
-
                 {patient.pathologie && (
                   <div style={{ marginTop: 8 }}>
-                    <span style={{ background: '#FEF3C7', color: '#92400E', padding: '4px 12px', borderRadius: 999, fontSize: 12, fontWeight: 600 }}>
+                    <span style={{ background: '#FEF3C7', color: '#92400E', padding: '4px 12px', borderRadius: 999, fontSize: 12, fontWeight: 500 }}>
                       🩺 {patient.pathologie}
                     </span>
                   </div>
                 )}
               </div>
             </div>
-            <div className="action-grid-mobile" style={{ display: 'flex', gap: 10, flexShrink: 0, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 10, flexShrink: 0, flexWrap: 'wrap' }}>
               <button onClick={openQr}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'white', color: '#2563EB', border: '1.5px solid #BFDBFE', borderRadius: 10, padding: '10px 14px', cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>
+                style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'white', color: '#374151', border: '1px solid #E2E8F0', borderRadius: 10, padding: '10px 14px', cursor: 'pointer', fontWeight: 500, fontSize: 14 }}>
                 <QrCode size={15} /> QR Code
               </button>
               <button onClick={() => generateDossierPatientPDF(patient, cabinet)}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'white', color: '#DC2626', border: '1.5px solid #FECACA', borderRadius: 10, padding: '10px 16px', cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>
-                <Download size={15} /> PDF
+                style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'white', color: '#374151', border: '1px solid #E2E8F0', borderRadius: 10, padding: '10px 16px', cursor: 'pointer', fontWeight: 500, fontSize: 14 }}>
+                <Download size={15} /> Exporter PDF
               </button>
               {patient.telephone && (
                 <button onClick={() => setShowExercices(true)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#2563EB', color: 'white', border: 'none', borderRadius: 10, padding: '10px 18px', cursor: 'pointer', fontWeight: 700, fontSize: 14, boxShadow: '0 2px 8px rgba(37,99,235,0.25)' }}>
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#7C3AED', color: 'white', border: 'none', borderRadius: 10, padding: '10px 18px', cursor: 'pointer', fontWeight: 600, fontSize: 14, boxShadow: '0 2px 8px rgba(124,58,237,0.25)' }}>
                   💪 Exercices
                 </button>
               )}
               <button onClick={() => setShowPlanifier(true)}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#1E293B', color: 'white', border: 'none', borderRadius: 10, padding: '10px 18px', cursor: 'pointer', fontWeight: 700, fontSize: 14, boxShadow: '0 2px 8px rgba(30,41,59,0.25)' }}>
-                <Calendar size={16} /> Planifier
+                style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#2563EB', color: 'white', border: 'none', borderRadius: 10, padding: '10px 18px', cursor: 'pointer', fontWeight: 600, fontSize: 14, boxShadow: '0 2px 8px rgba(37,99,235,0.25)' }}>
+                <Calendar size={16} /> Planifier séance
               </button>
             </div>
           </div>
 
-          {/* Quick stats — desktop only (mobile shows them inside the Séances tab) */}
-          <div className="stats-grid-4 desktop-only" style={{ gap: 12, marginTop: 20, paddingTop: 20, borderTop: '1px solid #F1F5F9' }}>
+          {/* Quick stats */}
+          <div className="stats-grid-4" style={{ gap: 12, marginTop: 20, paddingTop: 20, borderTop: '1px solid #F1F5F9' }}>
             {[
               { label: 'Séances réalisées', value: seancesRealisees.length, color: '#2563EB' },
               { label: 'Total séances', value: patient.seances?.length || 0, color: '#0F172A' },
@@ -386,133 +358,15 @@ export default function PatientDetailPage() {
                   color: active ? 'white' : '#64748B',
                   transition: 'all 0.15s', whiteSpace: 'nowrap',
                 }}>
-                <Icon size={14} />
-                <span className="tab-label-full">{tab.label}</span>
-                <span className="tab-label-short">{tab.short}</span>
+                <Icon size={14} /> {tab.label}
               </button>
             )
           })}
         </div>
 
         {/* ── Tab: Informations ── */}
-        {activeTab === 'informations' && (<>
-
-        {/* ── MOBILE Infos: header card + info rows (mockup match) ── */}
-        <div className="mobile-only" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {/* Header card */}
-          <div style={{ background: 'white', borderRadius: 16, border: '1px solid #E2E8F0', overflow: 'hidden' }}>
-            <div style={{ padding: 16, display: 'flex', alignItems: 'center', gap: 14 }}>
-              <div style={{
-                width: 64, height: 64, borderRadius: '50%',
-                background: '#DBEAFE', color: '#1D4ED8',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 20, fontWeight: 600, flexShrink: 0,
-              }}>
-                {patient.prenom?.[0]}{patient.nom?.[0]}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                {/* Name + Actif + Sexe — same line, can wrap if needed */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 17, fontWeight: 600, color: '#0F172A', lineHeight: 1.2 }}>
-                    {patient.prenom} {patient.nom}
-                  </span>
-                  <span style={{
-                    background: patient.actif ? '#F0FDF4' : '#F1F5F9',
-                    color:      patient.actif ? '#15803D' : '#64748B',
-                    fontSize: 10, fontWeight: 600,
-                    padding: '3px 8px', borderRadius: 20,
-                    whiteSpace: 'nowrap', flexShrink: 0,
-                  }}>
-                    {patient.actif ? 'Actif' : 'Inactif'}
-                  </span>
-                  {patient.sexe && (
-                    <span style={{
-                      background: '#EFF6FF', color: '#2563EB',
-                      fontSize: 10, fontWeight: 600,
-                      padding: '3px 8px', borderRadius: 20,
-                      whiteSpace: 'nowrap', flexShrink: 0,
-                    }}>{patient.sexe}</span>
-                  )}
-                </div>
-                {/* Age · Sexe text line */}
-                {(age !== null || patient.sexe) && (
-                  <div style={{ fontSize: 12, color: '#64748B', marginTop: 4 }}>
-                    {age !== null && `${age} ans`}
-                    {age !== null && patient.sexe && ' · '}
-                    {patient.sexe}
-                  </div>
-                )}
-                {/* Phone — tappable blue */}
-                {patient.telephone && (
-                  <a href={`tel:${patient.telephone}`} style={{
-                    fontSize: 13, color: '#2563EB', marginTop: 4,
-                    display: 'inline-flex', alignItems: 'center', gap: 6,
-                    textDecoration: 'none',
-                  }}>
-                    📞 {patient.telephone}
-                  </a>
-                )}
-              </div>
-            </div>
-
-            {/* Pathologie pill */}
-            {patient.pathologie && (
-              <div style={{ padding: '0 16px 12px' }}>
-                <span style={{
-                  background: '#FFF7ED', color: '#B45309',
-                  fontSize: 12, fontWeight: 600,
-                  padding: '6px 14px', borderRadius: 20,
-                  display: 'inline-flex', alignItems: 'center', gap: 6,
-                }}>
-                  🏥 {patient.pathologie}
-                </span>
-              </div>
-            )}
-
-            {/* 2×2 action grid */}
-            <div style={{
-              display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8,
-              padding: 12, borderTop: '1px solid #F1F5F9',
-            }}>
-              <button onClick={openQr}
-                style={mActionBtn({ bg: 'white', color: '#2563EB', border: '1px solid #E2E8F0' })}>
-                <QrCode size={14} /> QR Code
-              </button>
-              <button onClick={() => generateDossierPatientPDF(patient, cabinet)}
-                style={mActionBtn({ bg: 'white', color: '#DC2626', border: '1px solid #E2E8F0' })}>
-                <Download size={14} /> PDF
-              </button>
-              {patient.telephone ? (
-                <button onClick={() => setShowExercices(true)}
-                  style={mActionBtn({ bg: '#2563EB', color: 'white' })}>
-                  💪 Exercices
-                </button>
-              ) : <span />}
-              <button onClick={() => setShowPlanifier(true)}
-                style={mActionBtn({ bg: '#1E3A5F', color: 'white' })}>
-                <Calendar size={14} /> Planifier
-              </button>
-            </div>
-          </div>
-
-          {/* Info rows card */}
-          <div style={{ background: 'white', borderRadius: 16, border: '1px solid #E2E8F0', overflow: 'hidden' }}>
-            <MInfoRow label="Email"             value={patient.email}            link={patient.email ? `mailto:${patient.email}` : undefined} />
-            <MInfoRow label="Adresse"           value={patient.adresse} />
-            <MInfoRow label="Ville"             value={patient.ville} />
-            <MInfoRow label="CIN"               value={patient.cin} />
-            <MInfoRow label="Mutuelle"          value={patient.mutuelle} />
-            <MInfoRow label="N° police"         value={patient.numeroPolice} />
-            <MInfoRow label="Médecin référent"  value={patient.medecinReferent} />
-            <MInfoRow label="Tél. médecin"      value={patient.medecinTelephone} link={patient.medecinTelephone ? `tel:${patient.medecinTelephone}` : undefined} />
-            <MInfoRow label="Date de naissance" value={patient.dateNaissance ? formatDate(patient.dateNaissance) : null} />
-            <MInfoRow label="Mode paiement"     value={patient.modePaiement} />
-            <MInfoRow label="Tarif séance"      value={patient.tarifSeance ? `${patient.tarifSeance} MAD` : null} last />
-          </div>
-        </div>
-
-        {/* ── DESKTOP Infos grid (unchanged) ── */}
-        <div className="dashboard-grid-2 desktop-only" style={{ gap: 20 }}>
+        {activeTab === 'informations' && (
+          <div className="dashboard-grid-2" style={{ gap: 20 }}>
             {/* Infos personnelles */}
             <div style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, padding: 24 }}>
               <h3 style={{ fontSize: 15, fontWeight: 600, color: '#0F172A', marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid #E2E8F0' }}>
@@ -560,7 +414,7 @@ export default function PatientDetailPage() {
               )}
             </div>
           </div>
-        </>)}
+        )}
 
         {/* ── Tab: Séances ── */}
         {activeTab === 'seances' && (
@@ -722,24 +576,14 @@ export default function PatientDetailPage() {
         )}
 
         {/* ── Tab: Progression ── */}
-        {activeTab === 'progression' && (<>
-          <div className="mobile-only">
-            <MobileProgressionTab patient={patient} onScoresSaved={fetchPatient} />
-          </div>
-          <div className="desktop-only">
-            <ProgressionTab patient={patient} onScoresSaved={fetchPatient} />
-          </div>
-        </>)}
+        {activeTab === 'progression' && (
+          <ProgressionTab patient={patient} onScoresSaved={fetchPatient} />
+        )}
 
         {/* ── Tab: Documents ── */}
-        {activeTab === 'documents' && (<>
-          <div className="mobile-only">
-            <MobileDocumentsTab patientId={id} />
-          </div>
-          <div className="desktop-only">
-            <DocumentsTab patientId={id} />
-          </div>
-        </>)}
+        {activeTab === 'documents' && (
+          <DocumentsTab patientId={id} />
+        )}
 
         {/* ── Tab: Programmes IA ── */}
         {activeTab === 'programmes' && patient && (
@@ -779,51 +623,6 @@ export default function PatientDetailPage() {
           />
         ) : null
       )}
-    </div>
-  )
-}
-
-// ─── Mobile-only helpers ─────────────────────────────────────────────────────
-
-function mActionBtn(opts: { bg: string; color: string; border?: string }): React.CSSProperties {
-  return {
-    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-    padding: 10, borderRadius: 12,
-    background: opts.bg, color: opts.color,
-    border: opts.border || 'none',
-    fontSize: 13, fontWeight: 600,
-    cursor: 'pointer', minHeight: 44,
-  }
-}
-
-function MInfoRow({ label, value, link, last }: {
-  label: string
-  value?: string | null
-  link?: string
-  last?: boolean
-}) {
-  if (!value) return null
-  const content = link
-    ? <a href={link} style={{ color: '#2563EB', textDecoration: 'none' }}>{value}</a>
-    : value
-  return (
-    <div style={{
-      padding: '12px 16px',
-      borderBottom: last ? 'none' : '1px solid #F8FAFC',
-    }}>
-      <div style={{
-        fontSize: 11, color: '#94A3B8',
-        textTransform: 'uppercase', letterSpacing: 0.5,
-        fontWeight: 600, marginBottom: 3,
-      }}>
-        {label}
-      </div>
-      <div style={{
-        fontSize: 14, color: '#0F172A',
-        overflowWrap: 'anywhere', wordBreak: 'break-word',
-      }}>
-        {content}
-      </div>
     </div>
   )
 }

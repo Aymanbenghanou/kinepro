@@ -4,11 +4,9 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import {
-  LayoutDashboard, Calendar, Users, CreditCard, MoreHorizontal, X,
+  LayoutDashboard, Calendar, Users, CreditCard, MoreHorizontal,
   Clock, BarChart3, MessageCircle, Settings, Crown, ChevronRight,
-  UserCheck, User, LogOut,
 } from 'lucide-react'
-import { signOut } from 'next-auth/react'
 
 const mainTabs = [
   { icon: LayoutDashboard, label: 'Accueil',     href: '/dashboard'    },
@@ -19,12 +17,10 @@ const mainTabs = [
 
 const moreItems = [
   { icon: Clock,         label: 'Séances',     href: '/seances'     },
-  { icon: MessageCircle, label: 'WhatsApp',    href: '/whatsapp'    },
   { icon: BarChart3,     label: 'Rapports',    href: '/rapports'    },
-  { icon: UserCheck,     label: 'Personnel',   href: '/personnel'   },
+  { icon: MessageCircle, label: 'WhatsApp',    href: '/whatsapp'    },
   { icon: Settings,      label: 'Paramètres',  href: '/parametres'  },
   { icon: Crown,         label: 'Abonnement',  href: '/abonnement'  },
-  { icon: User,          label: 'Mon compte',  href: '/compte'      },
 ]
 
 export default function MobileBottomNav() {
@@ -94,10 +90,10 @@ export default function MobileBottomNav() {
           )
         })}
 
-        {/* Plus → slide-up bottom sheet (icon morphs to X when open) */}
+        {/* Plus → slide-up bottom sheet */}
         <button
-          onClick={() => setSheetOpen(o => !o)}
-          aria-label={sheetOpen ? 'Fermer le menu' : "Plus d'options"}
+          onClick={() => setSheetOpen(true)}
+          aria-label="Plus d'options"
           aria-expanded={sheetOpen}
           style={{
             position: 'relative',
@@ -110,10 +106,8 @@ export default function MobileBottomNav() {
             minHeight: 48,
           }}
         >
-          {sheetOpen
-            ? <X size={22} strokeWidth={2.5} />
-            : <MoreHorizontal size={22} strokeWidth={isMoreActive ? 2.5 : 2} />}
-          <span style={{ fontSize: 11, fontWeight: isMoreActive || sheetOpen ? 700 : 500, lineHeight: 1 }}>{sheetOpen ? 'Fermer' : 'Plus'}</span>
+          <MoreHorizontal size={22} strokeWidth={isMoreActive || sheetOpen ? 2.5 : 2} />
+          <span style={{ fontSize: 11, fontWeight: isMoreActive || sheetOpen ? 700 : 500, lineHeight: 1 }}>Plus</span>
           {isMoreActive && (
             <span style={{
               position: 'absolute', top: 4,
@@ -162,17 +156,6 @@ export default function MobileBottomNav() {
               </Link>
             )
           })}
-          <div style={{ height: 1, background: '#F1F5F9', margin: '8px 16px' }} />
-          <button
-            onClick={() => { setSheetOpen(false); signOut({ callbackUrl: '/login' }) }}
-            className="bsheet-item"
-            style={{ color: '#DC2626' }}
-          >
-            <span className="bsheet-item-icon" style={{ background: '#FEE2E2', color: '#DC2626' }}>
-              <LogOut size={18} />
-            </span>
-            <span style={{ flex: 1 }}>Déconnexion</span>
-          </button>
         </div>
       </div>
     </>

@@ -175,12 +175,12 @@ export default function ProgressionTab({ patient, onScoresSaved }: {
   }
 
   return (
-    <div className="progression-tab" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
       {/* ── Summary cards ── */}
       <div>
         <h3 style={{ fontSize: 15, fontWeight: 700, color: '#0F172A', margin: '0 0 14px' }}>📊 Évolution des scores</h3>
-        <div className="progression-kpis" style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <DeltaCard label="Douleur"  initial={initDouleur}  current={curDouleur}  lowerIsBetter={true} />
           <DeltaCard label="Mobilité" initial={initMobilite} current={curMobilite} lowerIsBetter={false} />
           <div style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, padding: 18, flex: 1, minWidth: 140 }}>
