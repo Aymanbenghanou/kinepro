@@ -268,8 +268,8 @@ export default function PatientDetailPage() {
           <ArrowLeft size={14} /> Retour aux patients
         </button>
 
-        {/* Header card */}
-        <div className="patient-header-card" style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: 16, padding: 24, marginBottom: 20 }}>
+        {/* Header card — desktop only (mobile renders a different header inside the Infos tab) */}
+        <div className="patient-header-card desktop-only" style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: 16, padding: 24, marginBottom: 20 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
             <div style={{ display: 'flex', gap: 18, alignItems: 'center', flex: 1, minWidth: 0 }}>
               {/* Avatar */}
@@ -393,8 +393,124 @@ export default function PatientDetailPage() {
         </div>
 
         {/* ── Tab: Informations ── */}
-        {activeTab === 'informations' && (
-          <div className="dashboard-grid-2" style={{ gap: 20 }}>
+        {activeTab === 'informations' && (<>
+
+        {/* ── MOBILE Infos: header card + info rows (mockup match) ── */}
+        <div className="mobile-only" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {/* Header card */}
+          <div style={{ background: 'white', borderRadius: 16, border: '1px solid #E2E8F0', overflow: 'hidden' }}>
+            <div style={{ padding: 16, display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div style={{
+                width: 64, height: 64, borderRadius: '50%',
+                background: '#DBEAFE', color: '#1D4ED8',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 20, fontWeight: 600, flexShrink: 0,
+              }}>
+                {patient.prenom?.[0]}{patient.nom?.[0]}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                {/* Name + Actif + Sexe — same line, can wrap if needed */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 17, fontWeight: 600, color: '#0F172A', lineHeight: 1.2 }}>
+                    {patient.prenom} {patient.nom}
+                  </span>
+                  <span style={{
+                    background: patient.actif ? '#F0FDF4' : '#F1F5F9',
+                    color:      patient.actif ? '#15803D' : '#64748B',
+                    fontSize: 10, fontWeight: 600,
+                    padding: '3px 8px', borderRadius: 20,
+                    whiteSpace: 'nowrap', flexShrink: 0,
+                  }}>
+                    {patient.actif ? 'Actif' : 'Inactif'}
+                  </span>
+                  {patient.sexe && (
+                    <span style={{
+                      background: '#EFF6FF', color: '#2563EB',
+                      fontSize: 10, fontWeight: 600,
+                      padding: '3px 8px', borderRadius: 20,
+                      whiteSpace: 'nowrap', flexShrink: 0,
+                    }}>{patient.sexe}</span>
+                  )}
+                </div>
+                {/* Age · Sexe text line */}
+                {(age !== null || patient.sexe) && (
+                  <div style={{ fontSize: 12, color: '#64748B', marginTop: 4 }}>
+                    {age !== null && `${age} ans`}
+                    {age !== null && patient.sexe && ' · '}
+                    {patient.sexe}
+                  </div>
+                )}
+                {/* Phone — tappable blue */}
+                {patient.telephone && (
+                  <a href={`tel:${patient.telephone}`} style={{
+                    fontSize: 13, color: '#2563EB', marginTop: 4,
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    textDecoration: 'none',
+                  }}>
+                    📞 {patient.telephone}
+                  </a>
+                )}
+              </div>
+            </div>
+
+            {/* Pathologie pill */}
+            {patient.pathologie && (
+              <div style={{ padding: '0 16px 12px' }}>
+                <span style={{
+                  background: '#FFF7ED', color: '#B45309',
+                  fontSize: 12, fontWeight: 600,
+                  padding: '6px 14px', borderRadius: 20,
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                }}>
+                  🏥 {patient.pathologie}
+                </span>
+              </div>
+            )}
+
+            {/* 2×2 action grid */}
+            <div style={{
+              display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8,
+              padding: 12, borderTop: '1px solid #F1F5F9',
+            }}>
+              <button onClick={openQr}
+                style={mActionBtn({ bg: 'white', color: '#2563EB', border: '1px solid #E2E8F0' })}>
+                <QrCode size={14} /> QR Code
+              </button>
+              <button onClick={() => generateDossierPatientPDF(patient, cabinet)}
+                style={mActionBtn({ bg: 'white', color: '#DC2626', border: '1px solid #E2E8F0' })}>
+                <Download size={14} /> PDF
+              </button>
+              {patient.telephone ? (
+                <button onClick={() => setShowExercices(true)}
+                  style={mActionBtn({ bg: '#2563EB', color: 'white' })}>
+                  💪 Exercices
+                </button>
+              ) : <span />}
+              <button onClick={() => setShowPlanifier(true)}
+                style={mActionBtn({ bg: '#1E3A5F', color: 'white' })}>
+                <Calendar size={14} /> Planifier
+              </button>
+            </div>
+          </div>
+
+          {/* Info rows card */}
+          <div style={{ background: 'white', borderRadius: 16, border: '1px solid #E2E8F0', overflow: 'hidden' }}>
+            <MInfoRow label="Email"             value={patient.email}            link={patient.email ? `mailto:${patient.email}` : undefined} />
+            <MInfoRow label="Adresse"           value={patient.adresse} />
+            <MInfoRow label="Ville"             value={patient.ville} />
+            <MInfoRow label="CIN"               value={patient.cin} />
+            <MInfoRow label="Mutuelle"          value={patient.mutuelle} />
+            <MInfoRow label="N° police"         value={patient.numeroPolice} />
+            <MInfoRow label="Médecin référent"  value={patient.medecinReferent} />
+            <MInfoRow label="Tél. médecin"      value={patient.medecinTelephone} link={patient.medecinTelephone ? `tel:${patient.medecinTelephone}` : undefined} />
+            <MInfoRow label="Date de naissance" value={patient.dateNaissance ? formatDate(patient.dateNaissance) : null} />
+            <MInfoRow label="Mode paiement"     value={patient.modePaiement} />
+            <MInfoRow label="Tarif séance"      value={patient.tarifSeance ? `${patient.tarifSeance} MAD` : null} last />
+          </div>
+        </div>
+
+        {/* ── DESKTOP Infos grid (unchanged) ── */}
+        <div className="dashboard-grid-2 desktop-only" style={{ gap: 20 }}>
             {/* Infos personnelles */}
             <div style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, padding: 24 }}>
               <h3 style={{ fontSize: 15, fontWeight: 600, color: '#0F172A', marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid #E2E8F0' }}>
@@ -442,7 +558,7 @@ export default function PatientDetailPage() {
               )}
             </div>
           </div>
-        )}
+        </>)}
 
         {/* ── Tab: Séances ── */}
         {activeTab === 'seances' && (
@@ -651,6 +767,51 @@ export default function PatientDetailPage() {
           />
         ) : null
       )}
+    </div>
+  )
+}
+
+// ─── Mobile-only helpers ─────────────────────────────────────────────────────
+
+function mActionBtn(opts: { bg: string; color: string; border?: string }): React.CSSProperties {
+  return {
+    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+    padding: 10, borderRadius: 12,
+    background: opts.bg, color: opts.color,
+    border: opts.border || 'none',
+    fontSize: 13, fontWeight: 600,
+    cursor: 'pointer', minHeight: 44,
+  }
+}
+
+function MInfoRow({ label, value, link, last }: {
+  label: string
+  value?: string | null
+  link?: string
+  last?: boolean
+}) {
+  if (!value) return null
+  const content = link
+    ? <a href={link} style={{ color: '#2563EB', textDecoration: 'none' }}>{value}</a>
+    : value
+  return (
+    <div style={{
+      padding: '12px 16px',
+      borderBottom: last ? 'none' : '1px solid #F8FAFC',
+    }}>
+      <div style={{
+        fontSize: 11, color: '#94A3B8',
+        textTransform: 'uppercase', letterSpacing: 0.5,
+        fontWeight: 600, marginBottom: 3,
+      }}>
+        {label}
+      </div>
+      <div style={{
+        fontSize: 14, color: '#0F172A',
+        overflowWrap: 'anywhere', wordBreak: 'break-word',
+      }}>
+        {content}
+      </div>
     </div>
   )
 }

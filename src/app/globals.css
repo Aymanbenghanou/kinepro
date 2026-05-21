@@ -207,11 +207,31 @@ button, a, [role="button"] {
     z-index: 20;
     margin-left: -16px !important;
     margin-right: -16px !important;
+    margin-bottom: 0 !important;
     border-radius: 0 !important;
     border-left: none !important;
     border-right: none !important;
     border-top: none !important;
-    padding: 6px 12px !important;
+    border-bottom: 1px solid #E2E8F0 !important;
+    padding: 10px 16px !important;
+    gap: 6px !important;
+    background: white !important;
+  }
+  /* Mockup pill style: gray inactive, blue solid active */
+  .patient-tabs > button {
+    flex-shrink: 0 !important;
+    padding: 6px 14px !important;
+    border-radius: 20px !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    background: #F1F5F9 !important;
+    color: #64748B !important;
+    white-space: nowrap !important;
+  }
+  .patient-tabs > button[style*="rgb(37, 99, 235)"],
+  .patient-tabs > button[style*="#2563EB"] {
+    background: #2563EB !important;
+    color: white !important;
   }
 }
 
