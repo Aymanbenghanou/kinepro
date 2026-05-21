@@ -2,15 +2,65 @@
 @import "tailwindcss";
 
 :root {
+  /* ── Brand ───────────────────────────────────────────── */
   --primary: #2563EB;
+  --primary-50:  #EFF6FF;
+  --primary-100: #DBEAFE;
+  --primary-700: #1D4ED8;
   --sidebar-bg: #1E3A5F;
-  --text: #0F172A;
-  --muted: #64748B;
-  --border: #E2E8F0;
+
+  /* ── Surfaces & text ─────────────────────────────────── */
+  --text:       #0F172A;
+  --text-soft:  #334155;
+  --muted:      #64748B;
+  --muted-soft: #94A3B8;
+  --border:     #E2E8F0;
+  --border-soft:#F1F5F9;
   --background: #F8FAFC;
-  --success: #16A34A;
-  --warning: #F59E0B;
-  --danger: #DC2626;
+  --surface:    #FFFFFF;
+
+  /* ── Semantic ────────────────────────────────────────── */
+  --success: #16A34A;  --success-50: #DCFCE7;
+  --warning: #F59E0B;  --warning-50: #FEF3C7;
+  --danger:  #DC2626;  --danger-50:  #FEE2E2;
+  --info:    #0EA5E9;  --info-50:    #E0F2FE;
+
+  /* ── Mobile-first typography (fluid via clamp) ───────── */
+  --text-h1:      clamp(22px, 5.6vw, 28px);
+  --text-h2:      clamp(18px, 4.6vw, 22px);
+  --text-h3:      clamp(16px, 4vw,   18px);
+  --text-body:    15px;
+  --text-small:   13px;
+  --text-tiny:    11.5px;
+  --lh-tight:     1.2;
+  --lh-base:      1.5;
+  --lh-loose:     1.65;
+
+  /* ── Spacing scale ───────────────────────────────────── */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-7: 32px;
+  --sp-8: 40px;
+
+  /* ── Radii ───────────────────────────────────────────── */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 14px;
+  --r-xl: 18px;
+  --r-full: 999px;
+
+  /* ── Shadows (soft, mobile-friendly) ─────────────────── */
+  --shadow-sm: 0 1px 2px rgba(15,23,42,0.04), 0 1px 1px rgba(15,23,42,0.03);
+  --shadow-md: 0 4px 12px rgba(15,23,42,0.06), 0 1px 3px rgba(15,23,42,0.04);
+  --shadow-lg: 0 12px 28px rgba(15,23,42,0.12), 0 4px 10px rgba(15,23,42,0.06);
+
+  /* ── Layout constants ────────────────────────────────── */
+  --topbar-h:    56px;
+  --bottom-nav-h: calc(64px + env(safe-area-inset-bottom, 0px));
 }
 
 * {
@@ -286,11 +336,22 @@ button, a, [role="button"] {
     padding-bottom: 72px;
   }
 
-  /* Topbar: tighter padding, hide search */
+  /* Topbar: minimal mobile layout */
   .topbar {
-    padding: 0 12px;
-    gap: 8px;
+    padding: 0 var(--sp-3);
+    gap: var(--sp-2);
+    height: var(--topbar-h);
+    box-shadow: 0 1px 0 var(--border);
   }
+  .topbar h1 {
+    font-size: 15px !important;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.005em;
+  }
+  .topbar p { font-size: 11.5px !important; line-height: 1.2; }
+  /* Hide ALL secondary topbar controls on mobile except notifications/profile */
+  .topbar .topbar-secondary { display: none !important; }
 
   /* Show hamburger on mobile */
   .topbar-hamburger {
@@ -318,15 +379,17 @@ button, a, [role="button"] {
     bottom: 0;
     left: 0;
     right: 0;
-    height: calc(64px + env(safe-area-inset-bottom, 0px));
-    background: white;
-    border-top: 1px solid #E2E8F0;
+    height: var(--bottom-nav-h);
+    background: rgba(255,255,255,0.96);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-top: 1px solid var(--border);
     z-index: 100;
     align-items: stretch;
     justify-content: space-around;
-    padding: 0 4px;
+    padding: 0 var(--sp-1);
     padding-bottom: env(safe-area-inset-bottom, 0px);
-    box-shadow: 0 -2px 16px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 -4px 20px rgba(15, 23, 42, 0.06);
   }
   /* Push main content above the nav (including safe area) */
   .main-content {
@@ -357,10 +420,12 @@ button, a, [role="button"] {
     min-width: 560px;
   }
 
-  /* Modal: full-screen on mobile */
+  /* Modal: full-screen on mobile, iOS sheet feel */
   .modal-overlay {
     align-items: flex-end !important;
     padding: 0 !important;
+    background: rgba(15,23,42,0.55) !important;
+    backdrop-filter: blur(4px);
   }
   .modal-sheet {
     width: 100% !important;
@@ -369,6 +434,17 @@ button, a, [role="button"] {
     max-height: 92dvh !important;
     overflow-y: auto;
     padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px)) !important;
+    box-shadow: 0 -20px 60px rgba(0,0,0,0.25) !important;
+    position: relative;
+  }
+  /* Drag-handle bar at the top of every bottom-sheet modal */
+  .modal-sheet::before {
+    content: '';
+    position: sticky; top: 8px;
+    display: block; margin: 0 auto 12px;
+    width: 40px; height: 4px;
+    background: var(--border);
+    border-radius: 999px;
   }
 
   /* Touch-friendly inputs (≥48px, 16px to prevent iOS auto-zoom) */
@@ -458,10 +534,11 @@ button, a, [role="button"] {
   /* Stat cards: tighter on mobile */
   .stat-card { padding: 14px !important; }
 
-  /* Typography scale (mobile) */
-  h1 { font-size: 20px !important; line-height: 1.25; }
-  h2 { font-size: 18px !important; line-height: 1.3;  }
-  h3 { font-size: 16px !important; line-height: 1.35; }
+  /* Typography scale (mobile) — uses the fluid token variables */
+  h1 { font-size: var(--text-h1); line-height: var(--lh-tight); letter-spacing: -0.01em; }
+  h2 { font-size: var(--text-h2); line-height: var(--lh-tight); }
+  h3 { font-size: var(--text-h3); line-height: var(--lh-tight); }
+  p, span, li, td, th, label, a { line-height: var(--lh-base); }
 
   /* Anything inside .main-content must respect the viewport */
   .main-content { overflow-x: clip !important; }
@@ -481,6 +558,81 @@ button, a, [role="button"] {
   .main-content .agenda-week-outer > div {
     max-width: none;
   }
+}
+
+/* ─── Design system — typography ─────────────────────────────────────── */
+.t-h1 { font-size: var(--text-h1); font-weight: 800; line-height: var(--lh-tight); letter-spacing: -0.01em; color: var(--text); }
+.t-h2 { font-size: var(--text-h2); font-weight: 700; line-height: var(--lh-tight); color: var(--text); }
+.t-h3 { font-size: var(--text-h3); font-weight: 700; line-height: var(--lh-tight); color: var(--text); }
+.t-body  { font-size: var(--text-body);  line-height: var(--lh-base); color: var(--text); }
+.t-soft  { color: var(--text-soft); }
+.t-muted { color: var(--muted); }
+.t-small { font-size: var(--text-small); line-height: var(--lh-base); }
+.t-tiny  { font-size: var(--text-tiny);  line-height: var(--lh-base); color: var(--muted); }
+.t-num   { font-variant-numeric: tabular-nums; }
+.t-truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; max-width: 100%; }
+
+/* ─── Design system — buttons ────────────────────────────────────────── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 6px; padding: 10px 16px;
+  border-radius: var(--r-md); border: 1px solid var(--border);
+  background: var(--surface); color: var(--text-soft);
+  font-size: var(--text-small); font-weight: 600;
+  cursor: pointer; min-height: 40px;
+  transition: transform 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn:active { transform: scale(0.97); }
+.btn:hover  { background: var(--background); }
+.btn-primary { background: var(--primary); color: white; border-color: var(--primary); }
+.btn-primary:hover { background: var(--primary-700); border-color: var(--primary-700); }
+.btn-success { background: var(--success); color: white; border-color: var(--success); }
+.btn-danger  { background: var(--danger);  color: white; border-color: var(--danger);  }
+.btn-ghost   { background: transparent; border-color: transparent; }
+.btn-ghost:hover { background: var(--border-soft); }
+.btn-sm { padding: 7px 12px; min-height: 36px; font-size: 12.5px; }
+.btn-block { width: 100%; }
+
+/* ─── Design system — badges ─────────────────────────────────────────── */
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px; border-radius: var(--r-full);
+  font-size: 11.5px; font-weight: 700;
+  background: var(--border-soft); color: var(--muted);
+  white-space: nowrap;
+}
+.badge-success { background: var(--success-50); color: #166534; }
+.badge-warning { background: var(--warning-50); color: #92400E; }
+.badge-danger  { background: var(--danger-50);  color: #991B1B; }
+.badge-info    { background: var(--info-50);    color: #075985; }
+.badge-primary { background: var(--primary-100); color: var(--primary-700); }
+.badge-outline { background: transparent; border: 1px solid var(--border); color: var(--text-soft); font-weight: 600; }
+.badge-dot::before {
+  content: ''; display: inline-block; width: 6px; height: 6px;
+  border-radius: 50%; background: currentColor; opacity: 0.9;
+}
+
+/* ─── Design system — surface cards ──────────────────────────────────── */
+.surface {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+}
+.surface-flat { box-shadow: none; }
+.surface-pad  { padding: var(--sp-4); }
+@media (max-width: 768px) {
+  .surface-pad { padding: var(--sp-3) var(--sp-4); }
+}
+
+/* ─── Page container ────────────────────────────────────────────────── */
+.page {
+  padding: var(--sp-5) var(--sp-6);
+  max-width: 100%;
+}
+@media (max-width: 768px) {
+  .page { padding: var(--sp-4); }
 }
 
 /* ─── Visibility helpers ────────────────────────────────────────────── */
@@ -628,19 +780,21 @@ button, a, [role="button"] {
 .h-scroll > * { scroll-snap-align: start; flex-shrink: 0; }
 
 /* ─── Mobile card list (replaces tables on mobile) ──────────────────── */
-.mlist { display: flex; flex-direction: column; gap: 10px; }
+.mlist { display: flex; flex-direction: column; gap: var(--sp-2); }
 .mcard {
-  background: white;
-  border: 1px solid #E2E8F0;
-  border-radius: 14px;
-  padding: 14px 14px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-3) var(--sp-4) var(--sp-3);
   position: relative;
   text-decoration: none;
   color: inherit;
   display: block;
+  box-shadow: var(--shadow-sm);
   -webkit-tap-highlight-color: transparent;
+  min-width: 0;
 }
-.mcard:active { background: #F8FAFC; }
+.mcard:active { background: var(--background); transform: scale(0.995); }
 .mcard-row {
   display: flex; align-items: center; gap: 10px;
   margin-bottom: 6px;
