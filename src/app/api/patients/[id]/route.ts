@@ -32,6 +32,10 @@ export async function GET(
         factures: {
           orderBy: { dateEmise: 'desc' },
         },
+        feedbacks: {
+          orderBy: { createdAt: 'desc' },
+          select: { id: true, score: true, commentaire: true, createdAt: true, seanceId: true },
+        },
       },
     })
     if (!patient) return NextResponse.json({ error: 'Patient non trouvé' }, { status: 404 })

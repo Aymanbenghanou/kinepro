@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef, use as usePromise } 
 import Link from 'next/link'
 import MobileTopbar from '@/components/mobile/MobileTopbar'
 import { QrCode, Download } from 'lucide-react'
+import { BarChart, Bar, Cell, XAxis, ResponsiveContainer } from 'recharts'
 
 const AVATAR_COLORS = [
   { bg: '#DBEAFE', text: '#1D4ED8' },
@@ -83,12 +84,38 @@ export default function MobilePatientDetailPage({ params }: { params: Promise<{ 
     .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime()), [seances])
   const douleurArr  = scoredAsc.filter((s: any) => typeof s.douleurScore  === 'number').map((s: any) => s.douleurScore)
   const mobiliteArr = scoredAsc.filter((s: any) => typeof s.mobiliteScore === 'number').map((s: any) => s.mobiliteScore)
-  const initialDouleur = douleurArr[0] ?? null
-  const lastDouleur    = douleurArr[douleurArr.length - 1] ?? null
-  const lastMobilite   = mobiliteArr[mobiliteArr.length - 1] ?? null
-  const progressPct = initialDouleur && lastDouleur != null && initialDouleur > 0
+  const initialDouleur  = douleurArr[0] ?? null
+  const lastDouleur     = douleurArr[douleurArr.length - 1] ?? null
+  const initialMobilite = mobiliteArr[0] ?? null
+  const lastMobilite    = mobiliteArr[mobiliteArr.length - 1] ?? null
+  // Formule de progression — identique au desktop ProgressionTab.tsx l.130
+  const progressPct: number | null = initialDouleur != null && lastDouleur != null && initialDouleur > 0
     ? Math.max(0, Math.round(((initialDouleur - lastDouleur) / initialDouleur) * 100))
-    : 0
+    : null
+
+  // Bar-chart data: une barre par séance scorée (S1..Sn) avec niveau de douleur
+  const douleurChart = useMemo(() => scoredAsc
+    .filter((s: any) => typeof s.douleurScore === 'number')
+    .map((s: any, i: number) => ({ label: `S${i + 1}`, douleur: s.douleurScore as number })),
+  [scoredAsc])
+
+  // Objectifs — parsing texte libre du champ patient.objectifsTraitement
+  // Convention de préfixe (cohérente avec MobileProgressionTab supprimé) :
+  //   ✓ / ✔ / [x] = fait        →  / [~] = en cours        sinon = à venir
+  const objectifs = useMemo(() => {
+    const raw = (patient?.objectifsTraitement ?? '').trim()
+    if (!raw) return []
+    return raw.split(/\r?\n/).filter((l: string) => l.trim()).map((line: string) => {
+      const done       = /^\s*[✓✔x]\s/i.test(line) || /^\s*\[x\]/i.test(line)
+      const inProgress = /^\s*[→>]\s/.test(line)  || /^\s*\[~\]/.test(line)
+      const label = line
+        .replace(/^\s*[✓✔x→>]\s+/i, '')
+        .replace(/^\s*\[[x~]\]\s*/i, '')
+        .replace(/^\s*[-•]\s*/, '')
+        .trim()
+      return { label, done, inProgress }
+    })
+  }, [patient?.objectifsTraitement])
 
   const fbScores = feedbacks.map((f: any) => f.score).filter((n: any) => typeof n === 'number')
   const sScores  = seances.map((s: any) => s.scorePatient).filter((n: any) => typeof n === 'number')
@@ -430,34 +457,111 @@ export default function MobilePatientDetailPage({ params }: { params: Promise<{ 
       {/* ── PROGRÈS TAB ────────────────────────────────────────────────── */}
       {activeTab === 'Progrès' && (
         <div style={{ padding: '12px 16px' }}>
-          {/* KPI 2×2 */}
+          {/* KPI 2×2 — lecture seule, valeurs réelles uniquement, "—" si pas de source */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8, marginBottom: 8 }}>
-            <Kpi label="Douleur" color="#EF4444">
-              <span style={{ whiteSpace: 'nowrap' }}>{lastDouleur ?? '—'}/10</span>
-              {initialDouleur != null && lastDouleur != null && (initialDouleur - lastDouleur) > 0 && (
-                <p style={{ fontSize: 10, color: '#16A34A', fontWeight: 500, margin: '4px 0 0' }}>
-                  ↓ -{initialDouleur - lastDouleur} pts
+            {/* Douleur — initiale + flèche → actuelle (lowerIsBetter) */}
+            <Kpi label="Douleur initiale" color="#EF4444">
+              <span style={{ whiteSpace: 'nowrap' }}>{initialDouleur ?? '—'}/10</span>
+              {lastDouleur != null && initialDouleur != null && (
+                <p style={{ fontSize: 11, color: '#16A34A', fontWeight: 500, margin: '4px 0 0', whiteSpace: 'nowrap' }}>
+                  → {lastDouleur}/10 actuel
                 </p>
               )}
             </Kpi>
+
+            {/* Progression — uniquement si calculable */}
             <Kpi label="Progression" color="#16A34A">
-              <span style={{ whiteSpace: 'nowrap' }}>{progressPct}%</span>
-              <div style={{ height: 4, background: '#F1F5F9', borderRadius: 999, overflow: 'hidden', marginTop: 8 }}>
-                <div style={{ height: '100%', width: `${progressPct}%`, background: '#22C55E', borderRadius: 999 }} />
-              </div>
+              <span style={{ whiteSpace: 'nowrap' }}>{progressPct != null ? `${progressPct}%` : '—'}</span>
+              {seancesPrescrites > 0 && (
+                <p style={{ fontSize: 11, color: '#64748B', margin: '4px 0 0', whiteSpace: 'nowrap' }}>
+                  {seancesRealisees}/{seancesPrescrites} séances
+                </p>
+              )}
             </Kpi>
+
+            {/* Mobilité — actuelle + delta (higherIsBetter) */}
             <Kpi label="Mobilité" color="#2563EB">
               <span style={{ whiteSpace: 'nowrap' }}>{lastMobilite ?? '—'}/10</span>
+              {lastMobilite != null && initialMobilite != null && (lastMobilite - initialMobilite) !== 0 && (
+                <p style={{
+                  fontSize: 11, fontWeight: 500, margin: '4px 0 0', whiteSpace: 'nowrap',
+                  color: lastMobilite - initialMobilite > 0 ? '#16A34A' : '#DC2626',
+                }}>
+                  {lastMobilite - initialMobilite > 0 ? '↑ +' : '↓ '}{lastMobilite - initialMobilite} pts
+                </p>
+              )}
             </Kpi>
+
+            {/* Satisfaction — moy. feedbacks (Feedback.score d'abord, fallback seance.scorePatient) */}
             <Kpi label="Satisfaction" color="#F59E0B">
-              <span style={{ whiteSpace: 'nowrap' }}>{avgScore ?? '—'}/10</span>
-              <p style={{ fontSize: 10, color: '#94A3B8', margin: '4px 0 0' }}>moy. feedbacks</p>
+              <span style={{ whiteSpace: 'nowrap' }}>{avgScore != null ? `${avgScore}/10` : '—'}</span>
+              <p style={{ fontSize: 10, color: '#94A3B8', margin: '4px 0 0' }}>
+                {avgScore != null ? 'Moy. feedbacks' : 'Aucun feedback'}
+              </p>
             </Kpi>
           </div>
 
-          {/* Bloc "Enregistrer scores" retiré — saisie = mutation.
-              Le 2×2 KPI au-dessus reste en lecture seule (valeurs calculées
-              depuis les séances déjà saisies côté desktop). */}
+          {/* Évolution douleur — graphique barres par séance scorée */}
+          <div style={{
+            background: 'white', borderRadius: 16, border: '0.5px solid #E2E8F0',
+            padding: '14px 14px 8px', marginTop: 12, marginBottom: 12,
+          }}>
+            <h3 style={{ fontSize: 14, fontWeight: 600, color: '#0F172A', margin: '0 0 12px' }}>
+              Évolution douleur
+            </h3>
+            {douleurChart.length === 0 ? (
+              <p style={{ fontSize: 12, color: '#94A3B8', textAlign: 'center', padding: '20px 0', margin: 0 }}>
+                Aucune donnée de progression
+              </p>
+            ) : (
+              <ResponsiveContainer width="100%" height={130}>
+                <BarChart data={douleurChart} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
+                  <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#94A3B8' }}
+                    axisLine={false} tickLine={false} interval={0} />
+                  <Bar dataKey="douleur" radius={[4, 4, 0, 0]}>
+                    {douleurChart.map((entry: any, i: number) => (
+                      <Cell key={i} fill={entry.douleur >= 7 ? '#EF4444' : entry.douleur >= 4 ? '#F59E0B' : '#22C55E'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+
+          {/* Objectifs — parsing texte libre, 3 statuts */}
+          {objectifs.length > 0 && (
+            <div style={{
+              background: 'white', borderRadius: 16, border: '0.5px solid #E2E8F0',
+              padding: 14, marginBottom: 16,
+            }}>
+              <h3 style={{ fontSize: 14, fontWeight: 600, color: '#0F172A', margin: '0 0 12px' }}>
+                Objectifs
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {objectifs.map((obj: any, i: number) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{
+                      width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 12, fontWeight: 600,
+                      background: obj.done       ? '#F0FDF4' : obj.inProgress ? '#EFF6FF' : '#F1F5F9',
+                      color:      obj.done       ? '#16A34A' : obj.inProgress ? '#2563EB' : '#94A3B8',
+                    }}>
+                      {obj.done ? '✓' : obj.inProgress ? '→' : '○'}
+                    </div>
+                    <span style={{
+                      fontSize: 13.5,
+                      color: obj.done ? '#94A3B8' : '#0F172A',
+                      textDecoration: obj.done ? 'line-through' : 'none',
+                      overflowWrap: 'anywhere',
+                    }}>
+                      {obj.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
