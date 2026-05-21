@@ -764,6 +764,28 @@ button, a, [role="button"] {
     display: none !important;
   }
 
+  /* WhatsApp Center mobile polish: tighten inline-styled section cards
+     so they don't bleed off-screen. Each tab section is a 24px-padded
+     white container by default; shrink to 14px on mobile and let inner
+     rows wrap. */
+  .main-content [data-wa-section] {
+    padding: 14px !important;
+    margin-bottom: 12px !important;
+    border-radius: 12px !important;
+  }
+  /* WA action rows: stack buttons vertically + full width */
+  .main-content [data-wa-actions] {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+  .main-content [data-wa-actions] > * {
+    width: 100% !important;
+    justify-content: center !important;
+    min-height: 44px !important;
+  }
+
   /* Any element with .info-row-stack collapses label/value vertically */
   .info-row-stack {
     flex-direction: column !important;
