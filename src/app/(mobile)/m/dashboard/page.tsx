@@ -6,7 +6,6 @@ import { formatMoney, formatTime } from '@/lib/utils'
 import MobileTopbar from '@/components/mobile/MobileTopbar'
 import {
   Calendar, Users, Banknote, AlertCircle,
-  Plus, UserPlus, MessageCircle, BarChart2,
   ChevronRight,
 } from 'lucide-react'
 
@@ -75,16 +74,9 @@ export default async function MobileDashboardPage() {
           href="/m/facturation" />
       </div>
 
-      {/* Quick actions 2×2 */}
-      <div style={{
-        display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-        gap: 8, padding: '0 16px 16px',
-      }}>
-        <ActionCard href="/m/agenda"      icon={<Plus size={18} />}          iconBg="#EFF6FF" iconColor="#2563EB" title="Nouveau RDV"     subtitle="Planifier" />
-        <ActionCard href="/m/patients"    icon={<UserPlus size={18} />}      iconBg="#F0FDF4" iconColor="#16A34A" title="Nouveau patient" subtitle="Dossier" />
-        <ActionCard href="/m/whatsapp"    icon={<MessageCircle size={18} />} iconBg="#ECFDF5" iconColor="#0D9488" title="WhatsApp"        subtitle="Centre msg" />
-        <ActionCard href="/rapports"      icon={<BarChart2 size={18} />}     iconBg="#FEF3C7" iconColor="#D97706" title="Rapports"        subtitle="Analyses" />
-      </div>
+      {/* Quick-actions grid retirée — mode lecture seule mobile.
+          La barre de navigation du bas couvre déjà Agenda / Patients /
+          WhatsApp / Plus → pas de duplication. */}
 
       {/* Agenda du jour */}
       <div style={{ padding: '0 16px 16px' }}>
@@ -204,26 +196,3 @@ function StatCard({ icon, iconBg, iconColor, value, label, href }: {
   return inner
 }
 
-function ActionCard({ href, icon, iconBg, iconColor, title, subtitle }: {
-  href: string; icon: React.ReactNode; iconBg: string; iconColor: string;
-  title: string; subtitle: string;
-}) {
-  return (
-    <Link href={href} style={{
-      background: 'white', borderRadius: 12, border: '1px solid #E2E8F0',
-      padding: 12, display: 'flex', alignItems: 'center', gap: 10,
-      textDecoration: 'none', minHeight: 64, minWidth: 0,
-    }}>
-      <div style={{
-        width: 36, height: 36, borderRadius: 12,
-        background: iconBg, color: iconColor,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        flexShrink: 0,
-      }}>{icon}</div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: '#0F172A', lineHeight: 1.2 }}>{title}</div>
-        <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>{subtitle}</div>
-      </div>
-    </Link>
-  )
-}

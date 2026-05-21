@@ -1,10 +1,8 @@
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
-import { formatTime, formatDate } from '@/lib/utils'
+import { formatTime } from '@/lib/utils'
 import MobileTopbar from '@/components/mobile/MobileTopbar'
-import { Plus } from 'lucide-react'
 
 export default async function MobileAgendaPage() {
   const session = await auth()
@@ -74,17 +72,7 @@ export default async function MobileAgendaPage() {
           </div>
         ))}
       </div>
-      <Link href="/agenda" aria-label="Nouveau RDV"
-        style={{
-          position: 'fixed', bottom: 'calc(80px + env(safe-area-inset-bottom, 0px))', right: 16,
-          width: 52, height: 52, borderRadius: '50%',
-          background: '#2563EB', color: 'white',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 4px 14px rgba(37,99,235,0.4)',
-          textDecoration: 'none', zIndex: 50,
-        }}>
-        <Plus size={22} />
-      </Link>
+      {/* FAB retiré — mode lecture seule mobile */}
     </div>
   )
 }

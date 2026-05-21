@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef, use as usePromise } from 'react'
 import Link from 'next/link'
 import MobileTopbar from '@/components/mobile/MobileTopbar'
-import { QrCode, Download, Calendar } from 'lucide-react'
+import { QrCode, Download } from 'lucide-react'
 
 const AVATAR_COLORS = [
   { bg: '#DBEAFE', text: '#1D4ED8' },
@@ -35,13 +35,6 @@ export default function MobilePatientDetailPage({ params }: { params: Promise<{ 
   const [patient, setPatient] = useState<any>(null)
   const [loading, setLoading]   = useState(true)
   const [activeTab, setActiveTab] = useState<TabId>('Infos')
-
-  // Progrès — score input state
-  const [scores, setScores] = useState<{ douleur: number|null; mobilite: number|null; force: number|null }>({
-    douleur: null, mobilite: null, force: null,
-  })
-  const [savingScores, setSavingScores] = useState(false)
-  const [scoresSaved,  setScoresSaved]  = useState(false)
 
   // Docs state
   const [docs, setDocs] = useState<any[]>([])
@@ -104,11 +97,6 @@ export default function MobilePatientDetailPage({ params }: { params: Promise<{ 
     ? Math.round((allScores.reduce((a: number, b: number) => a + b, 0) / allScores.length) * 10) / 10
     : null
 
-  const lastRealiseId = useMemo(() => {
-    const r = seances.filter((s: any) => s.statut === 'realisee')
-    return r[r.length - 1]?.id ?? r[0]?.id ?? null
-  }, [seances])
-
   const filteredDocs = useMemo(() => {
     if (docFilter === 'Tous')        return docs
     if (docFilter === 'Ordonnances') return docs.filter(d => d.type === 'ordonnance')
@@ -118,24 +106,8 @@ export default function MobilePatientDetailPage({ params }: { params: Promise<{ 
   }, [docs, docFilter])
 
   // ── Actions ───────────────────────────────────────────────────────────────
-  async function saveScores() {
-    if (!lastRealiseId) return
-    if (scores.douleur == null && scores.mobilite == null && scores.force == null) return
-    setSavingScores(true)
-    try {
-      const body: any = {}
-      if (scores.douleur  != null) body.douleurScore  = scores.douleur
-      if (scores.mobilite != null) body.mobiliteScore = scores.mobilite
-      if (scores.force    != null) body.forceScore    = scores.force
-      await fetch(`/api/seances/${lastRealiseId}`, {
-        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-      setScoresSaved(true)
-      setTimeout(() => setScoresSaved(false), 2500)
-      await fetchPatient()
-    } finally { setSavingScores(false) }
-  }
+  // saveScores() retiré — PATCH /api/seances/:id est une mutation.
+  // Seul l'upload de documents reste autorisé sur mobile (handleFileUpload).
 
   async function handleFileUpload(file: File) {
     setUploadError(null)
@@ -276,21 +248,20 @@ export default function MobilePatientDetailPage({ params }: { params: Promise<{ 
               </div>
             )}
 
+            {/* Mode lecture seule : seules les actions de consultation sont conservées.
+                "Exercices" (génère programme) et "Planifier" (crée RDV) retirées. */}
             <div style={{
               display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
               gap: 8, padding: 12, borderTop: '0.5px solid #F1F5F9',
             }}>
-              <Link href={`/patients/${id}`} style={actionBtn({ bg: 'white', color: '#2563EB', border: '0.5px solid #BFDBFE' })}>
+              <button type="button" onClick={() => setActiveTab('QR')} style={{
+                ...actionBtn({ bg: 'white', color: '#2563EB', border: '0.5px solid #BFDBFE' }),
+                cursor: 'pointer',
+              }}>
                 <QrCode size={14} /> QR Code
-              </Link>
+              </button>
               <Link href={`/patients/${id}`} style={actionBtn({ bg: 'white', color: '#DC2626', border: '0.5px solid #FECACA' })}>
                 <Download size={14} /> PDF
-              </Link>
-              <Link href={`/patients/${id}`} style={actionBtn({ bg: '#2563EB', color: 'white' })}>
-                💪 Exercices
-              </Link>
-              <Link href={`/patients/${id}`} style={actionBtn({ bg: '#1E293B', color: 'white' })}>
-                <Calendar size={14} /> Planifier
               </Link>
             </div>
           </div>
@@ -369,11 +340,7 @@ export default function MobilePatientDetailPage({ params }: { params: Promise<{ 
                         </div>
                       )}
                     </div>
-                    <div style={{ display: 'flex', borderTop: '0.5px solid #F1F5F9' }}>
-                      <Link href={`/patients/${id}`} style={cellBtn('#2563EB')}>⭐ Feedback</Link>
-                      <div style={{ width: 1, background: '#F1F5F9' }} />
-                      <Link href={`/patients/${id}`} style={cellBtn('#64748B')}>💪 Programme</Link>
-                    </div>
+                    {/* Footer "⭐ Feedback" / "💪 Programme" retiré — mutations. */}
                   </div>
                 )
               })}
@@ -447,13 +414,9 @@ export default function MobilePatientDetailPage({ params }: { params: Promise<{ 
                         <div style={{ fontSize: 15, fontWeight: 600, color: '#0F172A', whiteSpace: 'nowrap' }}>{fmtMoney(total)}</div>
                       )}
                     </div>
+                    {/* "💰 Payer" retiré — encaissement = mutation.
+                        "📄 PDF" conservé (lecture/téléchargement). */}
                     <div style={{ display: 'flex', borderTop: '0.5px solid #F1F5F9' }}>
-                      {!isPaid && (
-                        <>
-                          <Link href={`/facturation/${f.id}`} style={cellBtn('#16A34A')}>💰 Payer</Link>
-                          <div style={{ width: 1, background: '#F1F5F9' }} />
-                        </>
-                      )}
                       <Link href={`/facturation/${f.id}`} style={cellBtn('#2563EB')}>📄 PDF</Link>
                     </div>
                   </div>
@@ -492,57 +455,9 @@ export default function MobilePatientDetailPage({ params }: { params: Promise<{ 
             </Kpi>
           </div>
 
-          {/* Score input */}
-          <div style={{ background: 'white', borderRadius: 12, border: '0.5px solid #E2E8F0', padding: 12, marginBottom: 12 }}>
-            <p style={{ fontSize: 12, fontWeight: 500, color: '#0F172A', margin: '0 0 12px' }}>
-              {lastRealiseId ? `Enregistrer scores — Séance ${seancesRealisees}` : 'Enregistrer scores'}
-            </p>
-            {!lastRealiseId ? (
-              <p style={{ fontSize: 12, color: '#94A3B8', margin: 0 }}>Aucune séance réalisée à scorer.</p>
-            ) : (<>
-              {(['douleur', 'mobilite', 'force'] as const).map(metric => (
-                <div key={metric} style={{ marginBottom: 12 }}>
-                  <p style={{ fontSize: 11, fontWeight: 500, color: '#475569', textTransform: 'capitalize', margin: '0 0 8px' }}>{metric}</p>
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    {[1,2,3,4,5,6,7,8,9,10].map(n => {
-                      const active = scores[metric] === n
-                      const palette = metric === 'douleur'
-                        ? { bg: '#FEE2E2', text: '#B91C1C', border: '#F87171' }
-                        : metric === 'mobilite'
-                          ? { bg: '#DBEAFE', text: '#1D4ED8', border: '#60A5FA' }
-                          : { bg: '#DCFCE7', text: '#15803D', border: '#4ADE80' }
-                      return (
-                        <button key={n} onClick={() => setScores(p => ({ ...p, [metric]: n }))}
-                          style={{
-                            width: 28, height: 28, borderRadius: '50%',
-                            fontSize: 11, fontWeight: 500,
-                            flexShrink: 0, cursor: 'pointer',
-                            border: '1px solid',
-                            background:    active ? palette.bg     : '#F8FAFC',
-                            color:         active ? palette.text   : '#64748B',
-                            borderColor:   active ? palette.border : '#E2E8F0',
-                            WebkitTapHighlightColor: 'transparent',
-                          }}>
-                          {n}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-              ))}
-              <button onClick={saveScores} disabled={savingScores}
-                style={{
-                  width: '100%', height: 40, borderRadius: 12,
-                  background: scoresSaved ? '#16A34A' : '#2563EB',
-                  color: 'white', border: 'none',
-                  fontSize: 13, fontWeight: 500, marginTop: 4,
-                  cursor: savingScores ? 'wait' : 'pointer',
-                  opacity: savingScores ? 0.7 : 1,
-                }}>
-                {scoresSaved ? '✓ Enregistré' : savingScores ? 'Enregistrement…' : 'Enregistrer'}
-              </button>
-            </>)}
-          </div>
+          {/* Bloc "Enregistrer scores" retiré — saisie = mutation.
+              Le 2×2 KPI au-dessus reste en lecture seule (valeurs calculées
+              depuis les séances déjà saisies côté desktop). */}
         </div>
       )}
 

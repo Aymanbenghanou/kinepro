@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Search, Plus, ChevronRight, X } from 'lucide-react'
+import { Search, ChevronRight, X } from 'lucide-react'
 import MobileTopbar from '@/components/mobile/MobileTopbar'
 import { formatDate } from '@/lib/utils'
 
@@ -173,18 +173,7 @@ export default function MobilePatientsPage() {
         )}
       </div>
 
-      {/* FAB */}
-      <Link href="/patients" aria-label="Nouveau patient"
-        style={{
-          position: 'fixed', bottom: 'calc(80px + env(safe-area-inset-bottom, 0px))', right: 16,
-          width: 52, height: 52, borderRadius: '50%',
-          background: '#2563EB', color: 'white',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 4px 14px rgba(37,99,235,0.4)',
-          textDecoration: 'none', zIndex: 50,
-        }}>
-        <Plus size={22} />
-      </Link>
+      {/* FAB retiré — mode lecture seule mobile */}
     </div>
   )
 }

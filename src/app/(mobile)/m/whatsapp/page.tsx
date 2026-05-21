@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
@@ -102,15 +101,9 @@ export default async function MobileWhatsAppPage() {
           </div>
         )}
 
-        {/* Link to desktop for full WhatsApp features */}
-        <div style={{ marginTop: 20, textAlign: 'center' }}>
-          <Link href="/whatsapp" style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            color: '#2563EB', fontSize: 12, textDecoration: 'none', fontWeight: 600,
-          }}>
-            Voir le centre WhatsApp complet →
-          </Link>
-        </div>
+        {/* Lien "Voir le centre WhatsApp complet" retiré — la cible
+            permet d'envoyer des messages (mutation). Mobile reste en
+            lecture seule sur les feedbacks/confirmations. */}
       </div>
     </div>
   )
