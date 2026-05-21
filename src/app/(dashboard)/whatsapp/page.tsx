@@ -108,10 +108,10 @@ export default function WhatsAppCenterPage() {
   const pendingSeances = seances.filter(s => s.feedbackStatus === 'pending')
 
   const tabs: { id: Tab; label: string; badge?: number; highlight?: boolean }[] = [
-    { id: 'envoyer',    label: '📤 À envoyer aujourd\'hui', badge: rdvsAujourdhui.length + seancesAttente.length },
-    { id: 'rappels',    label: '🔔 Rappels demain',         badge: rdvsDemain.length },
-    { id: 'ready',      label: '⭐ Feedback prêt',          badge: readySeances.length, highlight: readySeances.length > 0 },
-    { id: 'historique', label: '📊 Historique',             badge: feedbacks.length },
+    { id: 'envoyer',    label: "📤 Aujourd'hui", badge: rdvsAujourdhui.length + seancesAttente.length },
+    { id: 'rappels',    label: '🔔 Rappels',     badge: rdvsDemain.length },
+    { id: 'ready',      label: '⭐ Feedback',    badge: readySeances.length, highlight: readySeances.length > 0 },
+    { id: 'historique', label: '📊 Historique',  badge: feedbacks.length },
   ]
 
   return (
@@ -119,21 +119,22 @@ export default function WhatsAppCenterPage() {
       <Topbar title="WhatsApp Center" subtitle="Messagerie & feedbacks patients" />
       <div style={{ padding: 24 }}>
 
-        {/* Tabs */}
-        <div style={{ display: 'flex', gap: 4, marginBottom: 24, background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, padding: 4 }}>
+        {/* Tabs — scrollable pill row (mobile-safe) */}
+        <div className="params-tabs" style={{ marginBottom: 16 }}>
           {tabs.map(t => {
             const isActive    = tab === t.id
             const isHighlight = t.highlight && !isActive
             return (
-              <button key={t.id} onClick={() => setTab(t.id)}
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className={`param-tab${isActive ? ' active' : ''}`}
                 style={{
-                  flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                  padding: '10px 14px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                  background: isActive ? '#7C3AED' : isHighlight ? '#F5F3FF' : 'transparent',
-                  color: isActive ? 'white' : isHighlight ? '#7C3AED' : '#64748B',
-                  fontWeight: isActive || isHighlight ? 600 : 400,
-                  fontSize: 13, transition: 'all 0.15s',
-                }}>
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  ...(isHighlight ? { background: '#F5F3FF', color: '#7C3AED', borderColor: '#7C3AED' } : null),
+                  ...(isActive ? { background: '#7C3AED', borderColor: '#7C3AED' } : null),
+                }}
+              >
                 {t.label}
                 {t.badge !== undefined && t.badge > 0 && (
                   <span style={{

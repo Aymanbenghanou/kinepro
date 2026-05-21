@@ -592,6 +592,21 @@ button, a, [role="button"] {
     border-radius: 12px !important;
     line-height: 1.2;
   }
+
+  /* Defensive: hide any raw HTML <table> that's NOT explicitly opted in.
+     Tables wrapped in .desktop-only are already display:none via that
+     class; everywhere else, mobile uses .mlist / .mcard cards. */
+  .main-content table:not(.keep-on-mobile) {
+    display: none !important;
+  }
+
+  /* Any element with .info-row-stack collapses label/value vertically */
+  .info-row-stack {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 2px !important;
+  }
+  .info-row-stack > * { width: 100% !important; min-width: 0 !important; word-break: break-word; }
 }
 /* Desktop: hide short, show full */
 .tab-label-short { display: none; }
