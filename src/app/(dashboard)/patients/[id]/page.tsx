@@ -14,6 +14,7 @@ import { generateDossierPatientPDF } from '@/lib/pdf-utils'
 import ProgressionTab from '@/components/patients/ProgressionTab'
 import MobileProgressionTab from '@/components/patients/MobileProgressionTab'
 import DocumentsTab from '@/components/patients/DocumentsTab'
+import MobileDocumentsTab from '@/components/patients/MobileDocumentsTab'
 import ExerciseProgramModal from '@/components/exercise-program/ExerciseProgramModal'
 import { formatWhatsAppMessage, waUrl } from '@/lib/exercise-program'
 import dynamic from 'next/dynamic'
@@ -731,9 +732,14 @@ export default function PatientDetailPage() {
         </>)}
 
         {/* ── Tab: Documents ── */}
-        {activeTab === 'documents' && (
-          <DocumentsTab patientId={id} />
-        )}
+        {activeTab === 'documents' && (<>
+          <div className="mobile-only">
+            <MobileDocumentsTab patientId={id} />
+          </div>
+          <div className="desktop-only">
+            <DocumentsTab patientId={id} />
+          </div>
+        </>)}
 
         {/* ── Tab: Programmes IA ── */}
         {activeTab === 'programmes' && patient && (

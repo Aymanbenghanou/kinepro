@@ -774,21 +774,6 @@ button, a, [role="button"] {
   .patient-header-info { min-width: 0 !important; flex: 1 1 0 !important; overflow: hidden; }
   .patient-header-info > div { min-width: 0; }
 
-  /* ── Documents tab mobile polish ── */
-  .documents-tab > div { gap: 10px; }
-  /* Filter chips: scroll horizontally instead of wrap */
-  .documents-tab > div[style*="flex-wrap: wrap"]:first-of-type,
-  .documents-tab > div[style*="flexWrap: wrap"]:first-of-type {
-    flex-wrap: nowrap !important;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    margin: 0 -16px !important;
-    padding: 4px 16px 12px !important;
-  }
-  .documents-tab > div[style*="flex-wrap: wrap"]:first-of-type::-webkit-scrollbar,
-  .documents-tab > div[style*="flexWrap: wrap"]:first-of-type::-webkit-scrollbar { display: none; }
-
   /* Patient detail action grid: column layout per button on mobile */
   .action-grid-mobile > * {
     flex-direction: column !important;
