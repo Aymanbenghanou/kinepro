@@ -555,15 +555,26 @@ export default function MobilePatientDetailPage({ params }: { params: Promise<{ 
             )}
           </div>
 
-          {/* Objectifs — parsing texte libre, 3 statuts */}
-          {objectifs.length > 0 && (
-            <div style={{
-              background: 'white', borderRadius: 16, border: '0.5px solid #E2E8F0',
-              padding: 14, marginBottom: 16,
-            }}>
-              <h3 style={{ fontSize: 14, fontWeight: 600, color: '#0F172A', margin: '0 0 12px' }}>
-                Objectifs
-              </h3>
+          {/* Objectifs — toujours affichée, empty state si rien en base.
+              Parsing texte libre depuis patient.objectifsTraitement avec
+              convention de préfixes (✓ / → / sinon). */}
+          <div style={{
+            background: 'white', borderRadius: 16, border: '0.5px solid #E2E8F0',
+            padding: 14, marginBottom: 16,
+          }}>
+            <h3 style={{ fontSize: 14, fontWeight: 600, color: '#0F172A', margin: '0 0 12px' }}>
+              Objectifs
+            </h3>
+            {objectifs.length === 0 ? (
+              <div style={{ padding: '6px 0 2px' }}>
+                <p style={{ fontSize: 12, color: '#94A3B8', margin: 0, lineHeight: 1.5 }}>
+                  Aucun objectif renseigné.
+                </p>
+                <p style={{ fontSize: 11, color: '#CBD5E1', margin: '6px 0 0', lineHeight: 1.5 }}>
+                  À ajouter depuis le dossier patient (ordinateur).
+                </p>
+              </div>
+            ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {objectifs.map((obj: any, i: number) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -587,8 +598,8 @@ export default function MobilePatientDetailPage({ params }: { params: Promise<{ 
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       )}
 

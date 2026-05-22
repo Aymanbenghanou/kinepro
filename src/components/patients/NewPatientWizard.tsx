@@ -381,7 +381,18 @@ function Step4({ data, errors, onChange, onToggleType, seanceTypes, praticiens }
         <textarea style={textareaStyle}
           value={data.objectifsTraitement}
           onChange={e => onChange('objectifsTraitement', e.target.value)}
-          placeholder="Décrire les objectifs fonctionnels visés pour ce patient..." />
+          placeholder={
+            'Un objectif par ligne. Préfixe pour le statut :\n' +
+            '✓ Réduction douleur lombaire   (terminé)\n' +
+            '→ Récupération mobilité genou   (en cours)\n' +
+            '- Reprise activité sportive     (à faire)'
+          } />
+        <p style={{ fontSize: 11, color: '#94A3B8', marginTop: 6, lineHeight: 1.5 }}>
+          Un objectif par ligne. Préfixe pour le statut affiché sur mobile :{' '}
+          <strong style={{ color: '#16A34A' }}>✓</strong> terminé ·{' '}
+          <strong style={{ color: '#2563EB' }}>→</strong> en cours ·{' '}
+          sans préfixe = à faire.
+        </p>
       </Field>
       <Field label="Date de début souhaitée">
         <input type="date" style={inputStyle}
