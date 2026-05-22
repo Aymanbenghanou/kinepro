@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback, useMemo, useRef, use as usePromise } 
 import Link from 'next/link'
 import MobileTopbar from '@/components/mobile/MobileTopbar'
 import { QrCode, Download } from 'lucide-react'
-import { BarChart, Bar, Cell, XAxis, ResponsiveContainer } from 'recharts'
 
 const AVATAR_COLORS = [
   { bg: '#DBEAFE', text: '#1D4ED8' },
@@ -501,12 +500,13 @@ export default function MobilePatientDetailPage({ params }: { params: Promise<{ 
             </Kpi>
           </div>
 
-          {/* Évolution douleur — graphique barres par séance scorée */}
+          {/* Évolution douleur — barres CSS pures (rendu 100% déterministe,
+              indépendant de la mesure du parent par recharts) */}
           <div style={{
             background: 'white', borderRadius: 16, border: '0.5px solid #E2E8F0',
-            padding: '14px 14px 8px', marginTop: 12, marginBottom: 12,
+            padding: '14px 14px 12px', marginTop: 12, marginBottom: 12,
           }}>
-            <h3 style={{ fontSize: 14, fontWeight: 600, color: '#0F172A', margin: '0 0 12px' }}>
+            <h3 style={{ fontSize: 14, fontWeight: 600, color: '#0F172A', margin: '0 0 14px' }}>
               Évolution douleur
             </h3>
             {douleurChart.length === 0 ? (
@@ -514,17 +514,44 @@ export default function MobilePatientDetailPage({ params }: { params: Promise<{ 
                 Aucune donnée de progression
               </p>
             ) : (
-              <ResponsiveContainer width="100%" height={130}>
-                <BarChart data={douleurChart} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
-                  <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#94A3B8' }}
-                    axisLine={false} tickLine={false} interval={0} />
-                  <Bar dataKey="douleur" radius={[4, 4, 0, 0]}>
-                    {douleurChart.map((entry: any, i: number) => (
-                      <Cell key={i} fill={entry.douleur >= 7 ? '#EF4444' : entry.douleur >= 4 ? '#F59E0B' : '#22C55E'} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+              <>
+                {/* Barres */}
+                <div style={{
+                  display: 'flex', alignItems: 'flex-end',
+                  gap: 6, height: 110,
+                  paddingBottom: 4,
+                  borderBottom: '0.5px solid #F1F5F9',
+                }}>
+                  {douleurChart.map((entry: any, i: number) => {
+                    const heightPct = Math.max(8, (entry.douleur / 10) * 100) // min 8% pour rester visible
+                    const color =
+                      entry.douleur >= 7 ? '#EF4444' :
+                      entry.douleur >= 4 ? '#F59E0B' :
+                                            '#22C55E'
+                    return (
+                      <div key={i}
+                        title={`${entry.label} : ${entry.douleur}/10`}
+                        style={{
+                          flex: 1, minWidth: 0,
+                          height: `${heightPct}%`,
+                          background: color,
+                          borderRadius: '4px 4px 0 0',
+                          transition: 'height 0.3s ease',
+                        }}
+                      />
+                    )
+                  })}
+                </div>
+                {/* Labels S1..Sn (premier + dernier suffit pour rester lisible) */}
+                <div style={{
+                  display: 'flex', justifyContent: 'space-between',
+                  marginTop: 6,
+                  fontSize: 10, color: '#94A3B8', fontWeight: 500,
+                }}>
+                  <span>{douleurChart[0].label}</span>
+                  {douleurChart.length > 1 && <span>{douleurChart[douleurChart.length - 1].label}</span>}
+                </div>
+              </>
             )}
           </div>
 
