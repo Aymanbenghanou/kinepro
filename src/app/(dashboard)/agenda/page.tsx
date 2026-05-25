@@ -24,13 +24,21 @@ const BANDS = [0, 15, 30, 45]                              // snapping 15 min
 const ROW_H = 80                                            // hauteur d'une cellule horaire (px)
 const FROZEN = ['annule', 'annulee', 'realisee', 'termine', 'honore', 'absent', 'no_show']
 
-// Vue 1h par 1h : chaque RDV d'une même case horaire occupe une colonne
-// (côte à côte), triés par heure de début. La carte remplit toute la case.
+// Place les RDV d'une cellule en colonnes : ceux qui se chevauchent sont
+// posés côte à côte (colonnes distinctes), les autres partagent la colonne 0.
 function layoutCell(items: any[]): { placement: Record<string, number>; totalCols: number } {
-  const sorted = [...items].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+  const sorted = [...items].sort((a, b) =>
+    new Date(a.date).getTime() - new Date(b.date).getTime() || (b.duree ?? 45) - (a.duree ?? 45))
+  const colEnds: number[] = []          // fin (ms) du dernier RDV de chaque colonne
   const placement: Record<string, number> = {}
-  sorted.forEach((it, i) => { placement[it.id] = i })
-  return { placement, totalCols: Math.max(1, sorted.length) }
+  for (const it of sorted) {
+    const start = new Date(it.date).getTime()
+    const end = start + (it.duree ?? 45) * 60_000
+    let col = colEnds.findIndex(e => e <= start)
+    if (col === -1) { col = colEnds.length; colEnds.push(end) } else { colEnds[col] = end }
+    placement[it.id] = col
+  }
+  return { placement, totalCols: Math.max(1, colEnds.length) }
 }
 
 function getWeekDates(startDate: Date) {
@@ -112,8 +120,14 @@ function DropBand({ id, invalid, children }: {
   // Heure du créneau (label affiché clairement au survol pendant le drag)
   const [, h, m] = id.split('__')
   const timeLabel = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+  // Lignes intra-heure : :30 un peu plus marquée, :15/:45 très discrètes,
+  // pour que les RDV à la demi/au quart se posent sur un repère visuel.
+  const minute = Number(m)
+  const borderTop = minute === 30 ? '1px solid #EDF1F5'
+    : (minute === 15 || minute === 45) ? '1px solid #F5F8FB'
+    : 'none'
   return (
-    <div ref={setNodeRef} style={{ height: ROW_H / BANDS.length, background: bg, transition: 'background 0.08s', position: 'relative' }}>
+    <div ref={setNodeRef} style={{ height: ROW_H / BANDS.length, boxSizing: 'border-box', borderTop, background: bg, transition: 'background 0.08s', position: 'relative' }}>
       {dragging && isOver && (
         <span style={{
           position: 'absolute', top: '50%', right: 4, transform: 'translateY(-50%)',
@@ -462,13 +476,13 @@ export default function AgendaPage() {
                       {/* Cartes RDV : positionnées par minute de début + hauteur = durée */}
                       <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
                         {cellRdvs.map(rdv => {
+                          const start = new Date(rdv.date)
                           const col = placement[rdv.id] ?? 0
                           const w = 100 / totalCols
-                          // Vue 1h : la carte remplit toute la case horaire.
                           const posStyle: React.CSSProperties = {
                             position: 'absolute',
-                            top: 3,
-                            height: ROW_H - 6,
+                            top: (start.getMinutes() / 60) * ROW_H,
+                            height: Math.max(20, ((rdv.duree ?? 45) / 60) * ROW_H - 2),
                             left: `calc(${col * w}% + 2px)`,
                             width: `calc(${w}% - 4px)`,
                             pointerEvents: 'auto',
