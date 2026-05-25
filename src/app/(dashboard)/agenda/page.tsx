@@ -21,52 +21,16 @@ const SALLES = ['Salle 1', 'Salle 2', 'Salle 3']
 const JOURS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
 const HEURES = Array.from({ length: 12 }, (_, i) => i + 8) // 08:00 → 19:00
 const BANDS = [0, 15, 30, 45]                              // snapping 15 min
-const ROW_H = 80                                            // hauteur d'une heure (px)
+const ROW_H = 80                                            // hauteur d'une cellule horaire (px)
 const FROZEN = ['annule', 'annulee', 'realisee', 'termine', 'honore', 'absent', 'no_show']
 
-// ── Constantes de mise en page (toutes en px, pas de largeur en dur) ──
-const GUTTER = 60                       // largeur de la gouttière des heures
-const DAY_START = HEURES[0]             // première heure affichée (8)
-const DAY_H = HEURES.length * ROW_H     // hauteur totale d'une colonne jour
-const PAD_X = 6                         // marge intérieure horizontale d'une colonne
-const COL_GAP = 4                       // espace entre RDV qui se chevauchent
-const V_GAP = 2                         // espace vertical entre RDV consécutifs
-
-// Répartit les RDV d'une journée en colonnes. Les RDV qui se chevauchent
-// (transitivement) forment un cluster et se partagent la largeur à parts
-// égales ; les RDV isolés prennent toute la largeur. Renvoie pour chaque
-// id : { col, cols } → colonne occupée et nombre total de colonnes du cluster.
-function layoutDay(events: any[]): Record<string, { col: number; cols: number }> {
-  const evs = events
-    .map(e => {
-      const s = new Date(e.date)
-      const start = s.getHours() * 60 + s.getMinutes()
-      return { id: e.id, start, end: start + (e.duree ?? 45) }
-    })
-    .sort((a, b) => a.start - b.start || a.end - b.end)
-
-  const out: Record<string, { col: number; cols: number }> = {}
-  let cluster: typeof evs = []
-  let clusterEnd = -Infinity
-
-  const flush = () => {
-    const colEnds: number[] = []        // fin (min) du dernier RDV de chaque colonne
-    for (const it of cluster) {
-      let c = colEnds.findIndex(end => end <= it.start)
-      if (c === -1) { c = colEnds.length; colEnds.push(it.end) } else { colEnds[c] = it.end }
-      out[it.id] = { col: c, cols: 1 }
-    }
-    const cols = Math.max(1, colEnds.length)
-    for (const it of cluster) out[it.id].cols = cols
-  }
-
-  for (const it of evs) {
-    if (cluster.length && it.start >= clusterEnd) { flush(); cluster = []; clusterEnd = -Infinity }
-    cluster.push(it)
-    clusterEnd = Math.max(clusterEnd, it.end)
-  }
-  if (cluster.length) flush()
-  return out
+// Vue 1h par 1h : chaque RDV d'une même case horaire occupe une colonne
+// (côte à côte), triés par heure de début. La carte remplit toute la case.
+function layoutCell(items: any[]): { placement: Record<string, number>; totalCols: number } {
+  const sorted = [...items].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+  const placement: Record<string, number> = {}
+  sorted.forEach((it, i) => { placement[it.id] = i })
+  return { placement, totalCols: Math.max(1, sorted.length) }
 }
 
 function getWeekDates(startDate: Date) {
@@ -137,9 +101,9 @@ function RdvBlock({ rdv, color, draggable, flash, onTap, posStyle }: {
   )
 }
 
-// ── Band droppable (créneau 15 min) — cible de drop invisible + clic création ──
-function DropBand({ id, invalid, onSelect }: {
-  id: string; invalid: boolean; onSelect: () => void
+// ── Band droppable (créneau 15 min) ────────────────────────────────────────
+function DropBand({ id, invalid, children }: {
+  id: string; invalid: boolean; children?: React.ReactNode
 }) {
   const { setNodeRef, isOver, active } = useDroppable({ id })
   const dragging = !!active
@@ -149,8 +113,7 @@ function DropBand({ id, invalid, onSelect }: {
   const [, h, m] = id.split('__')
   const timeLabel = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
   return (
-    <div ref={setNodeRef} onClick={onSelect}
-      style={{ flex: 1, minHeight: 0, background: bg, transition: 'background 0.08s', position: 'relative', cursor: 'pointer' }}>
+    <div ref={setNodeRef} style={{ height: ROW_H / BANDS.length, background: bg, transition: 'background 0.08s', position: 'relative' }}>
       {dragging && isOver && (
         <span style={{
           position: 'absolute', top: '50%', right: 4, transform: 'translateY(-50%)',
@@ -160,6 +123,7 @@ function DropBand({ id, invalid, onSelect }: {
           {invalid ? '✕' : timeLabel}
         </span>
       )}
+      {children}
     </div>
   )
 }
@@ -223,13 +187,13 @@ export default function AgendaPage() {
     setForm(f => ({ ...f, typeSeance: nom, duree: found ? String(found.dureeDefaut) : f.duree }))
   }
 
-  // RDV regroupés par jour. Chaque colonne positionne ensuite ses RDV en
-  // absolu (top = heure de début, hauteur = durée) avec gestion des chevauchements.
-  const rdvByDay = useMemo(() => {
+  // RDV regroupés par cellule horaire (jour + heure de début).
+  // Chaque carte est ensuite positionnée en absolu selon sa minute et sa durée.
+  const rdvByCell = useMemo(() => {
     const map: Record<string, any[]> = {}
     for (const rdv of rdvList) {
       const d = new Date(rdv.date)
-      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}__${d.getHours()}`
       ;(map[key] ||= []).push(rdv)
     }
     return map
@@ -300,9 +264,10 @@ export default function AgendaPage() {
 
   function openBlankModal() { setForm(f => ({ ...f, date: '', heure: '09:00' })); setShowModal(true) }
 
-  function openModalForSlot(date: Date, hour: number, minute = 0) {
-    const dateStr = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`
-    setForm(f => ({ ...f, date: dateStr, heure: `${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}` }))
+  function openModalForSlot(date: Date, hour: number) {
+    const d = new Date(date); d.setHours(hour, 0, 0, 0)
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+    setForm(f => ({ ...f, date: dateStr, heure: `${String(hour).padStart(2,'0')}:00` }))
     setShowModal(true)
   }
 
@@ -456,7 +421,7 @@ export default function AgendaPage() {
         >
           <div className="agenda-week-outer">
             {/* En-tête jours */}
-            <div style={{ display: 'grid', gridTemplateColumns: `${GUTTER}px repeat(7, 1fr)`, borderBottom: '1px solid #E2E8F0' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '60px repeat(7, 1fr)', borderBottom: '1px solid #E2E8F0' }}>
               <div style={{ padding: '12px 8px', background: '#F8FAFC' }} />
               {weekDates.map((date, i) => {
                 const isToday = date.toDateString() === today.toDateString()
@@ -473,72 +438,62 @@ export default function AgendaPage() {
               })}
             </div>
 
-            {/* Corps : gouttière des heures + 7 colonnes jour */}
-            <div style={{ display: 'grid', gridTemplateColumns: `${GUTTER}px repeat(7, 1fr)` }}>
-              {/* Gouttière des heures */}
-              <div>
-                {HEURES.map(hour => (
-                  <div key={hour} style={{ height: ROW_H, boxSizing: 'border-box', padding: '4px 8px 0', fontSize: 12, color: '#94A3B8', textAlign: 'right' }}>
-                    {String(hour).padStart(2, '0')}:00
-                  </div>
-                ))}
-              </div>
-
-              {/* Colonnes jour */}
-              {weekDates.map((date, di) => {
-                const dayKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
-                const dayRdvs = rdvByDay[dayKey] || []
-                const layout = layoutDay(dayRdvs)
-                return (
-                  <div key={di} style={{
-                    position: 'relative', height: DAY_H, boxSizing: 'border-box', overflow: 'hidden',
-                    borderLeft: '1px solid #F1F5F9',
-                    background: `repeating-linear-gradient(to bottom, transparent 0, transparent ${ROW_H - 1}px, #EFF2F6 ${ROW_H - 1}px, #EFF2F6 ${ROW_H}px)`,
-                  }}>
-                    {/* Cibles de drop (15 min) — invisibles, cliquables pour créer */}
-                    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column' }}>
-                      {HEURES.map(hour => BANDS.map(minute => {
+            {/* Lignes horaires */}
+            {HEURES.map(hour => (
+              <div key={hour} style={{ display: 'grid', gridTemplateColumns: '60px repeat(7, 1fr)', borderBottom: '1px solid #F1F5F9', minHeight: ROW_H }}>
+                <div style={{ padding: '8px 8px 0', fontSize: 12, color: '#94A3B8', textAlign: 'right', paddingRight: 8 }}>
+                  {String(hour).padStart(2,'0')}:00
+                </div>
+                {weekDates.map((date, di) => {
+                  const cellKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}__${hour}`
+                  const cellRdvs = rdvByCell[cellKey] || []
+                  const { placement, totalCols } = layoutCell(cellRdvs)
+                  return (
+                    <div key={di}
+                      onClick={() => openModalForSlot(date, hour)}
+                      style={{ borderLeft: '1px solid #F1F5F9', cursor: 'pointer', height: ROW_H, position: 'relative' }}>
+                      {/* Cibles de drop (15 min) — invisibles, sous les cartes */}
+                      {BANDS.map(minute => {
                         const id = bandId(date, hour, minute)
                         const slotDate = new Date(date); slotDate.setHours(hour, minute, 0, 0)
                         const invalid = activeRdv ? !checkMove(activeRdv, slotDate).ok : false
-                        return <DropBand key={id} id={id} invalid={invalid} onSelect={() => openModalForSlot(date, hour, minute)} />
-                      }))}
-                    </div>
-
-                    {/* Cartes RDV : top = heure de début, hauteur = durée, colonnes pour chevauchements.
-                        Le calque est inséré de PAD_X de chaque côté → jamais de débordement horizontal. */}
-                    <div style={{ position: 'absolute', top: 0, bottom: 0, left: PAD_X, right: PAD_X, pointerEvents: 'none' }}>
-                      {dayRdvs.map(rdv => {
-                        const s = new Date(rdv.date)
-                        const startMin = (s.getHours() - DAY_START) * 60 + s.getMinutes()
-                        const dur = rdv.duree ?? 45
-                        const { col, cols } = layout[rdv.id] ?? { col: 0, cols: 1 }
-                        const colW = 100 / cols
-                        const posStyle: React.CSSProperties = {
-                          position: 'absolute',
-                          top: Math.max(0, (startMin / 60) * ROW_H),
-                          height: Math.max(22, (dur / 60) * ROW_H - V_GAP),
-                          left: `${col * colW}%`,
-                          width: `calc(${colW}% - ${COL_GAP}px)`,
-                          display: 'flex', flexDirection: 'column', justifyContent: 'center',
-                          pointerEvents: 'auto', zIndex: 2,
-                        }
-                        return (
-                          <RdvBlock
-                            key={rdv.id} rdv={rdv}
-                            color={couleurMap[rdv.typeSeance] || '#2563EB'}
-                            draggable={!isTouch && !isFrozen(rdv)}
-                            flash={flashId === rdv.id}
-                            onTap={() => onTapRdv(rdv)}
-                            posStyle={posStyle}
-                          />
-                        )
+                        return <DropBand key={minute} id={id} invalid={invalid} />
                       })}
+                      {/* Cartes RDV : positionnées par minute de début + hauteur = durée */}
+                      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+                        {cellRdvs.map(rdv => {
+                          const col = placement[rdv.id] ?? 0
+                          const w = 100 / totalCols
+                          // Vue 1h : carte compacte centrée dans la case (marge tout autour).
+                          const posStyle: React.CSSProperties = {
+                            position: 'absolute',
+                            top: 8,
+                            height: ROW_H - 16,
+                            left: `calc(${col * w}% + 6px)`,
+                            width: `calc(${w}% - 12px)`,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'center',
+                            pointerEvents: 'auto',
+                            zIndex: 1,
+                          }
+                          return (
+                            <RdvBlock
+                              key={rdv.id} rdv={rdv}
+                              color={couleurMap[rdv.typeSeance] || '#2563EB'}
+                              draggable={!isTouch && !isFrozen(rdv)}
+                              flash={flashId === rdv.id}
+                              onTap={() => onTapRdv(rdv)}
+                              posStyle={posStyle}
+                            />
+                          )
+                        })}
+                      </div>
                     </div>
-                  </div>
-                )
-              })}
-            </div>
+                  )
+                })}
+              </div>
+            ))}
           </div>
 
           {/* Ghost suivant le curseur */}
