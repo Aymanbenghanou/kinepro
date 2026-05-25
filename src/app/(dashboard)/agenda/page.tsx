@@ -120,14 +120,8 @@ function DropBand({ id, invalid, children }: {
   // Heure du créneau (label affiché clairement au survol pendant le drag)
   const [, h, m] = id.split('__')
   const timeLabel = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
-  // Lignes intra-heure : :30 un peu plus marquée, :15/:45 très discrètes,
-  // pour que les RDV à la demi/au quart se posent sur un repère visuel.
-  const minute = Number(m)
-  const borderTop = minute === 30 ? '1px solid #EDF1F5'
-    : (minute === 15 || minute === 45) ? '1px solid #F5F8FB'
-    : 'none'
   return (
-    <div ref={setNodeRef} style={{ height: ROW_H / BANDS.length, boxSizing: 'border-box', borderTop, background: bg, transition: 'background 0.08s', position: 'relative' }}>
+    <div ref={setNodeRef} style={{ height: ROW_H / BANDS.length, background: bg, transition: 'background 0.08s', position: 'relative' }}>
       {dragging && isOver && (
         <span style={{
           position: 'absolute', top: '50%', right: 4, transform: 'translateY(-50%)',
