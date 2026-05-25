@@ -21,25 +21,8 @@ const SALLES = ['Salle 1', 'Salle 2', 'Salle 3']
 const JOURS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
 const HEURES = Array.from({ length: 12 }, (_, i) => i + 8) // 08:00 → 19:00
 const BANDS = [0, 15, 30, 45]                              // snapping 15 min
-const ROW_H = 80                                            // hauteur d'une cellule horaire (px)
+const ROW_H = 64                                            // hauteur d'une cellule horaire (px)
 const FROZEN = ['annule', 'annulee', 'realisee', 'termine', 'honore', 'absent', 'no_show']
-
-// Place les RDV d'une cellule en colonnes : ceux qui se chevauchent sont
-// posés côte à côte (colonnes distinctes), les autres partagent la colonne 0.
-function layoutCell(items: any[]): { placement: Record<string, number>; totalCols: number } {
-  const sorted = [...items].sort((a, b) =>
-    new Date(a.date).getTime() - new Date(b.date).getTime() || (b.duree ?? 45) - (a.duree ?? 45))
-  const colEnds: number[] = []          // fin (ms) du dernier RDV de chaque colonne
-  const placement: Record<string, number> = {}
-  for (const it of sorted) {
-    const start = new Date(it.date).getTime()
-    const end = start + (it.duree ?? 45) * 60_000
-    let col = colEnds.findIndex(e => e <= start)
-    if (col === -1) { col = colEnds.length; colEnds.push(end) } else { colEnds[col] = end }
-    placement[it.id] = col
-  }
-  return { placement, totalCols: Math.max(1, colEnds.length) }
-}
 
 function getWeekDates(startDate: Date) {
   const dates: Date[] = []
@@ -70,14 +53,12 @@ function parseBandId(id: string): Date {
 }
 
 // ── Bloc RDV (draggable) ──────────────────────────────────────────────────
-function RdvBlock({ rdv, color, draggable, flash, onTap, posStyle }: {
+function RdvBlock({ rdv, color, draggable, flash, onTap }: {
   rdv: any; color: string; draggable: boolean; flash: boolean; onTap: () => void
-  posStyle: React.CSSProperties
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: rdv.id, disabled: !draggable, data: { rdv },
   })
-  const compact = (posStyle.height as number) < 44   // créneau court : on masque la 2e ligne
   return (
     <div
       ref={setNodeRef}
@@ -85,26 +66,24 @@ function RdvBlock({ rdv, color, draggable, flash, onTap, posStyle }: {
       {...attributes}
       onClick={(e) => { e.stopPropagation(); if (!isDragging) onTap() }}
       style={{
-        ...posStyle,
         // Pendant le drag : placeholder en pointillés sur le créneau d'origine.
         background: isDragging ? 'transparent' : (rdv.source === 'online' ? '#0D9488' : color),
         color: isDragging ? '#94A3B8' : 'white',
-        borderRadius: 6, padding: '3px 6px', fontSize: 11,
+        borderRadius: 6, padding: '4px 6px', fontSize: 11, marginBottom: 2,
         borderLeft: !isDragging && rdv.source === 'online' ? '3px solid #14B8A6' : undefined,
         border: isDragging ? '2px dashed #CBD5E1' : undefined,
         opacity: isDragging ? 0.6 : 1,
         cursor: draggable ? 'grab' : 'pointer',
         touchAction: 'none',
-        overflow: 'hidden', boxSizing: 'border-box', lineHeight: 1.25,
         animation: flash ? 'rdvGreenFlash 0.7s ease-out' : undefined,
         boxShadow: flash ? '0 0 0 2px #22C55E' : undefined,
       }}
     >
-      <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+      <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
         {rdv.source === 'online' && <span style={{ fontSize: 9 }}>🌐</span>}
         {rdv.patient?.prenom} {rdv.patient?.nom}
       </div>
-      {!compact && <div style={{ opacity: 0.85, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{rdv.typeSeance} · {rdv.duree}min</div>}
+      <div style={{ opacity: 0.85 }}>{rdv.typeSeance} · {rdv.duree}min</div>
     </div>
   )
 }
@@ -195,13 +174,13 @@ export default function AgendaPage() {
     setForm(f => ({ ...f, typeSeance: nom, duree: found ? String(found.dureeDefaut) : f.duree }))
   }
 
-  // RDV regroupés par cellule horaire (jour + heure de début).
-  // Chaque carte est ensuite positionnée en absolu selon sa minute et sa durée.
-  const rdvByCell = useMemo(() => {
+  // RDV positionnés par band (jour + heure + minute arrondie au plancher 15 min)
+  const rdvByBand = useMemo(() => {
     const map: Record<string, any[]> = {}
     for (const rdv of rdvList) {
       const d = new Date(rdv.date)
-      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}__${d.getHours()}`
+      const minuteBand = BANDS.reduce((acc, b) => (d.getMinutes() >= b ? b : acc), 0)
+      const key = bandId(d, d.getHours(), minuteBand)
       ;(map[key] ||= []).push(rdv)
     }
     return map
@@ -452,51 +431,30 @@ export default function AgendaPage() {
                 <div style={{ padding: '8px 8px 0', fontSize: 12, color: '#94A3B8', textAlign: 'right', paddingRight: 8 }}>
                   {String(hour).padStart(2,'0')}:00
                 </div>
-                {weekDates.map((date, di) => {
-                  const cellKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}__${hour}`
-                  const cellRdvs = rdvByCell[cellKey] || []
-                  const { placement, totalCols } = layoutCell(cellRdvs)
-                  return (
-                    <div key={di}
-                      onClick={() => openModalForSlot(date, hour)}
-                      style={{ borderLeft: '1px solid #F1F5F9', cursor: 'pointer', height: ROW_H, position: 'relative' }}>
-                      {/* Cibles de drop (15 min) — invisibles, sous les cartes */}
-                      {BANDS.map(minute => {
-                        const id = bandId(date, hour, minute)
-                        const slotDate = new Date(date); slotDate.setHours(hour, minute, 0, 0)
-                        const invalid = activeRdv ? !checkMove(activeRdv, slotDate).ok : false
-                        return <DropBand key={minute} id={id} invalid={invalid} />
-                      })}
-                      {/* Cartes RDV : positionnées par minute de début + hauteur = durée */}
-                      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-                        {cellRdvs.map(rdv => {
-                          const start = new Date(rdv.date)
-                          const col = placement[rdv.id] ?? 0
-                          const w = 100 / totalCols
-                          const posStyle: React.CSSProperties = {
-                            position: 'absolute',
-                            top: (start.getMinutes() / 60) * ROW_H,
-                            height: Math.max(20, ((rdv.duree ?? 45) / 60) * ROW_H - 2),
-                            left: `calc(${col * w}% + 2px)`,
-                            width: `calc(${w}% - 4px)`,
-                            pointerEvents: 'auto',
-                            zIndex: 1,
-                          }
-                          return (
+                {weekDates.map((date, di) => (
+                  <div key={di}
+                    onClick={() => openModalForSlot(date, hour)}
+                    style={{ borderLeft: '1px solid #F1F5F9', cursor: 'pointer', minHeight: ROW_H, position: 'relative' }}>
+                    {BANDS.map(minute => {
+                      const id = bandId(date, hour, minute)
+                      const slotDate = new Date(date); slotDate.setHours(hour, minute, 0, 0)
+                      const invalid = activeRdv ? !checkMove(activeRdv, slotDate).ok : false
+                      return (
+                        <DropBand key={minute} id={id} invalid={invalid}>
+                          {(rdvByBand[id] || []).map(rdv => (
                             <RdvBlock
                               key={rdv.id} rdv={rdv}
                               color={couleurMap[rdv.typeSeance] || '#2563EB'}
                               draggable={!isTouch && !isFrozen(rdv)}
                               flash={flashId === rdv.id}
                               onTap={() => onTapRdv(rdv)}
-                              posStyle={posStyle}
                             />
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )
-                })}
+                          ))}
+                        </DropBand>
+                      )
+                    })}
+                  </div>
+                ))}
               </div>
             ))}
           </div>
