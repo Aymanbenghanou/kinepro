@@ -156,7 +156,9 @@ export default function AgendaPage() {
   }, [])
 
   useEffect(() => {
-    setIsTouch(window.matchMedia('(pointer: coarse)').matches)
+    // Tactile « pur » seulement (aucune souris/trackpad) → tap-to-edit.
+    // Un portable tactile a aussi un pointeur fin : on garde le drag desktop.
+    setIsTouch(!window.matchMedia('(any-pointer: fine)').matches)
     fetchRdv()
     fetch('/api/patients').then(r => r.json()).then(d => setPatients(Array.isArray(d) ? d : []))
     fetch('/api/praticiens').then(r => r.json()).then(d => setPraticiens(Array.isArray(d) ? d : []))
