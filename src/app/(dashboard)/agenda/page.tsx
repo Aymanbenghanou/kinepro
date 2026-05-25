@@ -1,48 +1,23 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
-import {
-  DndContext, DragOverlay, PointerSensor, useSensor, useSensors,
-  useDraggable, useDroppable, pointerWithin,
-  type DragStartEvent, type DragEndEvent,
-} from '@dnd-kit/core'
-import { restrictToWindowEdges } from '@dnd-kit/modifiers'
+import { useState, useEffect, useCallback } from 'react'
 import Topbar from '@/components/layout/Topbar'
 import Toast from '@/components/ui/Toast'
 import { formatTime } from '@/lib/utils'
 import { Plus, ChevronLeft, ChevronRight, X, Check } from 'lucide-react'
 import WhatsAppButton from '@/components/whatsapp/WhatsAppButton'
 import {
-  msgConfirmationRDV, msgRappelRDV, buildWhatsAppUrl,
+  msgConfirmationRDV, msgRappelRDV,
+  buildWhatsAppUrl, formatPhoneForWhatsApp,
 } from '@/lib/whatsapp'
 
+// Fallback colours until API types load
 const TYPES_SEANCE_FALLBACK = ['Rééducation fonctionnelle', 'Massage thérapeutique', 'Électrothérapie', 'Balnéothérapie']
 const SALLES = ['Salle 1', 'Salle 2', 'Salle 3']
-const JOURS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
-const HEURES = Array.from({ length: 12 }, (_, i) => i + 8) // 08:00 → 19:00
-const BANDS = [0, 15, 30, 45]                              // snapping 15 min
-const ROW_H = 80                                            // hauteur d'une cellule horaire (px)
-const FROZEN = ['annule', 'annulee', 'realisee', 'termine', 'honore', 'absent', 'no_show']
-
-// Place les RDV d'une cellule en colonnes : ceux qui se chevauchent sont
-// posés côte à côte (colonnes distinctes), les autres partagent la colonne 0.
-function layoutCell(items: any[]): { placement: Record<string, number>; totalCols: number } {
-  const sorted = [...items].sort((a, b) =>
-    new Date(a.date).getTime() - new Date(b.date).getTime() || (b.duree ?? 45) - (a.duree ?? 45))
-  const colEnds: number[] = []          // fin (ms) du dernier RDV de chaque colonne
-  const placement: Record<string, number> = {}
-  for (const it of sorted) {
-    const start = new Date(it.date).getTime()
-    const end = start + (it.duree ?? 45) * 60_000
-    let col = colEnds.findIndex(e => e <= start)
-    if (col === -1) { col = colEnds.length; colEnds.push(end) } else { colEnds[col] = end }
-    placement[it.id] = col
-  }
-  return { placement, totalCols: Math.max(1, colEnds.length) }
-}
+// Colour map is now built dynamically from API types (couleurMap in component state)
 
 function getWeekDates(startDate: Date) {
-  const dates: Date[] = []
+  const dates = []
   const monday = new Date(startDate)
   const day = monday.getDay()
   const diff = day === 0 ? -6 : 1 - day
@@ -55,96 +30,59 @@ function getWeekDates(startDate: Date) {
   return dates
 }
 
-function isFrozen(rdv: any) {
-  return !!rdv?.statut && FROZEN.includes(String(rdv.statut).toLowerCase())
-}
+const JOURS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
+const HEURES = Array.from({ length: 12 }, (_, i) => i + 8)
 
-// id de band droppable : "YYYY-M-D__hour__minute"
-function bandId(date: Date, hour: number, minute: number) {
-  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}__${hour}__${minute}`
-}
-function parseBandId(id: string): Date {
-  const [ymd, h, m] = id.split('__')
-  const [y, mo, d] = ymd.split('-').map(Number)
-  return new Date(y, mo, d, Number(h), Number(m), 0, 0)
-}
+function RappelBtn({ rdv }: { rdv: any }) {
+  const [sent, setSent] = useState(false)
+  if (!rdv.patient?.telephone) return null
 
-// ── Bloc RDV (draggable) ──────────────────────────────────────────────────
-function RdvBlock({ rdv, color, draggable, flash, onTap, posStyle }: {
-  rdv: any; color: string; draggable: boolean; flash: boolean; onTap: () => void
-  posStyle: React.CSSProperties
-}) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: rdv.id, disabled: !draggable, data: { rdv },
-  })
-  const compact = (posStyle.height as number) < 44   // créneau court : on masque la 2e ligne
+  async function handleRappel(e: React.MouseEvent) {
+    e.stopPropagation()
+    const date = new Date(rdv.date)
+    const heure = `${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`
+    const dateStr = date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+    const msg = msgRappelRDV({
+      prenom: rdv.patient.prenom,
+      date: dateStr,
+      heure,
+      praticien: rdv.praticien ? `${rdv.praticien.prenom} ${rdv.praticien.nom}` : '',
+      typeSeance: rdv.typeSeance,
+    })
+    try {
+      await fetch('/api/whatsapp/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'rappel_rdv',
+          patientId: rdv.patient.id,
+          patientNom: `${rdv.patient.prenom} ${rdv.patient.nom}`,
+          telephone: rdv.patient.telephone,
+          message: msg,
+        }),
+      })
+    } catch {}
+    setSent(true)
+    setTimeout(() => setSent(false), 3000)
+    window.open(buildWhatsAppUrl(rdv.patient.telephone, msg), '_blank')
+  }
+
   return (
-    <div
-      ref={setNodeRef}
-      {...(draggable ? listeners : {})}
-      {...attributes}
-      onClick={(e) => { e.stopPropagation(); if (!isDragging) onTap() }}
+    <button onClick={handleRappel}
       style={{
-        ...posStyle,
-        // Pendant le drag : placeholder en pointillés sur le créneau d'origine.
-        background: isDragging ? 'transparent' : (rdv.source === 'online' ? '#0D9488' : color),
-        color: isDragging ? '#94A3B8' : 'white',
-        borderRadius: 6, padding: '3px 6px', fontSize: 11,
-        borderLeft: !isDragging && rdv.source === 'online' ? '3px solid #14B8A6' : undefined,
-        border: isDragging ? '2px dashed #CBD5E1' : undefined,
-        opacity: isDragging ? 0.6 : 1,
-        cursor: draggable ? 'grab' : 'pointer',
-        touchAction: 'none',
-        overflow: 'hidden', boxSizing: 'border-box', lineHeight: 1.25,
-        animation: flash ? 'rdvGreenFlash 0.7s ease-out' : undefined,
-        boxShadow: flash ? '0 0 0 2px #22C55E' : undefined,
-      }}
-    >
-      <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-        {rdv.source === 'online' && <span style={{ fontSize: 9 }}>🌐</span>}
-        {rdv.patient?.prenom} {rdv.patient?.nom}
-      </div>
-      {!compact && <div style={{ opacity: 0.85, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{rdv.typeSeance} · {rdv.duree}min</div>}
-    </div>
-  )
-}
-
-// ── Band droppable (créneau 15 min) ────────────────────────────────────────
-function DropBand({ id, invalid, children }: {
-  id: string; invalid: boolean; children?: React.ReactNode
-}) {
-  const { setNodeRef, isOver, active } = useDroppable({ id })
-  const dragging = !!active
-  let bg = 'transparent'
-  if (dragging && isOver) bg = invalid ? 'rgba(239,68,68,0.18)' : 'rgba(37,99,235,0.20)'
-  // Heure du créneau (label affiché clairement au survol pendant le drag)
-  const [, h, m] = id.split('__')
-  const timeLabel = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
-  // Lignes intra-heure : :30 un peu plus marquée, :15/:45 très discrètes,
-  // pour que les RDV à la demi/au quart se posent sur un repère visuel.
-  const minute = Number(m)
-  const borderTop = minute === 30 ? '1px solid #EDF1F5'
-    : (minute === 15 || minute === 45) ? '1px solid #F5F8FB'
-    : 'none'
-  return (
-    <div ref={setNodeRef} style={{ height: ROW_H / BANDS.length, boxSizing: 'border-box', borderTop, background: bg, transition: 'background 0.08s', position: 'relative' }}>
-      {dragging && isOver && (
-        <span style={{
-          position: 'absolute', top: '50%', right: 4, transform: 'translateY(-50%)',
-          fontSize: 10, fontWeight: 700, padding: '1px 5px', borderRadius: 4, pointerEvents: 'none',
-          background: invalid ? '#EF4444' : '#2563EB', color: 'white', zIndex: 5,
-        }}>
-          {invalid ? '✕' : timeLabel}
-        </span>
-      )}
-      {children}
-    </div>
+        marginTop: 3, width: '100%',
+        background: sent ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.22)',
+        color: 'white', border: '1px solid rgba(255,255,255,0.4)',
+        borderRadius: 4, padding: '2px 4px', fontSize: 10, fontWeight: 600,
+        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3,
+      }}>
+      {sent ? '✓ Ouvert' : '📱 Rappel'}
+    </button>
   )
 }
 
 export default function AgendaPage() {
   const [currentDate, setCurrentDate] = useState(new Date())
-  const [now, setNow] = useState<number>(() => Date.now())
   const [rdvList, setRdvList]         = useState<any[]>([])
   const [patients, setPatients]       = useState<any[]>([])
   const [praticiens, setPraticiens]   = useState<any[]>([])
@@ -153,13 +91,6 @@ export default function AgendaPage() {
   const [loading, setLoading]         = useState(false)
   const [confirmationRdv, setConfirmationRdv] = useState<any>(null)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
-  const [isTouch, setIsTouch] = useState(false)
-
-  const [activeRdv, setActiveRdv] = useState<any>(null)          // RDV en cours de drag
-  const [pendingMove, setPendingMove] = useState<any>(null)      // { rdv, newDate } à confirmer
-  const [editRdv, setEditRdv] = useState<any>(null)              // tap-to-edit (mobile)
-  const [flashId, setFlashId] = useState<string | null>(null)    // flash vert après succès
-
   const [form, setForm] = useState({
     patientId: '', praticienId: '', typeSeance: '',
     date: '', heure: '09:00', duree: '45', salle: 'Salle 1', notes: ''
@@ -167,12 +98,9 @@ export default function AgendaPage() {
 
   const weekDates = getWeekDates(currentDate)
 
+  // Build a colour map from loaded types
   const couleurMap: Record<string, string> = {}
   seanceTypes.forEach((t: any) => { couleurMap[t.nom] = t.couleur || '#2563EB' })
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
-  )
 
   const fetchRdv = useCallback(async () => {
     try {
@@ -183,9 +111,6 @@ export default function AgendaPage() {
   }, [])
 
   useEffect(() => {
-    // Tactile « pur » seulement (aucune souris/trackpad) → tap-to-edit.
-    // Un portable tactile a aussi un pointeur fin : on garde le drag desktop.
-    setIsTouch(!window.matchMedia('(any-pointer: fine)').matches)
     fetchRdv()
     fetch('/api/patients').then(r => r.json()).then(d => setPatients(Array.isArray(d) ? d : []))
     fetch('/api/praticiens').then(r => r.json()).then(d => setPraticiens(Array.isArray(d) ? d : []))
@@ -198,153 +123,29 @@ export default function AgendaPage() {
 
   function handleTypeChange(nom: string) {
     const found = seanceTypes.find((t: any) => t.nom === nom)
-    setForm(f => ({ ...f, typeSeance: nom, duree: found ? String(found.dureeDefaut) : f.duree }))
+    setForm(f => ({
+      ...f,
+      typeSeance: nom,
+      duree: found ? String(found.dureeDefaut) : f.duree,
+    }))
   }
 
-  // RDV regroupés par cellule horaire (jour + heure de début).
-  // Chaque carte est ensuite positionnée en absolu selon sa minute et sa durée.
-  const rdvByCell = useMemo(() => {
-    const map: Record<string, any[]> = {}
-    for (const rdv of rdvList) {
+  function getRdvForSlot(date: Date, hour: number) {
+    return rdvList.filter(rdv => {
       const d = new Date(rdv.date)
-      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}__${d.getHours()}`
-      ;(map[key] ||= []).push(rdv)
-    }
-    return map
-  }, [rdvList])
-
-  // Validité d'un déplacement de `rdv` vers `newDate` (passé / conflit praticien)
-  const checkMove = useCallback((rdv: any, newDate: Date): { ok: boolean; reason?: string } => {
-    if (newDate.getTime() < now - 60_000) return { ok: false, reason: 'Créneau passé' }
-    const duree = rdv.duree ?? 45
-    const start = newDate.getTime()
-    const end = start + duree * 60_000
-    const conflict = rdvList.some(o => {
-      if (o.id === rdv.id) return false
-      if (o.praticienId !== rdv.praticienId) return false
-      if (isFrozen(o)) return false
-      const oStart = new Date(o.date).getTime()
-      const oEnd = oStart + (o.duree ?? 45) * 60_000
-      return start < oEnd && end > oStart
+      return d.getFullYear() === date.getFullYear() &&
+        d.getMonth() === date.getMonth() &&
+        d.getDate() === date.getDate() &&
+        d.getHours() === hour
     })
-    if (conflict) return { ok: false, reason: 'Ce créneau est déjà occupé' }
-    return { ok: true }
-  }, [rdvList, now])
-
-  function handleDragStart(e: DragStartEvent) {
-    setNow(Date.now())
-    setActiveRdv(e.active.data.current?.rdv ?? null)
   }
 
-  function handleDragEnd(e: DragEndEvent) {
-    const rdv = activeRdv
-    setActiveRdv(null)
-    if (!rdv || !e.over) return
-    const newDate = parseBandId(String(e.over.id))
-    // Même position → rien
-    const cur = new Date(rdv.date)
-    if (cur.getTime() === newDate.getTime()) return
-    const v = checkMove(rdv, newDate)
-    if (!v.ok) { setToast({ message: v.reason || 'Déplacement impossible', type: 'error' }); return }
-    setPendingMove({ rdv, newDate })
-  }
-
-  // Confirme le déplacement : optimiste + PATCH + revert si erreur
-  async function confirmMove() {
-    const move = pendingMove
-    setPendingMove(null)
-    if (!move) return
-    const { rdv, newDate } = move
-    const prev = rdvList
-    // optimistic
-    setRdvList(list => list.map(r => r.id === rdv.id ? { ...r, date: newDate.toISOString() } : r))
-    try {
-      const res = await fetch(`/api/rendez-vous/${rdv.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date: newDate.toISOString() }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Erreur serveur')
-      setRdvList(list => list.map(r => r.id === rdv.id ? { ...r, ...data } : r))
-      setFlashId(rdv.id)
-      setTimeout(() => setFlashId(null), 800)
-      setToast({ message: 'RDV déplacé avec succès ✓', type: 'success' })
-    } catch (err) {
-      setRdvList(prev) // revert
-      setToast({ message: err instanceof Error ? err.message : 'Erreur serveur', type: 'error' })
-    }
-  }
-
-  function openBlankModal() { setForm(f => ({ ...f, date: '', heure: '09:00' })); setShowModal(true) }
-
-  function openModalForSlot(date: Date, hour: number) {
-    const d = new Date(date); d.setHours(hour, 0, 0, 0)
+  function openModal(date: Date, hour: number) {
+    const d = new Date(date)
+    d.setHours(hour, 0, 0, 0)
     const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
     setForm(f => ({ ...f, date: dateStr, heure: `${String(hour).padStart(2,'0')}:00` }))
     setShowModal(true)
-  }
-
-  // tap sur un RDV : envoyer rappel (desktop) OU éditer l'heure (mobile/touch)
-  function onTapRdv(rdv: any) {
-    if (isTouch) { openEditTime(rdv); return }
-    sendRappel(rdv)
-  }
-
-  function openEditTime(rdv: any) {
-    const d = new Date(rdv.date)
-    setEditRdv({
-      ...rdv,
-      _date: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`,
-      _heure: `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`,
-    })
-  }
-
-  async function saveEditTime() {
-    if (!editRdv) return
-    const newDate = new Date(`${editRdv._date}T${editRdv._heure}:00`)
-    const v = checkMove(editRdv, newDate)
-    if (!v.ok) { setToast({ message: v.reason || 'Impossible', type: 'error' }); return }
-    const id = editRdv.id
-    setEditRdv(null)
-    const prev = rdvList
-    setRdvList(list => list.map(r => r.id === id ? { ...r, date: newDate.toISOString() } : r))
-    try {
-      const res = await fetch(`/api/rendez-vous/${id}`, {
-        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date: newDate.toISOString() }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Erreur serveur')
-      setRdvList(list => list.map(r => r.id === id ? { ...r, ...data } : r))
-      setToast({ message: 'RDV déplacé avec succès ✓', type: 'success' })
-    } catch (err) {
-      setRdvList(prev)
-      setToast({ message: err instanceof Error ? err.message : 'Erreur serveur', type: 'error' })
-    }
-  }
-
-  async function sendRappel(rdv: any) {
-    if (!rdv?.patient?.telephone) { setToast({ message: 'Aucun numéro pour ce patient', type: 'error' }); return }
-    const date = new Date(rdv.date)
-    const heure = `${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`
-    const dateStr = date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
-    const msg = msgRappelRDV({
-      prenom: rdv.patient.prenom, date: dateStr, heure,
-      praticien: rdv.praticien ? `${rdv.praticien.prenom} ${rdv.praticien.nom}` : '',
-      typeSeance: rdv.typeSeance,
-    })
-    try {
-      await fetch('/api/whatsapp/log', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'rappel_rdv', patientId: rdv.patient.id,
-          patientNom: `${rdv.patient.prenom} ${rdv.patient.nom}`,
-          telephone: rdv.patient.telephone, message: msg,
-        }),
-      })
-    } catch {}
-    window.open(buildWhatsAppUrl(rdv.patient.telephone, msg), '_blank')
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -354,10 +155,13 @@ export default function AgendaPage() {
     try {
       const dateTime = `${form.date}T${form.heure}:00`
       const res = await fetch('/api/rendez-vous', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          date: dateTime, duree: parseInt(form.duree), typeSeance: form.typeSeance,
-          salle: form.salle, notes: form.notes, patientId: form.patientId, praticienId: form.praticienId,
+          date: dateTime, duree: parseInt(form.duree),
+          typeSeance: form.typeSeance, salle: form.salle,
+          notes: form.notes, patientId: form.patientId,
+          praticienId: form.praticienId,
         }),
       })
       const data = await res.json()
@@ -366,6 +170,7 @@ export default function AgendaPage() {
       const praticien = praticiens.find(p => p.id === form.praticienId)
       setShowModal(false)
       fetchRdv()
+      // Show WhatsApp confirmation panel
       setConfirmationRdv({ rdv: data, patient, praticien })
     } catch (err) {
       setToast({ message: err instanceof Error ? err.message : 'Erreur serveur', type: 'error' })
@@ -374,11 +179,9 @@ export default function AgendaPage() {
   }
 
   const today = new Date()
-  const newHeure = pendingMove ? new Date(pendingMove.newDate) : null
 
   return (
     <div>
-      <style>{`@keyframes rdvGreenFlash { 0%{background:#22C55E} 100%{} }`}</style>
       <Topbar title="Agenda" subtitle="Calendrier hebdomadaire" />
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <div style={{ padding: 24 }}>
@@ -402,7 +205,7 @@ export default function AgendaPage() {
               Aujourd'hui
             </button>
           </div>
-          <button onClick={openBlankModal}
+          <button onClick={() => { setForm(f => ({...f, date: '', heure: '09:00'})); setShowModal(true) }}
             style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#2563EB', color: 'white', border: 'none', borderRadius: 8, padding: '10px 16px', cursor: 'pointer', fontWeight: 500, fontSize: 14 }}>
             <Plus size={16} /> Nouveau RDV
           </button>
@@ -420,167 +223,67 @@ export default function AgendaPage() {
             <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#0D9488' }} />
             <span style={{ fontSize: 12, color: '#64748B' }}>🌐 En ligne</span>
           </div>
-          <span style={{ fontSize: 12, color: '#94A3B8', paddingLeft: 8, borderLeft: '1px solid #E2E8F0' }}>
-            {isTouch ? '👆 Touchez un RDV pour changer l\'heure' : '✋ Glissez un RDV pour le déplacer'}
-          </span>
         </div>
 
-        {/* Calendrier + DnD */}
-        <DndContext
-          sensors={sensors}
-          collisionDetection={pointerWithin}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-          onDragCancel={() => setActiveRdv(null)}
-        >
-          <div className="agenda-week-outer">
-            {/* En-tête jours */}
-            <div style={{ display: 'grid', gridTemplateColumns: '60px repeat(7, 1fr)', borderBottom: '1px solid #E2E8F0' }}>
-              <div style={{ padding: '12px 8px', background: '#F8FAFC' }} />
-              {weekDates.map((date, i) => {
-                const isToday = date.toDateString() === today.toDateString()
+        {/* Calendrier */}
+        <div className="agenda-week-outer">
+          <div style={{ display: 'grid', gridTemplateColumns: '60px repeat(7, 1fr)', borderBottom: '1px solid #E2E8F0' }}>
+            <div style={{ padding: '12px 8px', background: '#F8FAFC' }} />
+            {weekDates.map((date, i) => {
+              const isToday = date.toDateString() === today.toDateString()
+              return (
+                <div key={i} style={{ padding: '12px 8px', textAlign: 'center', background: '#F8FAFC', borderLeft: '1px solid #E2E8F0' }}>
+                  <div style={{ fontSize: 12, color: '#64748B', fontWeight: 500 }}>{JOURS[i]}</div>
+                  <div style={{
+                    fontSize: 16, fontWeight: 700, color: isToday ? 'white' : '#0F172A',
+                    background: isToday ? '#2563EB' : 'transparent',
+                    borderRadius: '50%', width: 32, height: 32,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '4px auto 0'
+                  }}>{date.getDate()}</div>
+                </div>
+              )
+            })}
+          </div>
+          {HEURES.map(hour => (
+            <div key={hour} style={{ display: 'grid', gridTemplateColumns: '60px repeat(7, 1fr)', borderBottom: '1px solid #F1F5F9', minHeight: 64 }}>
+              <div style={{ padding: '8px 8px 0', fontSize: 12, color: '#94A3B8', textAlign: 'right', paddingRight: 8 }}>
+                {String(hour).padStart(2,'0')}:00
+              </div>
+              {weekDates.map((date, di) => {
+                const rdvs = getRdvForSlot(date, hour)
                 return (
-                  <div key={i} style={{ padding: '12px 8px', textAlign: 'center', background: '#F8FAFC', borderLeft: '1px solid #E2E8F0' }}>
-                    <div style={{ fontSize: 12, color: '#64748B', fontWeight: 500 }}>{JOURS[i]}</div>
-                    <div style={{
-                      fontSize: 16, fontWeight: 700, color: isToday ? 'white' : '#0F172A',
-                      background: isToday ? '#2563EB' : 'transparent', borderRadius: '50%',
-                      width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '4px auto 0'
-                    }}>{date.getDate()}</div>
+                  <div key={di} onClick={() => openModal(date, hour)}
+                    style={{ borderLeft: '1px solid #F1F5F9', padding: 4, cursor: 'pointer', minHeight: 64 }}
+                    onMouseEnter={e => (e.currentTarget.style.background = '#F8FAFC')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                    {rdvs.map(rdv => (
+                      <div key={rdv.id} onClick={e => e.stopPropagation()}
+                        style={{
+                          background: rdv.source === 'online' ? '#0D9488' : (couleurMap[rdv.typeSeance] || '#2563EB'),
+                          color: 'white', borderRadius: 6, padding: '4px 6px', fontSize: 11, marginBottom: 2,
+                          borderLeft: rdv.source === 'online' ? '3px solid #14B8A6' : undefined,
+                        }}>
+                        <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
+                          {rdv.source === 'online' && <span style={{ fontSize: 9 }}>🌐</span>}
+                          {rdv.patient?.prenom} {rdv.patient?.nom}
+                        </div>
+                        <div style={{ opacity: 0.85 }}>{rdv.typeSeance} · {rdv.duree}min</div>
+                        {rdv.patientNotes && <div style={{ opacity: 0.75, fontSize: 10, fontStyle: 'italic', marginTop: 1 }}>{rdv.patientNotes.slice(0, 30)}{rdv.patientNotes.length > 30 ? '…' : ''}</div>}
+                        <RappelBtn rdv={rdv} />
+                      </div>
+                    ))}
                   </div>
                 )
               })}
             </div>
-
-            {/* Lignes horaires */}
-            {HEURES.map(hour => (
-              <div key={hour} style={{ display: 'grid', gridTemplateColumns: '60px repeat(7, 1fr)', borderBottom: '1px solid #F1F5F9', minHeight: ROW_H }}>
-                <div style={{ padding: '8px 8px 0', fontSize: 12, color: '#94A3B8', textAlign: 'right', paddingRight: 8 }}>
-                  {String(hour).padStart(2,'0')}:00
-                </div>
-                {weekDates.map((date, di) => {
-                  const cellKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}__${hour}`
-                  const cellRdvs = rdvByCell[cellKey] || []
-                  const { placement, totalCols } = layoutCell(cellRdvs)
-                  return (
-                    <div key={di}
-                      onClick={() => openModalForSlot(date, hour)}
-                      style={{ borderLeft: '1px solid #F1F5F9', cursor: 'pointer', height: ROW_H, position: 'relative' }}>
-                      {/* Cibles de drop (15 min) — invisibles, sous les cartes */}
-                      {BANDS.map(minute => {
-                        const id = bandId(date, hour, minute)
-                        const slotDate = new Date(date); slotDate.setHours(hour, minute, 0, 0)
-                        const invalid = activeRdv ? !checkMove(activeRdv, slotDate).ok : false
-                        return <DropBand key={minute} id={id} invalid={invalid} />
-                      })}
-                      {/* Cartes RDV : positionnées par minute de début + hauteur = durée */}
-                      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-                        {cellRdvs.map(rdv => {
-                          const start = new Date(rdv.date)
-                          const col = placement[rdv.id] ?? 0
-                          const w = 100 / totalCols
-                          const posStyle: React.CSSProperties = {
-                            position: 'absolute',
-                            top: (start.getMinutes() / 60) * ROW_H,
-                            height: Math.max(20, ((rdv.duree ?? 45) / 60) * ROW_H - 2),
-                            left: `calc(${col * w}% + 2px)`,
-                            width: `calc(${w}% - 4px)`,
-                            pointerEvents: 'auto',
-                            zIndex: 1,
-                          }
-                          return (
-                            <RdvBlock
-                              key={rdv.id} rdv={rdv}
-                              color={couleurMap[rdv.typeSeance] || '#2563EB'}
-                              draggable={!isTouch && !isFrozen(rdv)}
-                              flash={flashId === rdv.id}
-                              onTap={() => onTapRdv(rdv)}
-                              posStyle={posStyle}
-                            />
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            ))}
-          </div>
-
-          {/* Ghost suivant le curseur */}
-          <DragOverlay modifiers={[restrictToWindowEdges]} dropAnimation={null}>
-            {activeRdv ? (
-              <div style={{
-                background: activeRdv.source === 'online' ? '#0D9488' : (couleurMap[activeRdv.typeSeance] || '#2563EB'),
-                color: 'white', borderRadius: 6, padding: '4px 6px', fontSize: 11, cursor: 'grabbing',
-                boxShadow: '0 8px 20px rgba(0,0,0,0.25)', opacity: 0.95, width: 140,
-              }}>
-                <div style={{ fontWeight: 600 }}>{activeRdv.patient?.prenom} {activeRdv.patient?.nom}</div>
-                <div style={{ opacity: 0.85 }}>{activeRdv.typeSeance} · {activeRdv.duree}min</div>
-              </div>
-            ) : null}
-          </DragOverlay>
-        </DndContext>
+          ))}
+        </div>
       </div>
 
-      {/* FAB mobile */}
-      <button className="fab-btn" onClick={openBlankModal} aria-label="Nouveau RDV">+</button>
-
-      {/* ── Confirmation de déplacement ── */}
-      {pendingMove && newHeure && (
-        <div className="modal-overlay" style={{ zIndex: 220 }} onClick={() => setPendingMove(null)}>
-          <div className="modal-sheet" style={{ padding: 26, width: 400 }} onClick={e => e.stopPropagation()}>
-            <h2 style={{ fontSize: 17, fontWeight: 700, color: '#0F172A', margin: '0 0 8px' }}>Déplacer le RDV ?</h2>
-            <p style={{ fontSize: 14, color: '#64748B', margin: '0 0 20px' }}>
-              Déplacer le RDV de <strong style={{ color: '#0F172A' }}>{pendingMove.rdv.patient?.prenom} {pendingMove.rdv.patient?.nom}</strong> au{' '}
-              <strong style={{ color: '#0F172A' }}>
-                {newHeure.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })} à {String(newHeure.getHours()).padStart(2,'0')}:{String(newHeure.getMinutes()).padStart(2,'0')}
-              </strong> ?
-            </p>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => setPendingMove(null)}
-                style={{ flex: 1, padding: '10px', border: '1px solid #E2E8F0', borderRadius: 8, background: 'white', cursor: 'pointer', fontWeight: 500, color: '#64748B' }}>
-                Annuler
-              </button>
-              <button onClick={confirmMove}
-                style={{ flex: 1, padding: '10px', border: 'none', borderRadius: 8, background: '#2563EB', color: 'white', cursor: 'pointer', fontWeight: 600 }}>
-                Confirmer
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Édition de l'heure (tap mobile) ── */}
-      {editRdv && (
-        <div className="modal-overlay" style={{ zIndex: 220 }} onClick={() => setEditRdv(null)}>
-          <div className="modal-sheet" style={{ padding: 26, width: 400 }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h2 style={{ fontSize: 17, fontWeight: 700, color: '#0F172A', margin: 0 }}>Changer l'heure</h2>
-              <button onClick={() => setEditRdv(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B' }}><X size={20} /></button>
-            </div>
-            <p style={{ fontSize: 13, color: '#64748B', margin: '0 0 16px' }}>
-              {editRdv.patient?.prenom} {editRdv.patient?.nom} · {editRdv.typeSeance}
-            </p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
-              <div>
-                <label style={{ fontSize: 13, fontWeight: 500, color: '#374151', display: 'block', marginBottom: 6 }}>Date</label>
-                <input type="date" value={editRdv._date} onChange={e => setEditRdv((r: any) => ({ ...r, _date: e.target.value }))}
-                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 14 }} />
-              </div>
-              <div>
-                <label style={{ fontSize: 13, fontWeight: 500, color: '#374151', display: 'block', marginBottom: 6 }}>Heure</label>
-                <input type="time" step={900} value={editRdv._heure} onChange={e => setEditRdv((r: any) => ({ ...r, _heure: e.target.value }))}
-                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 14 }} />
-              </div>
-            </div>
-            <button onClick={saveEditTime}
-              style={{ width: '100%', padding: '11px', border: 'none', borderRadius: 8, background: '#2563EB', color: 'white', cursor: 'pointer', fontWeight: 600 }}>
-              Enregistrer
-            </button>
-          </div>
-        </div>
-      )}
+      {/* FAB: mobile only */}
+      <button className="fab-btn" onClick={() => { setForm(f => ({...f, date: '', heure: '09:00'})); setShowModal(true) }} aria-label="Nouveau RDV">
+        +
+      </button>
 
       {/* ── Modal Nouveau RDV ── */}
       {showModal && (
@@ -661,10 +364,11 @@ export default function AgendaPage() {
         </div>
       )}
 
-      {/* ── WhatsApp Confirmation Panel (après création) ── */}
+      {/* ── WhatsApp Confirmation Panel ── */}
       {confirmationRdv && (
         <div className="modal-overlay" style={{ zIndex: 200 }}>
           <div className="modal-sheet" style={{ padding: 32, width: 440 }}>
+            {/* Success icon */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 24 }}>
               <div style={{ width: 60, height: 60, borderRadius: '50%', background: '#DCFCE7', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
                 <Check size={28} color="#16A34A" />
@@ -675,9 +379,13 @@ export default function AgendaPage() {
                 {new Date(confirmationRdv.rdv?.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
               </p>
             </div>
+
+            {/* WhatsApp actions */}
             {confirmationRdv.patient?.telephone ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
-                <p style={{ fontSize: 13, fontWeight: 600, color: '#374151', margin: '0 0 6px' }}>📱 Envoyer via WhatsApp :</p>
+                <p style={{ fontSize: 13, fontWeight: 600, color: '#374151', margin: '0 0 6px' }}>
+                  📱 Envoyer via WhatsApp :
+                </p>
                 <WhatsAppButton
                   phone={confirmationRdv.patient.telephone}
                   message={msgConfirmationRDV({
@@ -710,9 +418,12 @@ export default function AgendaPage() {
               </div>
             ) : (
               <div style={{ background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 10, padding: 12, marginBottom: 20 }}>
-                <p style={{ fontSize: 13, color: '#92400E', margin: 0 }}>⚠️ Aucun numéro de téléphone enregistré pour ce patient.</p>
+                <p style={{ fontSize: 13, color: '#92400E', margin: 0 }}>
+                  ⚠️ Aucun numéro de téléphone enregistré pour ce patient.
+                </p>
               </div>
             )}
+
             <button onClick={() => setConfirmationRdv(null)}
               style={{ width: '100%', padding: '11px', border: '1px solid #E2E8F0', borderRadius: 10, background: 'white', cursor: 'pointer', fontWeight: 500, color: '#374151', fontSize: 14 }}>
               Fermer
