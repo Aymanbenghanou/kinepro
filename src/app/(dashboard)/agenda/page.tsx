@@ -29,44 +29,21 @@ const GUTTER = 60                       // largeur de la gouttière des heures
 const DAY_START = HEURES[0]             // première heure affichée (8)
 const DAY_H = HEURES.length * ROW_H     // hauteur totale d'une colonne jour
 const PAD_X = 6                         // marge intérieure horizontale d'une colonne
-const COL_GAP = 4                       // espace entre RDV qui se chevauchent
-const V_GAP = 2                         // espace vertical entre RDV consécutifs
+const COL_GAP = 6                       // espace entre RDV concurrents d'une même heure
+const CARD_M = 6                        // marge verticale de la carte dans sa case
 
-// Répartit les RDV d'une journée en colonnes. Les RDV qui se chevauchent
-// (transitivement) forment un cluster et se partagent la largeur à parts
-// égales ; les RDV isolés prennent toute la largeur. Renvoie pour chaque
-// id : { col, cols } → colonne occupée et nombre total de colonnes du cluster.
-function layoutDay(events: any[]): Record<string, { col: number; cols: number }> {
-  const evs = events
-    .map(e => {
-      const s = new Date(e.date)
-      const start = s.getHours() * 60 + s.getMinutes()
-      return { id: e.id, start, end: start + (e.duree ?? 45) }
-    })
-    .sort((a, b) => a.start - b.start || a.end - b.end)
-
-  const out: Record<string, { col: number; cols: number }> = {}
-  let cluster: typeof evs = []
-  let clusterEnd = -Infinity
-
-  const flush = () => {
-    const colEnds: number[] = []        // fin (min) du dernier RDV de chaque colonne
-    for (const it of cluster) {
-      let c = colEnds.findIndex(end => end <= it.start)
-      if (c === -1) { c = colEnds.length; colEnds.push(it.end) } else { colEnds[c] = it.end }
-      out[it.id] = { col: c, cols: 1 }
-    }
-    const cols = Math.max(1, colEnds.length)
-    for (const it of cluster) out[it.id].cols = cols
+// Regroupe les RDV d'une journée par heure de début. Chaque carte remplit sa
+// case d'une heure ; les RDV d'une même heure sont placés côte à côte.
+function rdvsByHour(events: any[]): [number, any[]][] {
+  const map: Record<number, any[]> = {}
+  for (const e of events) {
+    const h = new Date(e.date).getHours()
+    ;(map[h] ||= []).push(e)
   }
-
-  for (const it of evs) {
-    if (cluster.length && it.start >= clusterEnd) { flush(); cluster = []; clusterEnd = -Infinity }
-    cluster.push(it)
-    clusterEnd = Math.max(clusterEnd, it.end)
-  }
-  if (cluster.length) flush()
-  return out
+  return Object.entries(map).map(([h, items]) => [
+    Number(h),
+    [...items].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
+  ])
 }
 
 function getWeekDates(startDate: Date) {
@@ -488,7 +465,7 @@ export default function AgendaPage() {
               {weekDates.map((date, di) => {
                 const dayKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
                 const dayRdvs = rdvByDay[dayKey] || []
-                const layout = layoutDay(dayRdvs)
+                const hourGroups = rdvsByHour(dayRdvs)
                 return (
                   <div key={di} style={{
                     position: 'relative', height: DAY_H, boxSizing: 'border-box', overflow: 'hidden',
@@ -505,34 +482,35 @@ export default function AgendaPage() {
                       }))}
                     </div>
 
-                    {/* Cartes RDV : top = heure de début, hauteur = durée, colonnes pour chevauchements.
-                        Le calque est inséré de PAD_X de chaque côté → jamais de débordement horizontal. */}
+                    {/* Cartes RDV : une carte par RDV remplissant sa case d'une heure.
+                        Le calque est inséré de PAD_X de chaque côté et les largeurs sont
+                        en calc(% - gap) → left + width ne dépassent jamais la colonne. */}
                     <div style={{ position: 'absolute', top: 0, bottom: 0, left: PAD_X, right: PAD_X, pointerEvents: 'none' }}>
-                      {dayRdvs.map(rdv => {
-                        const s = new Date(rdv.date)
-                        const startMin = (s.getHours() - DAY_START) * 60 + s.getMinutes()
-                        const dur = rdv.duree ?? 45
-                        const { col, cols } = layout[rdv.id] ?? { col: 0, cols: 1 }
+                      {hourGroups.flatMap(([hour, items]) => {
+                        const cols = items.length
                         const colW = 100 / cols
-                        const posStyle: React.CSSProperties = {
-                          position: 'absolute',
-                          top: Math.max(0, (startMin / 60) * ROW_H),
-                          height: Math.max(22, (dur / 60) * ROW_H - V_GAP),
-                          left: `${col * colW}%`,
-                          width: `calc(${colW}% - ${COL_GAP}px)`,
-                          display: 'flex', flexDirection: 'column', justifyContent: 'center',
-                          pointerEvents: 'auto', zIndex: 2,
-                        }
-                        return (
-                          <RdvBlock
-                            key={rdv.id} rdv={rdv}
-                            color={couleurMap[rdv.typeSeance] || '#2563EB'}
-                            draggable={!isTouch && !isFrozen(rdv)}
-                            flash={flashId === rdv.id}
-                            onTap={() => onTapRdv(rdv)}
-                            posStyle={posStyle}
-                          />
-                        )
+                        return items.map((rdv, idx) => {
+                          const posStyle: React.CSSProperties = {
+                            position: 'absolute',
+                            top: (hour - DAY_START) * ROW_H + CARD_M,
+                            height: ROW_H - CARD_M * 2,
+                            left: cols === 1 ? 0 : `${idx * colW}%`,
+                            width: cols === 1 ? '100%' : `calc(${colW}% - ${COL_GAP}px)`,
+                            maxWidth: '100%',
+                            display: 'flex', flexDirection: 'column', justifyContent: 'center',
+                            pointerEvents: 'auto', zIndex: 2,
+                          }
+                          return (
+                            <RdvBlock
+                              key={rdv.id} rdv={rdv}
+                              color={couleurMap[rdv.typeSeance] || '#2563EB'}
+                              draggable={!isTouch && !isFrozen(rdv)}
+                              flash={flashId === rdv.id}
+                              onTap={() => onTapRdv(rdv)}
+                              posStyle={posStyle}
+                            />
+                          )
+                        })
                       })}
                     </div>
                   </div>
