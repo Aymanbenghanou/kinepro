@@ -21,24 +21,29 @@ const SALLES = ['Salle 1', 'Salle 2', 'Salle 3']
 const JOURS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
 const HEURES = Array.from({ length: 12 }, (_, i) => i + 8) // 08:00 → 19:00
 const BANDS = [0, 15, 30, 45]                              // snapping 15 min
-const ROW_H = 80                                            // hauteur d'une cellule horaire (px)
+const ROW_H = 80                                            // hauteur d'une heure (px)
 const FROZEN = ['annule', 'annulee', 'realisee', 'termine', 'honore', 'absent', 'no_show']
 
-// Place les RDV d'une cellule en colonnes : ceux qui se chevauchent sont
-// posés côte à côte (colonnes distinctes), les autres partagent la colonne 0.
-function layoutCell(items: any[]): { placement: Record<string, number>; totalCols: number } {
-  const sorted = [...items].sort((a, b) =>
-    new Date(a.date).getTime() - new Date(b.date).getTime() || (b.duree ?? 45) - (a.duree ?? 45))
-  const colEnds: number[] = []          // fin (ms) du dernier RDV de chaque colonne
-  const placement: Record<string, number> = {}
-  for (const it of sorted) {
-    const start = new Date(it.date).getTime()
-    const end = start + (it.duree ?? 45) * 60_000
-    let col = colEnds.findIndex(e => e <= start)
-    if (col === -1) { col = colEnds.length; colEnds.push(end) } else { colEnds[col] = end }
-    placement[it.id] = col
+// ── Constantes de mise en page (toutes en px, pas de largeur en dur) ──
+const GUTTER = 60                       // largeur de la gouttière des heures
+const DAY_START = HEURES[0]             // première heure affichée (8)
+const DAY_H = HEURES.length * ROW_H     // hauteur totale d'une colonne jour
+const PAD_X = 6                         // marge intérieure horizontale d'une colonne
+const COL_GAP = 6                       // espace entre RDV concurrents d'une même heure
+const CARD_M = 6                        // marge verticale de la carte dans sa case
+
+// Regroupe les RDV d'une journée par heure de début. Chaque carte remplit sa
+// case d'une heure ; les RDV d'une même heure sont placés côte à côte.
+function rdvsByHour(events: any[]): [number, any[]][] {
+  const map: Record<number, any[]> = {}
+  for (const e of events) {
+    const h = new Date(e.date).getHours()
+    ;(map[h] ||= []).push(e)
   }
-  return { placement, totalCols: Math.max(1, colEnds.length) }
+  return Object.entries(map).map(([h, items]) => [
+    Number(h),
+    [...items].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
+  ])
 }
 
 function getWeekDates(startDate: Date) {
@@ -109,9 +114,9 @@ function RdvBlock({ rdv, color, draggable, flash, onTap, posStyle }: {
   )
 }
 
-// ── Band droppable (créneau 15 min) ────────────────────────────────────────
-function DropBand({ id, invalid, children }: {
-  id: string; invalid: boolean; children?: React.ReactNode
+// ── Band droppable (créneau 15 min) — cible de drop invisible + clic création ──
+function DropBand({ id, invalid, onSelect }: {
+  id: string; invalid: boolean; onSelect: () => void
 }) {
   const { setNodeRef, isOver, active } = useDroppable({ id })
   const dragging = !!active
@@ -120,14 +125,9 @@ function DropBand({ id, invalid, children }: {
   // Heure du créneau (label affiché clairement au survol pendant le drag)
   const [, h, m] = id.split('__')
   const timeLabel = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
-  // Lignes intra-heure : :30 un peu plus marquée, :15/:45 très discrètes,
-  // pour que les RDV à la demi/au quart se posent sur un repère visuel.
-  const minute = Number(m)
-  const borderTop = minute === 30 ? '1px solid #EDF1F5'
-    : (minute === 15 || minute === 45) ? '1px solid #F5F8FB'
-    : 'none'
   return (
-    <div ref={setNodeRef} style={{ height: ROW_H / BANDS.length, boxSizing: 'border-box', borderTop, background: bg, transition: 'background 0.08s', position: 'relative' }}>
+    <div ref={setNodeRef} onClick={onSelect}
+      style={{ flex: 1, minHeight: 0, background: bg, transition: 'background 0.08s', position: 'relative', cursor: 'pointer' }}>
       {dragging && isOver && (
         <span style={{
           position: 'absolute', top: '50%', right: 4, transform: 'translateY(-50%)',
@@ -137,7 +137,6 @@ function DropBand({ id, invalid, children }: {
           {invalid ? '✕' : timeLabel}
         </span>
       )}
-      {children}
     </div>
   )
 }
@@ -201,13 +200,13 @@ export default function AgendaPage() {
     setForm(f => ({ ...f, typeSeance: nom, duree: found ? String(found.dureeDefaut) : f.duree }))
   }
 
-  // RDV regroupés par cellule horaire (jour + heure de début).
-  // Chaque carte est ensuite positionnée en absolu selon sa minute et sa durée.
-  const rdvByCell = useMemo(() => {
+  // RDV regroupés par jour. Chaque colonne positionne ensuite ses RDV en
+  // absolu (top = heure de début, hauteur = durée) avec gestion des chevauchements.
+  const rdvByDay = useMemo(() => {
     const map: Record<string, any[]> = {}
     for (const rdv of rdvList) {
       const d = new Date(rdv.date)
-      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}__${d.getHours()}`
+      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
       ;(map[key] ||= []).push(rdv)
     }
     return map
@@ -278,10 +277,9 @@ export default function AgendaPage() {
 
   function openBlankModal() { setForm(f => ({ ...f, date: '', heure: '09:00' })); setShowModal(true) }
 
-  function openModalForSlot(date: Date, hour: number) {
-    const d = new Date(date); d.setHours(hour, 0, 0, 0)
-    const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
-    setForm(f => ({ ...f, date: dateStr, heure: `${String(hour).padStart(2,'0')}:00` }))
+  function openModalForSlot(date: Date, hour: number, minute = 0) {
+    const dateStr = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`
+    setForm(f => ({ ...f, date: dateStr, heure: `${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}` }))
     setShowModal(true)
   }
 
@@ -435,7 +433,7 @@ export default function AgendaPage() {
         >
           <div className="agenda-week-outer">
             {/* En-tête jours */}
-            <div style={{ display: 'grid', gridTemplateColumns: '60px repeat(7, 1fr)', borderBottom: '1px solid #E2E8F0' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: `${GUTTER}px repeat(7, 1fr)`, borderBottom: '1px solid #E2E8F0' }}>
               <div style={{ padding: '12px 8px', background: '#F8FAFC' }} />
               {weekDates.map((date, i) => {
                 const isToday = date.toDateString() === today.toDateString()
@@ -452,41 +450,55 @@ export default function AgendaPage() {
               })}
             </div>
 
-            {/* Lignes horaires */}
-            {HEURES.map(hour => (
-              <div key={hour} style={{ display: 'grid', gridTemplateColumns: '60px repeat(7, 1fr)', borderBottom: '1px solid #F1F5F9', minHeight: ROW_H }}>
-                <div style={{ padding: '8px 8px 0', fontSize: 12, color: '#94A3B8', textAlign: 'right', paddingRight: 8 }}>
-                  {String(hour).padStart(2,'0')}:00
-                </div>
-                {weekDates.map((date, di) => {
-                  const cellKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}__${hour}`
-                  const cellRdvs = rdvByCell[cellKey] || []
-                  const { placement, totalCols } = layoutCell(cellRdvs)
-                  return (
-                    <div key={di}
-                      onClick={() => openModalForSlot(date, hour)}
-                      style={{ borderLeft: '1px solid #F1F5F9', cursor: 'pointer', height: ROW_H, position: 'relative' }}>
-                      {/* Cibles de drop (15 min) — invisibles, sous les cartes */}
-                      {BANDS.map(minute => {
+            {/* Corps : gouttière des heures + 7 colonnes jour */}
+            <div style={{ display: 'grid', gridTemplateColumns: `${GUTTER}px repeat(7, 1fr)` }}>
+              {/* Gouttière des heures */}
+              <div>
+                {HEURES.map(hour => (
+                  <div key={hour} style={{ height: ROW_H, boxSizing: 'border-box', padding: '4px 8px 0', fontSize: 12, color: '#94A3B8', textAlign: 'right' }}>
+                    {String(hour).padStart(2, '0')}:00
+                  </div>
+                ))}
+              </div>
+
+              {/* Colonnes jour */}
+              {weekDates.map((date, di) => {
+                const dayKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
+                const dayRdvs = rdvByDay[dayKey] || []
+                const hourGroups = rdvsByHour(dayRdvs)
+                return (
+                  <div key={di} style={{
+                    position: 'relative', height: DAY_H, boxSizing: 'border-box', overflow: 'hidden',
+                    borderLeft: '1px solid #F1F5F9',
+                    background: `repeating-linear-gradient(to bottom, transparent 0, transparent ${ROW_H - 1}px, #EFF2F6 ${ROW_H - 1}px, #EFF2F6 ${ROW_H}px)`,
+                  }}>
+                    {/* Cibles de drop (15 min) — invisibles, cliquables pour créer */}
+                    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column' }}>
+                      {HEURES.map(hour => BANDS.map(minute => {
                         const id = bandId(date, hour, minute)
                         const slotDate = new Date(date); slotDate.setHours(hour, minute, 0, 0)
                         const invalid = activeRdv ? !checkMove(activeRdv, slotDate).ok : false
-                        return <DropBand key={minute} id={id} invalid={invalid} />
-                      })}
-                      {/* Cartes RDV : positionnées par minute de début + hauteur = durée */}
-                      <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-                        {cellRdvs.map(rdv => {
-                          const start = new Date(rdv.date)
-                          const col = placement[rdv.id] ?? 0
-                          const w = 100 / totalCols
+                        return <DropBand key={id} id={id} invalid={invalid} onSelect={() => openModalForSlot(date, hour, minute)} />
+                      }))}
+                    </div>
+
+                    {/* Cartes RDV : une carte par RDV remplissant sa case d'une heure.
+                        Le calque est inséré de PAD_X de chaque côté et les largeurs sont
+                        en calc(% - gap) → left + width ne dépassent jamais la colonne. */}
+                    <div style={{ position: 'absolute', top: 0, bottom: 0, left: PAD_X, right: PAD_X, pointerEvents: 'none' }}>
+                      {hourGroups.flatMap(([hour, items]) => {
+                        const cols = items.length
+                        const colW = 100 / cols
+                        return items.map((rdv, idx) => {
                           const posStyle: React.CSSProperties = {
                             position: 'absolute',
-                            top: (start.getMinutes() / 60) * ROW_H,
-                            height: Math.max(20, ((rdv.duree ?? 45) / 60) * ROW_H - 2),
-                            left: `calc(${col * w}% + 2px)`,
-                            width: `calc(${w}% - 4px)`,
-                            pointerEvents: 'auto',
-                            zIndex: 1,
+                            top: (hour - DAY_START) * ROW_H + CARD_M,
+                            height: ROW_H - CARD_M * 2,
+                            left: cols === 1 ? 0 : `${idx * colW}%`,
+                            width: cols === 1 ? '100%' : `calc(${colW}% - ${COL_GAP}px)`,
+                            maxWidth: '100%',
+                            display: 'flex', flexDirection: 'column', justifyContent: 'center',
+                            pointerEvents: 'auto', zIndex: 2,
                           }
                           return (
                             <RdvBlock
@@ -498,13 +510,13 @@ export default function AgendaPage() {
                               posStyle={posStyle}
                             />
                           )
-                        })}
-                      </div>
+                        })
+                      })}
                     </div>
-                  )
-                })}
-              </div>
-            ))}
+                  </div>
+                )
+              })}
+            </div>
           </div>
 
           {/* Ghost suivant le curseur */}
