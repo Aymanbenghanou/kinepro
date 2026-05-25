@@ -1,11 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // FullCalendar (plugin interaction) casse le glisser-déposer sous le
-  // double-montage de React StrictMode en dev : les events s'affichent et le
-  // clic marche, mais le drag ne se ré-attache pas au remontage. StrictMode ne
-  // double-monte qu'en dev — désactiver n'a aucun impact en production.
-  reactStrictMode: false,
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: '**.attijariwafabank.com' },

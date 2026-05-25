@@ -4,19 +4,85 @@ import { useState, useEffect, useCallback } from 'react'
 import Topbar from '@/components/layout/Topbar'
 import Toast from '@/components/ui/Toast'
 import { formatTime } from '@/lib/utils'
-import { Plus, X, Check } from 'lucide-react'
+import { Plus, ChevronLeft, ChevronRight, X, Check } from 'lucide-react'
 import WhatsAppButton from '@/components/whatsapp/WhatsAppButton'
-import AgendaCalendar from '@/components/agenda/AgendaCalendar'
-import { moveAppointment } from './actions'
 import {
-  msgConfirmationRDV, msgRappelRDV, buildWhatsAppUrl,
+  msgConfirmationRDV, msgRappelRDV,
+  buildWhatsAppUrl, formatPhoneForWhatsApp,
 } from '@/lib/whatsapp'
 
 // Fallback colours until API types load
 const TYPES_SEANCE_FALLBACK = ['Rééducation fonctionnelle', 'Massage thérapeutique', 'Électrothérapie', 'Balnéothérapie']
 const SALLES = ['Salle 1', 'Salle 2', 'Salle 3']
+// Colour map is now built dynamically from API types (couleurMap in component state)
+
+function getWeekDates(startDate: Date) {
+  const dates = []
+  const monday = new Date(startDate)
+  const day = monday.getDay()
+  const diff = day === 0 ? -6 : 1 - day
+  monday.setDate(monday.getDate() + diff)
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday)
+    d.setDate(monday.getDate() + i)
+    dates.push(d)
+  }
+  return dates
+}
+
+const JOURS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
+const HEURES = Array.from({ length: 12 }, (_, i) => i + 8)
+
+function RappelBtn({ rdv }: { rdv: any }) {
+  const [sent, setSent] = useState(false)
+  if (!rdv.patient?.telephone) return null
+
+  async function handleRappel(e: React.MouseEvent) {
+    e.stopPropagation()
+    const date = new Date(rdv.date)
+    const heure = `${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`
+    const dateStr = date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+    const msg = msgRappelRDV({
+      prenom: rdv.patient.prenom,
+      date: dateStr,
+      heure,
+      praticien: rdv.praticien ? `${rdv.praticien.prenom} ${rdv.praticien.nom}` : '',
+      typeSeance: rdv.typeSeance,
+    })
+    try {
+      await fetch('/api/whatsapp/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'rappel_rdv',
+          patientId: rdv.patient.id,
+          patientNom: `${rdv.patient.prenom} ${rdv.patient.nom}`,
+          telephone: rdv.patient.telephone,
+          message: msg,
+        }),
+      })
+    } catch {}
+    setSent(true)
+    setTimeout(() => setSent(false), 3000)
+    window.open(buildWhatsAppUrl(rdv.patient.telephone, msg), '_blank')
+  }
+
+  return (
+    <button onClick={handleRappel}
+      style={{
+        marginTop: 3, width: '100%',
+        background: sent ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.22)',
+        color: 'white', border: '1px solid rgba(255,255,255,0.4)',
+        borderRadius: 4, padding: '2px 4px', fontSize: 10, fontWeight: 600,
+        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3,
+      }}>
+      {sent ? '✓ Ouvert' : '📱 Rappel'}
+    </button>
+  )
+}
 
 export default function AgendaPage() {
+  const [currentDate, setCurrentDate] = useState(new Date())
   const [rdvList, setRdvList]         = useState<any[]>([])
   const [patients, setPatients]       = useState<any[]>([])
   const [praticiens, setPraticiens]   = useState<any[]>([])
@@ -24,13 +90,13 @@ export default function AgendaPage() {
   const [showModal, setShowModal]     = useState(false)
   const [loading, setLoading]         = useState(false)
   const [confirmationRdv, setConfirmationRdv] = useState<any>(null)
-  const [selectedRdv, setSelectedRdv] = useState<any>(null)
-  const [rappelSent, setRappelSent]   = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   const [form, setForm] = useState({
     patientId: '', praticienId: '', typeSeance: '',
     date: '', heure: '09:00', duree: '45', salle: 'Salle 1', notes: ''
   })
+
+  const weekDates = getWeekDates(currentDate)
 
   // Build a colour map from loaded types
   const couleurMap: Record<string, string> = {}
@@ -64,54 +130,22 @@ export default function AgendaPage() {
     }))
   }
 
-  // Clic sur un créneau FullCalendar → ouvre la création pré-remplie.
-  // `dateStr` = ISO local au fuseau du calendrier (ex. "2026-05-25T09:00:00+01:00").
-  function openModalFromSlot(dateStr: string) {
-    const datePart = dateStr.slice(0, 10)
-    const heure = dateStr.length >= 16 && dateStr[10] === 'T' ? dateStr.slice(11, 16) : '09:00'
-    setForm(f => ({ ...f, date: datePart, heure }))
-    setShowModal(true)
-  }
-
-  function openBlankModal() {
-    setForm(f => ({ ...f, date: '', heure: '09:00' }))
-    setShowModal(true)
-  }
-
-  // Clic sur un RDV existant → panneau d'actions (rappel WhatsApp).
-  function openEventActions(rdv: any) {
-    setRappelSent(false)
-    setSelectedRdv(rdv)
-  }
-
-  async function handleRappel() {
-    const rdv = selectedRdv
-    if (!rdv?.patient?.telephone) return
-    const date = new Date(rdv.date)
-    const heure = `${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`
-    const dateStr = date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
-    const msg = msgRappelRDV({
-      prenom: rdv.patient.prenom,
-      date: dateStr,
-      heure,
-      praticien: rdv.praticien ? `${rdv.praticien.prenom} ${rdv.praticien.nom}` : '',
-      typeSeance: rdv.typeSeance,
+  function getRdvForSlot(date: Date, hour: number) {
+    return rdvList.filter(rdv => {
+      const d = new Date(rdv.date)
+      return d.getFullYear() === date.getFullYear() &&
+        d.getMonth() === date.getMonth() &&
+        d.getDate() === date.getDate() &&
+        d.getHours() === hour
     })
-    try {
-      await fetch('/api/whatsapp/log', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'rappel_rdv',
-          patientId: rdv.patient.id,
-          patientNom: `${rdv.patient.prenom} ${rdv.patient.nom}`,
-          telephone: rdv.patient.telephone,
-          message: msg,
-        }),
-      })
-    } catch {}
-    setRappelSent(true)
-    window.open(buildWhatsAppUrl(rdv.patient.telephone, msg), '_blank')
+  }
+
+  function openModal(date: Date, hour: number) {
+    const d = new Date(date)
+    d.setHours(hour, 0, 0, 0)
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+    setForm(f => ({ ...f, date: dateStr, heure: `${String(hour).padStart(2,'0')}:00` }))
+    setShowModal(true)
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -144,6 +178,8 @@ export default function AgendaPage() {
     setLoading(false)
   }
 
+  const today = new Date()
+
   return (
     <div>
       <Topbar title="Agenda" subtitle="Calendrier hebdomadaire" />
@@ -151,8 +187,25 @@ export default function AgendaPage() {
       <div style={{ padding: 24 }}>
 
         {/* Header */}
-        <div className="page-header-row" style={{ justifyContent: 'flex-end' }}>
-          <button onClick={openBlankModal}
+        <div className="page-header-row">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button onClick={() => { const d = new Date(currentDate); d.setDate(d.getDate()-7); setCurrentDate(d) }}
+              style={{ padding: 8, border: '1px solid #E2E8F0', borderRadius: 8, background: 'white', cursor: 'pointer' }}>
+              <ChevronLeft size={16} />
+            </button>
+            <span style={{ fontWeight: 600, fontSize: 15, color: '#0F172A' }}>
+              {weekDates[0].toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })} – {weekDates[6].toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
+            </span>
+            <button onClick={() => { const d = new Date(currentDate); d.setDate(d.getDate()+7); setCurrentDate(d) }}
+              style={{ padding: 8, border: '1px solid #E2E8F0', borderRadius: 8, background: 'white', cursor: 'pointer' }}>
+              <ChevronRight size={16} />
+            </button>
+            <button onClick={() => setCurrentDate(new Date())}
+              style={{ padding: '6px 12px', border: '1px solid #E2E8F0', borderRadius: 8, background: 'white', cursor: 'pointer', fontSize: 13, color: '#64748B' }}>
+              Aujourd'hui
+            </button>
+          </div>
+          <button onClick={() => { setForm(f => ({...f, date: '', heure: '09:00'})); setShowModal(true) }}
             style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#2563EB', color: 'white', border: 'none', borderRadius: 8, padding: '10px 16px', cursor: 'pointer', fontWeight: 500, fontSize: 14 }}>
             <Plus size={16} /> Nouveau RDV
           </button>
@@ -170,60 +223,67 @@ export default function AgendaPage() {
             <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#0D9488' }} />
             <span style={{ fontSize: 12, color: '#64748B' }}>🌐 En ligne</span>
           </div>
-          <span style={{ fontSize: 12, color: '#94A3B8', paddingLeft: 8, borderLeft: '1px solid #E2E8F0' }}>
-            ✋ Glissez un RDV pour le déplacer
-          </span>
         </div>
 
-        {/* Calendrier FullCalendar (drag & drop) */}
-        <div className="agenda-week-outer" style={{ background: 'white', borderRadius: 12, border: '1px solid #E2E8F0', padding: 12 }}>
-          <AgendaCalendar
-            rdvList={rdvList}
-            couleurMap={couleurMap}
-            onSlotClick={openModalFromSlot}
-            onEventClick={openEventActions}
-            onMoved={fetchRdv}
-            moveAppointment={moveAppointment}
-            onSuccess={(m) => setToast({ message: m, type: 'success' })}
-            onError={(m) => setToast({ message: m, type: 'error' })}
-          />
+        {/* Calendrier */}
+        <div className="agenda-week-outer">
+          <div style={{ display: 'grid', gridTemplateColumns: '60px repeat(7, 1fr)', borderBottom: '1px solid #E2E8F0' }}>
+            <div style={{ padding: '12px 8px', background: '#F8FAFC' }} />
+            {weekDates.map((date, i) => {
+              const isToday = date.toDateString() === today.toDateString()
+              return (
+                <div key={i} style={{ padding: '12px 8px', textAlign: 'center', background: '#F8FAFC', borderLeft: '1px solid #E2E8F0' }}>
+                  <div style={{ fontSize: 12, color: '#64748B', fontWeight: 500 }}>{JOURS[i]}</div>
+                  <div style={{
+                    fontSize: 16, fontWeight: 700, color: isToday ? 'white' : '#0F172A',
+                    background: isToday ? '#2563EB' : 'transparent',
+                    borderRadius: '50%', width: 32, height: 32,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '4px auto 0'
+                  }}>{date.getDate()}</div>
+                </div>
+              )
+            })}
+          </div>
+          {HEURES.map(hour => (
+            <div key={hour} style={{ display: 'grid', gridTemplateColumns: '60px repeat(7, 1fr)', borderBottom: '1px solid #F1F5F9', minHeight: 64 }}>
+              <div style={{ padding: '8px 8px 0', fontSize: 12, color: '#94A3B8', textAlign: 'right', paddingRight: 8 }}>
+                {String(hour).padStart(2,'0')}:00
+              </div>
+              {weekDates.map((date, di) => {
+                const rdvs = getRdvForSlot(date, hour)
+                return (
+                  <div key={di} onClick={() => openModal(date, hour)}
+                    style={{ borderLeft: '1px solid #F1F5F9', padding: 4, cursor: 'pointer', minHeight: 64 }}
+                    onMouseEnter={e => (e.currentTarget.style.background = '#F8FAFC')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                    {rdvs.map(rdv => (
+                      <div key={rdv.id} onClick={e => e.stopPropagation()}
+                        style={{
+                          background: rdv.source === 'online' ? '#0D9488' : (couleurMap[rdv.typeSeance] || '#2563EB'),
+                          color: 'white', borderRadius: 6, padding: '4px 6px', fontSize: 11, marginBottom: 2,
+                          borderLeft: rdv.source === 'online' ? '3px solid #14B8A6' : undefined,
+                        }}>
+                        <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
+                          {rdv.source === 'online' && <span style={{ fontSize: 9 }}>🌐</span>}
+                          {rdv.patient?.prenom} {rdv.patient?.nom}
+                        </div>
+                        <div style={{ opacity: 0.85 }}>{rdv.typeSeance} · {rdv.duree}min</div>
+                        {rdv.patientNotes && <div style={{ opacity: 0.75, fontSize: 10, fontStyle: 'italic', marginTop: 1 }}>{rdv.patientNotes.slice(0, 30)}{rdv.patientNotes.length > 30 ? '…' : ''}</div>}
+                        <RappelBtn rdv={rdv} />
+                      </div>
+                    ))}
+                  </div>
+                )
+              })}
+            </div>
+          ))}
         </div>
       </div>
 
       {/* FAB: mobile only */}
-      <button className="fab-btn" onClick={openBlankModal} aria-label="Nouveau RDV">
+      <button className="fab-btn" onClick={() => { setForm(f => ({...f, date: '', heure: '09:00'})); setShowModal(true) }} aria-label="Nouveau RDV">
         +
       </button>
-
-      {/* ── Panneau d'actions RDV (clic sur un event) ── */}
-      {selectedRdv && (
-        <div className="modal-overlay" style={{ zIndex: 150 }} onClick={() => setSelectedRdv(null)}>
-          <div className="modal-sheet" style={{ padding: 28, width: 420 }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-              <div>
-                <h2 style={{ fontSize: 18, fontWeight: 700, color: '#0F172A', margin: '0 0 4px' }}>
-                  {selectedRdv.patient?.prenom} {selectedRdv.patient?.nom}
-                </h2>
-                <p style={{ fontSize: 13, color: '#64748B', margin: 0 }}>
-                  {new Date(selectedRdv.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })} · {formatTime(selectedRdv.date)} · {selectedRdv.typeSeance} · {selectedRdv.duree}min
-                </p>
-              </div>
-              <button onClick={() => setSelectedRdv(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B' }}><X size={20} /></button>
-            </div>
-
-            {selectedRdv.patient?.telephone ? (
-              <button onClick={handleRappel}
-                style={{ width: '100%', padding: '11px', border: 'none', borderRadius: 10, background: rappelSent ? '#16A34A' : '#25D366', color: 'white', cursor: 'pointer', fontWeight: 600, fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                {rappelSent ? '✓ WhatsApp ouvert' : '📱 Envoyer rappel WhatsApp'}
-              </button>
-            ) : (
-              <div style={{ background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 10, padding: 12 }}>
-                <p style={{ fontSize: 13, color: '#92400E', margin: 0 }}>⚠️ Aucun numéro de téléphone enregistré pour ce patient.</p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* ── Modal Nouveau RDV ── */}
       {showModal && (
