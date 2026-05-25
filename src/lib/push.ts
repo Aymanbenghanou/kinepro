@@ -1,12 +1,13 @@
 import webpush from 'web-push'
 import { prisma } from '@/lib/prisma'
 
-// Initialise VAPID once
-webpush.setVapidDetails(
-  process.env.VAPID_EMAIL!,
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!
-)
+// Initialise VAPID seulement si les clés sont présentes. Sinon
+// setVapidDetails lève « No subject set in vapidDetails.subject » au
+// chargement du module et fait planter `next build`.
+const { VAPID_EMAIL, NEXT_PUBLIC_VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY } = process.env
+if (VAPID_EMAIL && NEXT_PUBLIC_VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
+  webpush.setVapidDetails(VAPID_EMAIL, NEXT_PUBLIC_VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY)
+}
 
 export interface PushPayload {
   title:              string
