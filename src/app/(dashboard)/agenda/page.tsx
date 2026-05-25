@@ -66,12 +66,9 @@ function RdvBlock({ rdv, color, draggable, flash, onTap }: {
       {...attributes}
       onClick={(e) => { e.stopPropagation(); if (!isDragging) onTap() }}
       style={{
-        // Pendant le drag : placeholder en pointillés sur le créneau d'origine.
-        background: isDragging ? 'transparent' : (rdv.source === 'online' ? '#0D9488' : color),
-        color: isDragging ? '#94A3B8' : 'white',
-        borderRadius: 6, padding: '4px 6px', fontSize: 11, marginBottom: 2,
-        borderLeft: !isDragging && rdv.source === 'online' ? '3px solid #14B8A6' : undefined,
-        border: isDragging ? '2px dashed #CBD5E1' : undefined,
+        background: rdv.source === 'online' ? '#0D9488' : color,
+        color: 'white', borderRadius: 6, padding: '4px 6px', fontSize: 11, marginBottom: 2,
+        borderLeft: rdv.source === 'online' ? '3px solid #14B8A6' : undefined,
         opacity: isDragging ? 0.6 : 1,
         cursor: draggable ? 'grab' : 'pointer',
         touchAction: 'none',
@@ -96,20 +93,8 @@ function DropBand({ id, invalid, children }: {
   const dragging = !!active
   let bg = 'transparent'
   if (dragging && isOver) bg = invalid ? 'rgba(239,68,68,0.18)' : 'rgba(37,99,235,0.20)'
-  // Heure du créneau (label affiché clairement au survol pendant le drag)
-  const [, h, m] = id.split('__')
-  const timeLabel = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
   return (
-    <div ref={setNodeRef} style={{ height: ROW_H / BANDS.length, background: bg, transition: 'background 0.08s', position: 'relative' }}>
-      {dragging && isOver && (
-        <span style={{
-          position: 'absolute', top: '50%', right: 4, transform: 'translateY(-50%)',
-          fontSize: 10, fontWeight: 700, padding: '1px 5px', borderRadius: 4, pointerEvents: 'none',
-          background: invalid ? '#EF4444' : '#2563EB', color: 'white', zIndex: 5,
-        }}>
-          {invalid ? '✕' : timeLabel}
-        </span>
-      )}
+    <div ref={setNodeRef} style={{ height: ROW_H / BANDS.length, background: bg, transition: 'background 0.08s' }}>
       {children}
     </div>
   )
