@@ -464,16 +464,13 @@ export default function AgendaPage() {
                         {cellRdvs.map(rdv => {
                           const col = placement[rdv.id] ?? 0
                           const w = 100 / totalCols
-                          // Vue 1h : carte compacte centrée dans la case (marge tout autour).
+                          // Vue 1h : la carte remplit toute la case horaire, bord à bord.
                           const posStyle: React.CSSProperties = {
                             position: 'absolute',
-                            top: 8,
-                            height: ROW_H - 16,
-                            left: `calc(${col * w}% + 6px)`,
-                            width: `calc(${w}% - 12px)`,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            justifyContent: 'center',
+                            top: 1,
+                            height: ROW_H - 2,
+                            left: `calc(${col * w}% + 1px)`,
+                            width: `calc(${w}% - 2px)`,
                             pointerEvents: 'auto',
                             zIndex: 1,
                           }
