@@ -60,7 +60,7 @@ export default function StatsSection({ cabinets, rdv }: { cabinets: number; rdv:
 
   const cards = [
     { node: <Counter target={cabinets} visible={rowVisible} suffix="+" />,                       label: 'Cabinets nous font confiance' },
-    { node: <Counter target={rdvTarget} visible={rowVisible} format={thousands} delay={120} />,   label: 'Rendez-vous gérés' },
+    { node: <Counter target={rdvTarget} visible={rowVisible} format={thousands} prefix="+" delay={120} />,   label: 'Rendez-vous gérés' },
     { node: <Counter target={80} visible={rowVisible} prefix="jusqu'à " suffix="%" delay={240} />, label: 'de no-shows en moins' },
   ]
 
@@ -76,7 +76,7 @@ export default function StatsSection({ cabinets, rdv }: { cabinets: number; rdv:
           transition: 'all 0.6s ease',
         }}>
           <h2 style={{ fontSize: 'clamp(28px, 4vw, 42px)', fontWeight: 900, color: '#0F172A', margin: '0 auto 16px', letterSpacing: '-0.5px', lineHeight: 1.2, maxWidth: 720 }}>
-            Rejoignez les <span style={{ color: '#2563EB' }}>137 kinés</span> qui ont modernisé leur cabinet
+            Rejoignez les <span style={{ color: '#2563EB' }}>+137 kinés</span> qui ont modernisé leur cabinet
           </h2>
           <p style={{ fontSize: 16, color: '#64748B', maxWidth: 560, margin: '0 auto', lineHeight: 1.6 }}>
             Moins d&apos;administratif, plus de temps pour vos patients — et des performances qui suivent.
