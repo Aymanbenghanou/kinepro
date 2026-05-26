@@ -6,7 +6,7 @@ import FeaturesSection   from '@/components/landing/FeaturesSection'
 import GoogleMapsFeature from '@/components/landing/GoogleMapsFeature'
 import HowItWorks        from '@/components/landing/HowItWorks'
 import StatsSection      from '@/components/landing/StatsSection'
-import PricingSection    from '@/components/landing/PricingSection'
+import Pricing           from '@/components/landing/Pricing'
 import FaqSection        from '@/components/landing/FaqSection'
 import CtaSection        from '@/components/landing/CtaSection'
 import LandingFooter     from '@/components/landing/LandingFooter'
@@ -45,7 +45,7 @@ export default async function LandingPage() {
         <GoogleMapsFeature />
         <HowItWorks />
         <StatsSection cabinets={cabinets} rdv={rdv} />
-        <PricingSection />
+        <Pricing />
         <FaqSection />
         <CtaSection />
       </main>

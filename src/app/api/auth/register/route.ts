@@ -28,10 +28,15 @@ export async function POST(request: NextRequest) {
     const result = await prisma.$transaction(async (tx) => {
       const newCabinet = await tx.cabinet.create({
         data: {
-          nom:       cab.nom.trim(),
-          ville:     cab.ville?.trim() || null,
-          telephone: cab.telephone?.trim() || null,
-          email:     cab.email?.trim() || null,
+          nom:          cab.nom.trim(),
+          ville:        cab.ville?.trim() || null,
+          telephone:    cab.telephone?.trim() || null,
+          email:        cab.email?.trim() || null,
+          // Billing : démarrage en essai 7 jours
+          plan:         'trial',
+          planStatus:   'trialing',
+          trialEndsAt,
+          billingCycle: null,
         },
       })
 

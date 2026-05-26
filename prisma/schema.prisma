@@ -108,6 +108,11 @@ model Cabinet {
   lunchEndTime     String        @default("14:00")
   bookingMessage   String?
   workingDays      String        @default("1,2,3,4,5,6")
+  // ── Billing / abonnement ──────────────────────────────────────
+  plan             String        @default("trial")     // "trial" | "starter" | "pro"
+  billingCycle     String?                              // "monthly" | "annual" | null pendant l'essai
+  trialEndsAt      DateTime?                            // fixé à la création : now + 7 jours
+  planStatus       String        @default("trialing")  // "trialing" | "active" | "expired"
   // ─────────────────────────────────────────────────────────────
   owner            User?         @relation("CabinetOwner", fields: [ownerId], references: [id])
   users            User[]        @relation("CabinetUsers")
