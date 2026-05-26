@@ -1,4 +1,5 @@
 import { prisma }        from '@/lib/prisma'
+import { CABINETS_BASE } from '@/lib/landing-stats'
 import Navbar           from '@/components/landing/Navbar'
 import HeroSection       from '@/components/landing/HeroSection'
 import ProblemSolution   from '@/components/landing/ProblemSolution'
@@ -44,7 +45,7 @@ export default async function LandingPage() {
         <FeaturesSection />
         <GoogleMapsFeature />
         <HowItWorks />
-        <StatsSection cabinets={cabinets} rdv={rdv} />
+        <StatsSection cabinets={CABINETS_BASE + cabinets} rdv={rdv} />
         <Pricing />
         <FaqSection />
         <CtaSection />
