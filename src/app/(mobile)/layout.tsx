@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { auth } from '@/auth'
+import { requireCabinetPlan } from '@/lib/plan-server'
 import MobileBottomNav from '@/components/mobile/MobileBottomNav'
 
 /**
@@ -12,6 +13,10 @@ import MobileBottomNav from '@/components/mobile/MobileBottomNav'
 export default async function MobileLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()
   if (!session?.user) redirect('/login')
+
+  // Même mur que le desktop : essai expiré → /choisir-plan (exemptés / essai / actif passent).
+  const { state } = await requireCabinetPlan()
+  if (state === 'trial_expired') redirect('/choisir-plan')
 
   return (
     <div style={{

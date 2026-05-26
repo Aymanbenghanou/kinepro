@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
+import { assertNotWalled } from '@/lib/plan-server'
 import { computeStatut, MODE_PAIEMENT } from '@/lib/facture-statut'
 
 type Context = { params: Promise<{ id: string }> }
@@ -22,6 +23,7 @@ export async function GET(_req: NextRequest, { params }: Context) {
 }
 
 export async function POST(req: NextRequest, { params }: Context) {
+  const __wall = await assertNotWalled(); if (__wall) return __wall;
   try {
     const session = await auth()
     if (!session?.user?.cabinetId) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })

@@ -4,6 +4,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
+import { assertPro } from '@/lib/plan-server'
 
 interface Input {
   patientPrenom: string
@@ -93,6 +94,9 @@ function buildArabicPrompt(i: Input): string {
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session?.user?.cabinetId) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+
+  // Verrou Pro : programmes d'exercices IA réservés aux cabinets Pro (et exemptés / en essai).
+  const proGate = await assertPro(); if (proGate) return proGate
 
   if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json(

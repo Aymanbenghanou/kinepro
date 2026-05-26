@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
+import { assertNotWalled } from '@/lib/plan-server'
 
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : 'Erreur inconnue'
@@ -34,6 +35,7 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const __wall = await assertNotWalled(); if (__wall) return __wall;
   try {
     const session = await auth()
     if (!session?.user?.cabinetId) {
@@ -70,6 +72,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const __wall = await assertNotWalled(); if (__wall) return __wall;
   try {
     const session = await auth()
     if (!session?.user?.cabinetId) {

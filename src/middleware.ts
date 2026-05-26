@@ -69,7 +69,11 @@ export default auth(function middleware(req) {
     return NextResponse.redirect(new URL(pathname.replace(/^\/m/, ''), req.url))
   }
 
-  return NextResponse.next()
+  // Expose le pathname au layout serveur (le mur d'essai y lit l'URL pour exempter
+  // /compte et /abonnement). Le middleware NE fait PAS le check plan (pas de Prisma en edge).
+  const requestHeaders = new Headers(req.headers)
+  requestHeaders.set('x-pathname', pathname)
+  return NextResponse.next({ request: { headers: requestHeaders } })
 })
 
 export const config = {

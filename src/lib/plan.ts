@@ -38,6 +38,21 @@ export function getPlanState(c: CabinetPlanInfo): PlanState {
   return 'active'
 }
 
+/**
+ * Accès aux fonctionnalités Pro (programmes d'exercices IA, upload de documents).
+ * TRUE si :
+ *  - cabinet exempté (créé avant le cutoff → les 137 cabinets existants gardent TOUT)
+ *  - OU en période d'essai ("trialing") → accès complet pendant l'essai
+ *  - OU plan "pro" actif
+ * FALSE sinon (starter actif, ou essai expiré).
+ */
+export function hasProAccess(c: CabinetPlanInfo): boolean {
+  if (new Date(c.createdAt) < EXISTING_CABINETS_CUTOFF) return true
+  const state = getPlanState(c)
+  if (state === 'trialing') return true
+  return c.plan === 'pro' && c.planStatus === 'active'
+}
+
 /** Jours entiers restants avant la fin de l'essai (min 0). */
 export function getTrialDaysLeft(trialEndsAt: Date | string | null): number {
   if (!trialEndsAt) return 0

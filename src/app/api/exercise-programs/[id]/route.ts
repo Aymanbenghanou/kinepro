@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
+import { assertNotWalled } from '@/lib/plan-server'
 
 type Context = { params: Promise<{ id: string }> }
 
@@ -23,6 +24,7 @@ export async function GET(_req: NextRequest, { params }: Context) {
 }
 
 export async function PATCH(req: NextRequest, { params }: Context) {
+  const __wall = await assertNotWalled(); if (__wall) return __wall;
   const session = await auth()
   if (!session?.user?.cabinetId) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
   const { id } = await params
@@ -44,6 +46,7 @@ export async function PATCH(req: NextRequest, { params }: Context) {
 }
 
 export async function DELETE(_req: NextRequest, { params }: Context) {
+  const __wall = await assertNotWalled(); if (__wall) return __wall;
   const session = await auth()
   if (!session?.user?.cabinetId) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
   const { id } = await params

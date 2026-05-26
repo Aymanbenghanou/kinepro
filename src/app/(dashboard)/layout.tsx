@@ -7,7 +7,12 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { getPlanState, getTrialDaysLeft } from '@/lib/plan'
 import { redirect } from 'next/navigation'
+import { headers } from 'next/headers'
 import Link from 'next/link'
+
+// Routes accessibles même « muré » (essai expiré) : facturation d'abonnement,
+// compte, et la page de choix de plan (hors (dashboard)).
+const WALL_EXEMPT_PREFIXES = ['/abonnement', '/compte']
 
 // Bandeau fin de compte à rebours d'essai (cabinets "trialing" uniquement).
 function TrialBanner({ daysLeft }: { daysLeft: number }) {
@@ -45,9 +50,12 @@ export default async function DashboardLayout({
     })
     if (cabinet) {
       const state = getPlanState(cabinet)
-      // Mur : essai expiré → on redirige vers /choisir-plan (page hors (dashboard),
-      // donc accessible même « muré » ; elle permet de choisir un plan et de se déconnecter).
-      if (state === 'trial_expired') redirect('/choisir-plan')
+      // Mur : essai expiré → /choisir-plan, SAUF sur /compte et /abonnement (le
+      // pathname vient du header posé par le middleware) pour qu'un utilisateur
+      // muré puisse gérer son compte / son abonnement et se déconnecter.
+      const pathname = (await headers()).get('x-pathname') ?? ''
+      const exempt = WALL_EXEMPT_PREFIXES.some(p => pathname.startsWith(p))
+      if (state === 'trial_expired' && !exempt) redirect('/choisir-plan')
       if (state === 'trialing') trialDaysLeft = getTrialDaysLeft(cabinet.trialEndsAt)
     }
   }
