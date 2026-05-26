@@ -33,18 +33,13 @@ export async function POST(request: NextRequest) {
       select: { id: true },
     })
 
-    if (existing) {
-      await prisma.demandeAbonnement.update({
-        where: { id: existing.id },
-        data: { plan, billingCycle, montant },
-      })
-    } else {
-      await prisma.demandeAbonnement.create({
-        data: { cabinetId, plan, billingCycle, montant, statut: 'en_attente' },
-      })
-    }
+    const select = { plan: true, billingCycle: true, montant: true } as const
+    const saved = existing
+      ? await prisma.demandeAbonnement.update({ where: { id: existing.id }, data: { plan, billingCycle, montant }, select })
+      : await prisma.demandeAbonnement.create({ data: { cabinetId, plan, billingCycle, montant, statut: 'en_attente' }, select })
 
-    return NextResponse.json({ ok: true })
+    // Renvoie la demande à jour pour permettre une mise à jour d'UI en place (sans reload).
+    return NextResponse.json({ ok: true, demande: saved })
   } catch (error) {
     console.error('[POST /api/abonnement/demande]', error)
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })

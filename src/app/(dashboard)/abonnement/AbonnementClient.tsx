@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react'
 import { Check, Crown, Copy, Star } from 'lucide-react'
 import { getBankMeta, formatRib } from '@/lib/banks'
 import { BankLogo } from '@/components/BankLogo'
-import { PRIX, type Plan } from '@/lib/abonnement'
+import { PRIX, type Plan, type BillingCycle } from '@/lib/abonnement'
 
 const SUPER_ADMIN_WA = process.env.NEXT_PUBLIC_SUPER_ADMIN_WA || '212600000000'
 
@@ -28,16 +28,21 @@ function fmt(n: number) {
 const PLAN_LABEL: Record<string, string> = { starter: 'Starter', pro: 'Pro' }
 const CYCLE_LABEL: Record<string, string> = { monthly: 'mensuel', annual: 'annuel' }
 
-// ── Carte plan (informative) — affiche les deux prix via les constantes partagées ──
-function PlanCard({ plan, highlight }: { plan: Plan; highlight?: boolean }) {
+// ── Carte plan cliquable — choisit/maj la demande (prix via constantes partagées) ──
+function PlanCard({ plan, highlight, cycle, current, pending, onSelect }: {
+  plan: Plan; highlight?: boolean; cycle: BillingCycle
+  current: boolean; pending: boolean; onSelect: () => void
+}) {
   const features = plan === 'starter'
     ? ['Dossiers patients', 'Agenda & séances', 'Facturation', 'Rappels WhatsApp', 'Réservation en ligne', 'Rapports']
     : ['Tout du plan Starter', "Programmes d'exercices IA", 'Upload de documents', 'Support prioritaire']
+  const prix = PRIX[plan][cycle]
   return (
     <div style={{
-      border: `2px solid ${highlight ? '#2563EB' : '#E2E8F0'}`,
+      border: `2px solid ${current ? '#16A34A' : highlight ? '#2563EB' : '#E2E8F0'}`,
       borderRadius: 16, padding: 28, background: highlight ? '#EFF6FF' : 'white',
       flex: 1, position: 'relative', minWidth: 240,
+      boxShadow: current ? '0 0 0 3px rgba(22,163,74,0.18)' : 'none',
     }}>
       {highlight && (
         <div style={{
@@ -50,17 +55,17 @@ function PlanCard({ plan, highlight }: { plan: Plan; highlight?: boolean }) {
       )}
       <div style={{ marginBottom: 16 }}>
         <h3 style={{ fontSize: 18, fontWeight: 700, color: '#0F172A', margin: '0 0 6px' }}>{PLAN_LABEL[plan]}</h3>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 'clamp(24px, 7vw, 32px)', fontWeight: 800, color: '#2563EB', whiteSpace: 'nowrap' }}>
-            {fmt(PRIX[plan].monthly)} DH
+            {fmt(prix)} DH
           </span>
-          <span style={{ fontSize: 13, color: '#64748B', whiteSpace: 'nowrap' }}>/ mois</span>
-        </div>
-        <div style={{ fontSize: 13, color: '#64748B', marginTop: 2 }}>
-          ou <strong style={{ color: '#0F172A' }}>{fmt(PRIX[plan].annual)} DH</strong> / an <span style={{ color: '#16A34A', fontWeight: 700 }}>(2 mois offerts)</span>
+          <span style={{ fontSize: 13, color: '#64748B', whiteSpace: 'nowrap' }}>/ {cycle === 'monthly' ? 'mois' : 'an'}</span>
+          {cycle === 'annual' && (
+            <span style={{ background: '#DCFCE7', color: '#16A34A', borderRadius: 999, padding: '2px 8px', fontSize: 11, fontWeight: 700 }}>2 mois offerts</span>
+          )}
         </div>
       </div>
-      <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 20px', display: 'flex', flexDirection: 'column', gap: 8 }}>
         {features.map((f, i) => (
           <li key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', fontSize: 13, color: '#374151' }}>
             <Check size={14} color="#16A34A" style={{ marginTop: 2, flexShrink: 0 }} />
@@ -68,6 +73,16 @@ function PlanCard({ plan, highlight }: { plan: Plan; highlight?: boolean }) {
           </li>
         ))}
       </ul>
+      <button onClick={onSelect} disabled={pending || current} style={{
+        width: '100%', padding: '10px', borderRadius: 10, fontWeight: 700, fontSize: 14,
+        cursor: pending || current ? 'default' : 'pointer',
+        background: current ? '#DCFCE7' : '#2563EB',
+        color: current ? '#166534' : 'white',
+        border: current ? '2px solid #16A34A' : '2px solid #2563EB',
+        opacity: pending ? 0.6 : 1,
+      }}>
+        {pending ? 'Mise à jour…' : current ? '✓ Plan actuel' : 'Choisir ce plan'}
+      </button>
     </div>
   )
 }
@@ -148,8 +163,13 @@ function BankCard({ acc, amount }: { acc: BankInfo; amount: string }) {
   )
 }
 
-export default function AbonnementClient({ demande }: { demande: DemandeInfo }) {
+export default function AbonnementClient({ demande: initialDemande }: { demande: DemandeInfo }) {
   const { data: session } = useSession()
+  // Demande en état local : mise à jour en place après un choix (sans reload).
+  const [demande, setDemande] = useState<DemandeInfo>(initialDemande)
+  const [cycle, setCycle] = useState<BillingCycle>(initialDemande?.billingCycle === 'annual' ? 'annual' : 'monthly')
+  const [pendingPlan, setPendingPlan] = useState<Plan | null>(null)
+  const [planError, setPlanError] = useState(false)
   const [sent,     setSent]     = useState(false)
   const [sending,  setSending]  = useState(false)
   const [accounts, setAccounts] = useState<BankInfo[]>([])
@@ -157,6 +177,25 @@ export default function AbonnementClient({ demande }: { demande: DemandeInfo }) 
   const [loadingBanks, setLoadingBanks] = useState(true)
 
   const user = session?.user
+
+  // Choix / changement de plan → POST (montant calculé serveur), maj UI en place.
+  async function choisir(plan: Plan) {
+    setPendingPlan(plan); setPlanError(false)
+    try {
+      const res = await fetch('/api/abonnement/demande', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan, billingCycle: cycle }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data?.demande) throw new Error()
+      setDemande(data.demande) // { plan, billingCycle, montant } renvoyé par la route
+    } catch {
+      setPlanError(true)
+    } finally {
+      setPendingPlan(null)
+    }
+  }
 
   useEffect(() => {
     fetch('/api/payment-info')
@@ -220,10 +259,35 @@ export default function AbonnementClient({ demande }: { demande: DemandeInfo }) 
           </div>
         )}
 
-        {/* Plans Starter / Pro (informatif) */}
-        <div style={{ display: 'flex', gap: 20, marginBottom: 36, flexWrap: 'wrap' }}>
-          <PlanCard plan="starter" />
-          <PlanCard plan="pro" highlight />
+        {/* Choix / changement de plan — interactif (maj la demande en place) */}
+        <div style={{ marginBottom: 36 }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
+            <div style={{ display: 'inline-flex', background: '#EFF6FF', borderRadius: 999, padding: 4 }}>
+              {(['monthly', 'annual'] as BillingCycle[]).map(c => (
+                <button key={c} onClick={() => setCycle(c)} style={{
+                  border: 'none', cursor: 'pointer', padding: '8px 20px', borderRadius: 999, fontSize: 14, fontWeight: 700,
+                  background: cycle === c ? '#2563EB' : 'transparent', color: cycle === c ? 'white' : '#64748B', transition: 'all 0.2s ease',
+                }}>
+                  {c === 'monthly' ? 'Mensuel' : 'Annuel'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+            <PlanCard plan="starter" cycle={cycle}
+              current={demande?.plan === 'starter' && demande?.billingCycle === cycle}
+              pending={pendingPlan === 'starter'} onSelect={() => choisir('starter')} />
+            <PlanCard plan="pro" highlight cycle={cycle}
+              current={demande?.plan === 'pro' && demande?.billingCycle === cycle}
+              pending={pendingPlan === 'pro'} onSelect={() => choisir('pro')} />
+          </div>
+
+          {planError && (
+            <p style={{ textAlign: 'center', color: '#DC2626', fontSize: 13, fontWeight: 600, marginTop: 12 }}>
+              Une erreur est survenue. Réessayez.
+            </p>
+          )}
         </div>
 
         {/* Payment section — PRÉSERVÉE (banques / RIB) */}
