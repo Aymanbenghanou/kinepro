@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 
 type Cycle = 'monthly' | 'annual'
@@ -21,8 +22,27 @@ function fmt(n: number) {
 }
 
 export default function ChoisirPlanPage() {
+  const router = useRouter()
   const [cycle, setCycle] = useState<Cycle>('monthly')
-  const [note, setNote] = useState(false)
+  const [submitting, setSubmitting] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  // Choix d'un plan → crée une DemandeAbonnement "en_attente" puis redirige vers /abonnement.
+  async function choisir(planName: string) {
+    setSubmitting(planName); setError(null)
+    try {
+      const res = await fetch('/api/abonnement/demande', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: planName.toLowerCase(), billingCycle: cycle }),
+      })
+      if (!res.ok) throw new Error()
+      router.push('/abonnement')   // on garde submitting actif pendant la navigation
+    } catch {
+      setError('Une erreur est survenue. Veuillez réessayer.')
+      setSubmitting(null)
+    }
+  }
 
   return (
     <div style={{ fontFamily: "'Inter', sans-serif", minHeight: '100vh', background: '#F8FAFC', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '48px 20px' }}>
@@ -61,9 +81,9 @@ export default function ChoisirPlanPage() {
           </span>
         </div>
 
-        {note && (
-          <div style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', color: '#1E3A5F', borderRadius: 12, padding: '12px 16px', fontSize: 14, textAlign: 'center', marginBottom: 24, fontWeight: 600 }}>
-            💳 Paiement bientôt disponible — nous vous contacterons pour finaliser votre abonnement.
+        {error && (
+          <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', color: '#B91C1C', borderRadius: 12, padding: '12px 16px', fontSize: 14, textAlign: 'center', marginBottom: 24, fontWeight: 600 }}>
+            {error}
           </div>
         )}
 
@@ -107,16 +127,15 @@ export default function ChoisirPlanPage() {
                     </li>
                   ))}
                 </ul>
-                <button onClick={() => setNote(true)} style={{
-                  display: 'block', width: '100%', textAlign: 'center', cursor: 'pointer',
+                <button onClick={() => choisir(plan.name)} disabled={submitting !== null} style={{
+                  display: 'block', width: '100%', textAlign: 'center',
+                  cursor: submitting !== null ? 'not-allowed' : 'pointer',
                   padding: '13px 20px', borderRadius: 10, fontSize: 14, fontWeight: 700,
                   background: reco ? '#2563EB' : 'white', color: reco ? 'white' : '#2563EB',
                   border: reco ? '2px solid #2563EB' : '2px solid #DBEAFE', transition: 'opacity 0.15s',
-                }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.opacity = '0.88' }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = '1' }}
-                >
-                  Choisir {plan.name}
+                  opacity: submitting !== null && submitting !== plan.name ? 0.6 : 1,
+                }}>
+                  {submitting === plan.name ? 'Envoi…' : `Choisir ${plan.name}`}
                 </button>
               </div>
             )
