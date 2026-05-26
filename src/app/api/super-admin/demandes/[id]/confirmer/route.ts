@@ -15,10 +15,12 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
     const demande = await prisma.demandeAbonnement.findUnique({ where: { id } })
     if (!demande) return NextResponse.json({ error: 'Demande introuvable' }, { status: 404 })
     if (demande.statut !== 'en_attente') {
-      return NextResponse.json({ error: 'Demande déjà traitée' }, { status: 400 })
+      // Déjà traitée → évite une double-confirmation.
+      return NextResponse.json({ error: 'Demande déjà traitée' }, { status: 409 })
     }
 
     // Une seule transaction : marque la demande confirmée + active le plan du cabinet.
+    // On ne touche PAS trialEndsAt : planStatus "active" suffit (getPlanState → "active").
     await prisma.$transaction([
       prisma.demandeAbonnement.update({
         where: { id },
@@ -30,7 +32,6 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ id
           plan: demande.plan,
           billingCycle: demande.billingCycle,
           planStatus: 'active',
-          trialEndsAt: null, // l'essai n'est plus pertinent une fois payé
         },
       }),
     ])
