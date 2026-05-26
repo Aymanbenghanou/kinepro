@@ -121,7 +121,21 @@ model Cabinet {
   seanceTypes      SeanceType[]
   subscription     Subscription?
   site             CabinetSite?
+  demandesAbonnement DemandeAbonnement[]
   createdAt        DateTime      @default(now())
+}
+
+// Demande d'abonnement par virement (confirmation manuelle par l'admin).
+model DemandeAbonnement {
+  id           String    @id @default(cuid())
+  cabinetId    String
+  cabinet      Cabinet   @relation(fields: [cabinetId], references: [id])
+  plan         String                            // "starter" | "pro"
+  billingCycle String                            // "monthly" | "annual"
+  montant      Float                             // calculé : 299 / 2990 / 499 / 4990
+  statut       String    @default("en_attente")  // "en_attente" | "confirmee" | "rejetee"
+  createdAt    DateTime  @default(now())
+  confirmedAt  DateTime?                          // rempli à la confirmation
 }
 
 // ─── Domain models ───────────────────────────────────────────────────────────
