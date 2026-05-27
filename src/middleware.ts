@@ -24,7 +24,7 @@ export default auth(function middleware(req) {
   if (pathname === '/') return NextResponse.next()
 
   // Fully open routes — no auth, no redirect even when logged in
-  const openPaths = ['/cabinet', '/scan', '/booking', '/checkin', '/patient-public', '/feedback']
+  const openPaths = ['/cabinet', '/scan', '/booking', '/checkin', '/patient-public', '/feedback', '/legal', '/privacy', '/terms']
   if (openPaths.some(p => pathname.startsWith(p))) {
     return NextResponse.next()
   }

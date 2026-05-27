@@ -66,18 +66,20 @@ export default function LandingFooter() {
             <div key={heading}>
               <h4 style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: 1.5, margin: '0 0 16px' }}>{heading}</h4>
               <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {items.map(item => (
-                  <li key={item.label}>
-                    <a
-                      href={item.href}
-                      style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)', textDecoration: 'none', transition: 'color 0.15s' }}
-                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'white' }}
-                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.6)' }}
-                    >
-                      {item.label}
-                    </a>
-                  </li>
-                ))}
+                {items.map(item => {
+                  const linkStyle = { fontSize: 14, color: 'rgba(255,255,255,0.6)', textDecoration: 'none', transition: 'color 0.15s' }
+                  const onEnter = (e: React.MouseEvent) => { (e.currentTarget as HTMLElement).style.color = 'white' }
+                  const onLeave = (e: React.MouseEvent) => { (e.currentTarget as HTMLElement).style.color = 'rgba(255,255,255,0.6)' }
+                  return (
+                    <li key={item.label}>
+                      {item.href.startsWith('/') ? (
+                        <Link href={item.href} style={linkStyle} onMouseEnter={onEnter} onMouseLeave={onLeave}>{item.label}</Link>
+                      ) : (
+                        <a href={item.href} style={linkStyle} onMouseEnter={onEnter} onMouseLeave={onLeave}>{item.label}</a>
+                      )}
+                    </li>
+                  )
+                })}
               </ul>
             </div>
           ))}
