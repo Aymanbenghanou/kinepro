@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import { assertNotWalled } from '@/lib/plan-server'
+import { assertOwner } from '@/lib/permissions-server'
 import bcrypt from 'bcryptjs'
 
 function errMsg(e: unknown): string {
@@ -17,6 +18,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const __wall = await assertNotWalled(); if (__wall) return __wall;
+  const __own = await assertOwner(); if (__own) return __own;
   try {
     const session = await auth()
     if (!session?.user?.cabinetId) {
@@ -92,6 +94,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const __wall = await assertNotWalled(); if (__wall) return __wall;
+  const __own = await assertOwner(); if (__own) return __own;
   try {
     const session = await auth()
     if (!session?.user?.cabinetId) {

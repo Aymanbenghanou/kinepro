@@ -1,5 +1,5 @@
 {
-  "buildCommand": "prisma generate && prisma migrate deploy && next build",
+  "buildCommand": "prisma generate && prisma migrate deploy && npx tsx scripts/migrate-roles.ts && next build",
   "framework": "nextjs",
   "crons": [
     {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
+import { assertOwner } from '@/lib/permissions-server'
 
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : 'Erreur inconnue'
@@ -24,6 +25,7 @@ export async function GET() {
 
 // PATCH — partial update of cabinet settings
 export async function PATCH(request: NextRequest) {
+  const __own = await assertOwner(); if (__own) return __own;
   try {
     const session = await auth()
     if (!session?.user?.cabinetId) {

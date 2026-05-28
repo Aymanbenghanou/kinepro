@@ -68,6 +68,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           email:              user.email,
           name:               `${user.prenom} ${user.nom}`,
           role:               user.role,
+          permissions:        (user as any).permissions ?? {},
           cabinetId:          user.cabinetId ?? undefined,
           praticienId:        user.praticienId ?? undefined,
           nom:                user.nom,

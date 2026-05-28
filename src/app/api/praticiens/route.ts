@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import { assertNotWalled } from '@/lib/plan-server'
+import { assertOwner } from '@/lib/permissions-server'
 
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : 'Erreur inconnue'
@@ -40,6 +41,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const __wall = await assertNotWalled(); if (__wall) return __wall;
+  const __own = await assertOwner(); if (__own) return __own;
   try {
     const session = await auth()
     if (!session?.user?.cabinetId) {

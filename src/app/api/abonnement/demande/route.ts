@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
+import { assertOwner } from '@/lib/permissions-server'
 import { prisma } from '@/lib/prisma'
 import { getMontant, type Plan, type BillingCycle } from '@/lib/abonnement'
 
@@ -9,6 +10,7 @@ const CYCLES: BillingCycle[] = ['monthly', 'annual']
 // POST /api/abonnement/demande — crée (ou met à jour) une demande "en_attente"
 // pour le cabinet. Le montant est calculé côté serveur (jamais reçu du client).
 export async function POST(request: NextRequest) {
+  const __own = await assertOwner(); if (__own) return __own;
   try {
     const session = await auth()
     if (!session?.user?.cabinetId) {

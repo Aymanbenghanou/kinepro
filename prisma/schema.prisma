@@ -12,7 +12,8 @@ model User {
   id               String              @id @default(cuid())
   email            String              @unique
   password         String
-  role             String              @default("CABINET_OWNER") // SUPER_ADMIN | CABINET_OWNER | EMPLOYEE
+  role             String              @default("CABINET_OWNER") // SUPER_ADMIN | CABINET_OWNER | PRATICIEN | SECRETAIRE
+  permissions      Json                @default("{}")             // granular permissions for PRATICIEN/SECRETAIRE
   nom              String
   prenom           String
   telephone        String?
