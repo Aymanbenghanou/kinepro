@@ -9,15 +9,20 @@ import {
 } from 'lucide-react'
 import ProfileDropdown from '@/components/ui/ProfileDropdown'
 import { useSidebar } from '@/lib/sidebar-context'
+import { useCan, useRole } from '@/lib/use-permissions'
+import type { PermissionKey } from '@/lib/permissions'
 
 // ─── Nav items ────────────────────────────────────────────────────────────────
-const navItems = [
+// `perm`  : visible seulement si la permission est accordée (OWNER/SUPER_ADMIN OK).
+// `owner` : visible seulement pour CABINET_OWNER / SUPER_ADMIN.
+type NavItem = { icon: any; label: string; href: string; perm?: PermissionKey; owner?: boolean }
+const navItems: NavItem[] = [
   { icon: LayoutDashboard, label: 'Tableau de bord', href: '/dashboard' },
-  { icon: Calendar,        label: 'Agenda',           href: '/agenda' },
-  { icon: Users,           label: 'Patients',          href: '/patients' },
-  { icon: Clock,           label: 'Séances',           href: '/seances' },
-  { icon: CreditCard,      label: 'Facturation',       href: '/facturation' },
-  { icon: UserCheck,       label: 'Personnel',         href: '/personnel' },
+  { icon: Calendar,        label: 'Agenda',           href: '/agenda',      perm: 'agenda' },
+  { icon: Users,           label: 'Patients',          href: '/patients',    perm: 'patients' },
+  { icon: Clock,           label: 'Séances',           href: '/seances',     perm: 'dossierMedical' },
+  { icon: CreditCard,      label: 'Facturation',       href: '/facturation', perm: 'factures' },
+  { icon: UserCheck,       label: 'Personnel',         href: '/personnel',   owner: true },
   { icon: BarChart3,       label: 'Rapports',          href: '/rapports' },
   { icon: QrCode,          label: 'QR Réception',      href: '/qr/cabinet' },
 ]
@@ -40,6 +45,20 @@ function WhatsAppIcon({ size = 18 }: { size?: number }) {
 export default function Sidebar() {
   const pathname = usePathname()
   const { isOpen, close } = useSidebar()
+  const can = useCan()
+  const role = useRole()
+  const isOwnerOrAdmin = role === 'CABINET_OWNER' || role === 'SUPER_ADMIN'
+  // Filtre les items selon le rôle / les permissions.
+  const visibleNavItems = navItems.filter(it => {
+    if (it.owner && !isOwnerOrAdmin) return false
+    if (it.perm && !can(it.perm)) return false
+    return true
+  })
+  const visibleParametresSubItems = parametresSubItems.filter(it => {
+    // L'item "Cabinet" est owner-only.
+    if (it.href === '/parametres/cabinet' && !isOwnerOrAdmin) return false
+    return true
+  })
   const [pendingFeedbacks, setPendingFeedbacks] = useState(0)
 
   const fetchPending = useCallback(async () => {
@@ -119,7 +138,7 @@ export default function Sidebar() {
 
         {/* Navigation */}
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-          {navItems.map((item) => {
+          {visibleNavItems.map((item) => {
             const Icon = item.icon
             const isActive =
               pathname === item.href ||
@@ -193,7 +212,7 @@ export default function Sidebar() {
             </Link>
             {isParametresActive && (
               <div style={{ marginLeft: 14, marginTop: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
-                {parametresSubItems.map(item => {
+                {visibleParametresSubItems.map(item => {
                   const isSubActive = pathname === item.href
                   return (
                     <Link

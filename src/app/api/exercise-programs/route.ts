@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
+import { requirePermission } from '@/lib/permissions-server'
 import { assertPro } from '@/lib/plan-server'
 
 export async function POST(req: NextRequest) {
@@ -11,6 +12,8 @@ export async function POST(req: NextRequest) {
   if (!session?.user?.cabinetId) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
 
   // Verrou Pro : enregistrer un programme d'exercices = fonctionnalité Pro.
+  const __perm = await requirePermission('programmesEtDocs'); if (__perm instanceof NextResponse) return __perm;
+
   const proGate = await assertPro(); if (proGate) return proGate
 
   try {

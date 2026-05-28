@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
+import { requirePermission } from '@/lib/permissions-server'
 import { assertNotWalled } from '@/lib/plan-server'
 import { computeStatut, MODE_PAIEMENT } from '@/lib/facture-statut'
 
@@ -24,6 +25,7 @@ export async function GET(_req: NextRequest, { params }: Context) {
 
 export async function POST(req: NextRequest, { params }: Context) {
   const __wall = await assertNotWalled(); if (__wall) return __wall;
+  const __perm = await requirePermission('factures'); if (__perm instanceof NextResponse) return __perm;
   try {
     const session = await auth()
     if (!session?.user?.cabinetId) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })

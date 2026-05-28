@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { X, Sparkles, ArrowLeft, ArrowRight, RefreshCw, Send, Plus, Trash2, Pencil, Check } from 'lucide-react'
 import { useProAccess } from '@/lib/use-plan'
+import { useCan } from '@/lib/use-permissions'
 import type { ProgrammeContenu, Exercice } from '@/lib/exercise-program'
 import { formatWhatsAppMessage, waUrl } from '@/lib/exercise-program'
 
@@ -44,6 +45,8 @@ const OBJECTIFS_AR = [
 
 export default function ExerciseProgramModal({ patient, cabinet, onClose, onSent }: Props) {
   const pro = useProAccess()   // verrou Pro (UX) — l'API verrouille réellement
+  const can = useCan()
+  const allowed = can('programmesEtDocs')
   const [step, setStep]   = useState<Step>('config')
   const [lang, setLang]   = useState<Lang>('fr')
 
@@ -302,7 +305,12 @@ export default function ExerciseProgramModal({ patient, cabinet, onClose, onSent
         {step === 'config' && (
           <div style={footer}>
             <button onClick={onClose} style={btnSecondary}>{isRTL ? 'إلغاء' : 'Annuler'}</button>
-            {pro === false ? (
+            {!allowed ? (
+              /* Permission insuffisante (rôle/permissions). Bouton désactivé. */
+              <button disabled style={{ ...btnPrimary, opacity: 0.5, cursor: 'not-allowed' }}>
+                🔒 Accès non autorisé
+              </button>
+            ) : pro === false ? (
               /* Verrou Pro (UX) : génération IA réservée au plan Pro. */
               <Link href="/choisir-plan" style={{ ...btnPrimary, textDecoration: 'none' }}>
                 🔒 Disponible en Pro

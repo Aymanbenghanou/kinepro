@@ -4,6 +4,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
+import { requirePermission } from '@/lib/permissions-server'
 import { assertPro } from '@/lib/plan-server'
 
 interface Input {
@@ -96,6 +97,8 @@ export async function POST(req: NextRequest) {
   if (!session?.user?.cabinetId) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
 
   // Verrou Pro : programmes d'exercices IA réservés aux cabinets Pro (et exemptés / en essai).
+  const __perm = await requirePermission('programmesEtDocs'); if (__perm instanceof NextResponse) return __perm;
+
   const proGate = await assertPro(); if (proGate) return proGate
 
   if (!process.env.ANTHROPIC_API_KEY) {

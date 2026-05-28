@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
+import { requirePermission } from '@/lib/permissions-server'
 import { assertPro } from '@/lib/plan-server'
 
 function errMsg(e: unknown): string {
@@ -44,6 +45,8 @@ export async function POST(
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
     }
     // Verrou Pro : l'upload de documents est une fonctionnalité Pro.
+    const __perm = await requirePermission('programmesEtDocs'); if (__perm instanceof NextResponse) return __perm;
+
     const proGate = await assertPro(); if (proGate) return proGate
     const { cabinetId, name: userName, prenom: userPrenom } = session.user as any
     const { id: patientId } = await params

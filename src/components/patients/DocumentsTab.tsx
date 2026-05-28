@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { Upload, Trash2, Eye, Download, FileText, X } from 'lucide-react'
 import Link from 'next/link'
 import { useProAccess } from '@/lib/use-plan'
+import { useCan } from '@/lib/use-permissions'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -126,6 +127,8 @@ function UploadZone({ patientId, onUploaded }: { patientId: string; onUploaded: 
   const [showForm, setShowForm]  = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const pro = useProAccess()   // verrou Pro (UX) — l'API verrouille réellement
+  const can = useCan()
+  const allowed = can('programmesEtDocs')
 
   function pickFile(file: File) {
     if (file.size > MAX_SIZE_MB * 1024 * 1024) {
@@ -198,6 +201,10 @@ function UploadZone({ patientId, onUploaded }: { patientId: string; onUploaded: 
       setUploading(false); setProgress(0)
     }
   }
+
+  // Permission insuffisante (rôle/permissions) : on cache la zone d'upload (lecture des
+  // documents existants reste possible côté liste, en dehors de ce composant).
+  if (!allowed) return null
 
   // Verrou Pro (UX) : upload de documents réservé au plan Pro.
   if (pro === false) {

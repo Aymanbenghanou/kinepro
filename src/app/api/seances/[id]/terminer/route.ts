@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
+import { requirePermission } from '@/lib/permissions-server'
 import { assertNotWalled } from '@/lib/plan-server'
 
 export async function PATCH(
@@ -8,6 +9,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const __wall = await assertNotWalled(); if (__wall) return __wall;
+  const __perm = await requirePermission('dossierMedical'); if (__perm instanceof NextResponse) return __perm;
   const session = await auth()
   if (!session?.user?.cabinetId) {
     return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })

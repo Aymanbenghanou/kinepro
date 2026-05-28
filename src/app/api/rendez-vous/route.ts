@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
+import { requirePermission } from '@/lib/permissions-server'
 import { assertNotWalled } from '@/lib/plan-server'
 
 function errMsg(e: unknown): string {
@@ -46,6 +47,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const __wall = await assertNotWalled(); if (__wall) return __wall;
+  const __perm = await requirePermission('agenda'); if (__perm instanceof NextResponse) return __perm;
   try {
     const session = await auth()
     if (!session?.user?.cabinetId) {
