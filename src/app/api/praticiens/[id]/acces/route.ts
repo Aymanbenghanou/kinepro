@@ -1,16 +1,29 @@
 /**
- * POST  /api/praticiens/[id]/acces  — create or re-activate app access for a praticien
- * DELETE /api/praticiens/[id]/acces — deactivate app access (sets user.isActive = false)
+ * POST   /api/praticiens/[id]/acces — créer ou réinitialiser l'accès app.
+ * DELETE /api/praticiens/[id]/acces — désactiver l'accès (isActive=false).
+ * id peut être un Praticien.id ou un User.id (cas SECRETAIRE).
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import { assertNotWalled } from '@/lib/plan-server'
 import { assertOwner } from '@/lib/permissions-server'
+import { PRESETS, PERMISSION_KEYS } from '@/lib/permissions'
 import bcrypt from 'bcryptjs'
 
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : 'Erreur inconnue'
+}
+
+function normalizePerms(input: unknown): Record<string, boolean> {
+  const out: Record<string, boolean> = {}
+  if (input && typeof input === 'object') {
+    const obj = input as Record<string, unknown>
+    for (const k of PERMISSION_KEYS) out[k] = obj[k] === true
+  } else {
+    for (const k of PERMISSION_KEYS) out[k] = false
+  }
+  return out
 }
 
 export async function POST(
@@ -25,64 +38,72 @@ export async function POST(
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
     }
     const { cabinetId } = session.user
-    const { id: praticienId } = await params
+    const { id } = await params
+    const body = await request.json()
+    const email = String(body.email ?? '').trim().toLowerCase()
+    const password = String(body.password ?? '')
 
-    // Verify praticien belongs to this cabinet
+    if (!email) return NextResponse.json({ error: 'Email requis pour activer l\'accès' }, { status: 400 })
+    if (password.length < 6) return NextResponse.json({ error: 'Mot de passe requis (min. 6 caractères)' }, { status: 400 })
+
+    // 1) id = Praticien ?
     const praticien = await prisma.praticien.findFirst({
-      where: { id: praticienId, cabinetId },
+      where: { id, cabinetId },
       include: { user: true },
     })
-    if (!praticien) return NextResponse.json({ error: 'Praticien non trouvé' }, { status: 404 })
 
-    const body = await request.json()
-    const { email, password } = body
-
-    if (!email?.trim()) {
-      return NextResponse.json({ error: 'Email requis pour activer l\'accès' }, { status: 400 })
-    }
-    if (!password || password.length < 6) {
-      return NextResponse.json({ error: 'Mot de passe requis (min. 6 caractères)' }, { status: 400 })
-    }
-
-    // If this praticien already has a user account
-    if (praticien.user) {
-      // Re-activate it (update email/password if changed)
+    if (praticien) {
       const hashed = await bcrypt.hash(password, 12)
-      const user = await prisma.user.update({
-        where: { id: praticien.user.id },
+      if (praticien.user) {
+        // Réactivation : maj email + password + isActive ; permissions inchangées sauf si fournies.
+        const data: Record<string, unknown> = { email, password: hashed, isActive: true }
+        if (body.permissions !== undefined) {
+          const perms = normalizePerms(body.permissions)
+          perms.agenda = true
+          data.permissions = perms
+        }
+        const user = await prisma.user.update({
+          where: { id: praticien.user.id }, data,
+          select: { id: true, email: true, isActive: true, role: true, permissions: true },
+        })
+        return NextResponse.json({ user })
+      }
+      // Pas de user encore → création avec rôle PRATICIEN et presets par défaut.
+      const existing = await prisma.user.findUnique({ where: { email } })
+      if (existing) {
+        return NextResponse.json({ error: 'Cet email est déjà utilisé par un autre compte' }, { status: 409 })
+      }
+      const permissions = { ...PRESETS.PRATICIEN, ...normalizePerms(body.permissions), agenda: true }
+      const user = await prisma.user.create({
         data: {
-          email:    email.trim().toLowerCase(),
-          password: hashed,
+          email, password: hashed,
+          role: 'PRATICIEN',
+          nom: praticien.nom, prenom: praticien.prenom,
+          telephone: praticien.telephone,
+          cabinetId,
+          praticienId: praticien.id,
+          permissions,
           isActive: true,
         },
-        select: { id: true, email: true, isActive: true, role: true },
+        select: { id: true, email: true, isActive: true, role: true, permissions: true },
       })
-      return NextResponse.json({ user })
+      return NextResponse.json({ user }, { status: 201 })
     }
 
-    // Check email not already taken
-    const existing = await prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } })
-    if (existing) {
-      return NextResponse.json({ error: 'Cet email est déjà utilisé par un autre compte' }, { status: 409 })
+    // 2) id = User SECRETAIRE ? → reset password + réactivation.
+    const user = await prisma.user.findFirst({ where: { id, cabinetId, role: 'SECRETAIRE' } })
+    if (user) {
+      const hashed = await bcrypt.hash(password, 12)
+      const data: Record<string, unknown> = { email, password: hashed, isActive: true }
+      if (body.permissions !== undefined) data.permissions = normalizePerms(body.permissions)
+      const updated = await prisma.user.update({
+        where: { id: user.id }, data,
+        select: { id: true, email: true, isActive: true, role: true, permissions: true },
+      })
+      return NextResponse.json({ user: updated })
     }
 
-    // Create new user with EMPLOYEE role linked to this praticien
-    const hashed = await bcrypt.hash(password, 12)
-    const user = await prisma.user.create({
-      data: {
-        email:      email.trim().toLowerCase(),
-        password:   hashed,
-        role:       'EMPLOYEE',
-        nom:        praticien.nom,
-        prenom:     praticien.prenom,
-        cabinetId,
-        praticienId,
-        isActive:   true,
-      },
-      select: { id: true, email: true, isActive: true, role: true },
-    })
-
-    return NextResponse.json({ user }, { status: 201 })
+    return NextResponse.json({ error: 'Membre non trouvé' }, { status: 404 })
   } catch (error) {
     console.error('[POST /api/praticiens/[id]/acces]', error)
     return NextResponse.json({ error: errMsg(error) }, { status: 500 })
@@ -101,21 +122,25 @@ export async function DELETE(
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
     }
     const { cabinetId } = session.user
-    const { id: praticienId } = await params
+    const { id } = await params
 
     const praticien = await prisma.praticien.findFirst({
-      where: { id: praticienId, cabinetId },
+      where: { id, cabinetId },
       include: { user: true },
     })
-    if (!praticien) return NextResponse.json({ error: 'Praticien non trouvé' }, { status: 404 })
-    if (!praticien.user) return NextResponse.json({ error: 'Aucun compte associé' }, { status: 404 })
+    if (praticien) {
+      if (!praticien.user) return NextResponse.json({ error: 'Aucun compte associé' }, { status: 404 })
+      await prisma.user.update({ where: { id: praticien.user.id }, data: { isActive: false } })
+      return NextResponse.json({ success: true })
+    }
 
-    await prisma.user.update({
-      where: { id: praticien.user.id },
-      data: { isActive: false },
-    })
+    const user = await prisma.user.findFirst({ where: { id, cabinetId, role: 'SECRETAIRE' } })
+    if (user) {
+      await prisma.user.update({ where: { id: user.id }, data: { isActive: false } })
+      return NextResponse.json({ success: true })
+    }
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ error: 'Membre non trouvé' }, { status: 404 })
   } catch (error) {
     console.error('[DELETE /api/praticiens/[id]/acces]', error)
     return NextResponse.json({ error: errMsg(error) }, { status: 500 })

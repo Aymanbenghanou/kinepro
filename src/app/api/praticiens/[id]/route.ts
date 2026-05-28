@@ -3,12 +3,24 @@ import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import { assertNotWalled } from '@/lib/plan-server'
 import { assertOwner } from '@/lib/permissions-server'
+import { PERMISSION_KEYS } from '@/lib/permissions'
 
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : 'Erreur inconnue'
 }
 
-// PATCH — update praticien fields (including actif toggle)
+function normalizePerms(input: unknown): Record<string, boolean> {
+  const out: Record<string, boolean> = {}
+  if (input && typeof input === 'object') {
+    const obj = input as Record<string, unknown>
+    for (const k of PERMISSION_KEYS) out[k] = obj[k] === true
+  } else {
+    for (const k of PERMISSION_KEYS) out[k] = false
+  }
+  return out
+}
+
+// PATCH — édite un membre. id peut être un Praticien.id OU un User.id (secrétaire).
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -22,35 +34,84 @@ export async function PATCH(
     }
     const { cabinetId } = session.user
     const { id } = await params
-
-    const existing = await prisma.praticien.findFirst({ where: { id, cabinetId } })
-    if (!existing) return NextResponse.json({ error: 'Praticien non trouvé' }, { status: 404 })
-
     const body = await request.json()
-    const data: Record<string, unknown> = {}
-    if (body.nom        !== undefined) data.nom        = body.nom.trim()
-    if (body.prenom     !== undefined) data.prenom     = body.prenom.trim()
-    if (body.specialite !== undefined) data.specialite = body.specialite || null
-    if (body.telephone  !== undefined) data.telephone  = body.telephone  || null
-    if (body.email      !== undefined) data.email      = body.email      || null
-    if (body.couleur    !== undefined) data.couleur    = body.couleur
-    if (body.actif      !== undefined) data.actif      = Boolean(body.actif)
 
-    const praticien = await prisma.praticien.update({
-      where: { id },
-      data,
-      include: {
-        user: { select: { id: true, email: true, isActive: true, role: true, lastLoginAt: true } },
-      },
+    // INTERDIT : changer le rôle d'un membre existant.
+    if (body.role) {
+      const targetRole = body.role as string
+      const praticienCheck = await prisma.praticien.findFirst({ where: { id, cabinetId } })
+      const currentRole = praticienCheck ? 'PRATICIEN' : 'SECRETAIRE'
+      if (targetRole !== currentRole) {
+        return NextResponse.json({ error: 'role_change_not_allowed' }, { status: 400 })
+      }
+    }
+
+    // 1) Cible Praticien ?
+    const praticien = await prisma.praticien.findFirst({
+      where: { id, cabinetId },
+      include: { user: true },
     })
-    return NextResponse.json(praticien)
+
+    if (praticien) {
+      const pratData: Record<string, unknown> = {}
+      if (body.nom        !== undefined) pratData.nom        = String(body.nom).trim()
+      if (body.prenom     !== undefined) pratData.prenom     = String(body.prenom).trim()
+      if (body.specialite !== undefined) pratData.specialite = body.specialite ? String(body.specialite).trim() : null
+      if (body.telephone  !== undefined) pratData.telephone  = body.telephone || null
+      if (body.couleur    !== undefined) pratData.couleur    = body.couleur
+      if (body.actif      !== undefined) pratData.actif      = Boolean(body.actif)
+
+      await prisma.praticien.update({ where: { id }, data: pratData })
+
+      // Si User lié, on synchronise identité + permissions (garde-fou agenda=true).
+      if (praticien.user) {
+        const userData: Record<string, unknown> = {}
+        if (body.nom       !== undefined) userData.nom       = String(body.nom).trim()
+        if (body.prenom    !== undefined) userData.prenom    = String(body.prenom).trim()
+        if (body.telephone !== undefined) userData.telephone = body.telephone || null
+        if (body.permissions !== undefined) {
+          const perms = normalizePerms(body.permissions)
+          perms.agenda = true // garde-fou serveur : praticien → agenda toujours actif
+          userData.permissions = perms
+        }
+        if (Object.keys(userData).length) {
+          await prisma.user.update({ where: { id: praticien.user.id }, data: userData })
+        }
+      }
+
+      const refreshed = await prisma.praticien.findUnique({
+        where: { id },
+        include: { user: { select: { id: true, email: true, isActive: true, role: true, permissions: true, lastLoginAt: true } } },
+      })
+      return NextResponse.json(refreshed)
+    }
+
+    // 2) Cible User SECRETAIRE ?
+    const user = await prisma.user.findFirst({
+      where: { id, cabinetId, role: 'SECRETAIRE' },
+    })
+    if (user) {
+      const data: Record<string, unknown> = {}
+      if (body.nom       !== undefined) data.nom       = String(body.nom).trim()
+      if (body.prenom    !== undefined) data.prenom    = String(body.prenom).trim()
+      if (body.telephone !== undefined) data.telephone = body.telephone || null
+      if (body.permissions !== undefined) data.permissions = normalizePerms(body.permissions)
+      const updated = await prisma.user.update({
+        where: { id },
+        data,
+        select: { id: true, nom: true, prenom: true, telephone: true, email: true, role: true, isActive: true, permissions: true, lastLoginAt: true },
+      })
+      return NextResponse.json(updated)
+    }
+
+    return NextResponse.json({ error: 'Membre non trouvé' }, { status: 404 })
   } catch (error) {
     console.error('[PATCH /api/praticiens/[id]]', error)
     return NextResponse.json({ error: errMsg(error) }, { status: 500 })
   }
 }
 
-// PUT — backward-compatible alias for PATCH
+// PUT — alias rétrocompatible
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -60,7 +121,7 @@ export async function PUT(
   return PATCH(request, { params })
 }
 
-// DELETE — soft delete (set actif: false)
+// DELETE — supprime un membre. id = Praticien.id OU User.id (secrétaire).
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -75,11 +136,28 @@ export async function DELETE(
     const { cabinetId } = session.user
     const { id } = await params
 
-    const existing = await prisma.praticien.findFirst({ where: { id, cabinetId } })
-    if (!existing) return NextResponse.json({ error: 'Praticien non trouvé' }, { status: 404 })
+    const praticien = await prisma.praticien.findFirst({
+      where: { id, cabinetId },
+      include: { user: true },
+    })
+    if (praticien) {
+      // Soft-delete Praticien (actif=false) + hard-delete User lié si présent.
+      if (praticien.user) {
+        await prisma.pushSubscription.deleteMany({ where: { userId: praticien.user.id } })
+        await prisma.user.delete({ where: { id: praticien.user.id } })
+      }
+      await prisma.praticien.update({ where: { id }, data: { actif: false } })
+      return NextResponse.json({ success: true, kind: 'praticien' })
+    }
 
-    await prisma.praticien.update({ where: { id }, data: { actif: false } })
-    return NextResponse.json({ success: true })
+    const user = await prisma.user.findFirst({ where: { id, cabinetId, role: 'SECRETAIRE' } })
+    if (user) {
+      await prisma.pushSubscription.deleteMany({ where: { userId: user.id } })
+      await prisma.user.delete({ where: { id: user.id } })
+      return NextResponse.json({ success: true, kind: 'secretaire' })
+    }
+
+    return NextResponse.json({ error: 'Membre non trouvé' }, { status: 404 })
   } catch (error) {
     console.error('[DELETE /api/praticiens/[id]]', error)
     return NextResponse.json({ error: errMsg(error) }, { status: 500 })
