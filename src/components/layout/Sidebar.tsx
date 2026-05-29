@@ -23,7 +23,7 @@ const navItems: NavItem[] = [
   { icon: Clock,           label: 'Séances',           href: '/seances',     perm: 'dossierMedical' },
   { icon: CreditCard,      label: 'Facturation',       href: '/facturation', perm: 'factures' },
   { icon: UserCheck,       label: 'Personnel',         href: '/personnel',   owner: true },
-  { icon: BarChart3,       label: 'Rapports',          href: '/rapports' },
+  { icon: BarChart3,       label: 'Rapports',          href: '/rapports',    owner: true },
   { icon: QrCode,          label: 'QR Réception',      href: '/qr/cabinet' },
 ]
 
@@ -197,54 +197,58 @@ export default function Sidebar() {
             )}
           </Link>
 
-          {/* Paramètres with submenu */}
-          <div>
+          {/* Paramètres with submenu — OWNER only */}
+          {isOwnerOrAdmin && (
+            <div>
+              <Link
+                href="/parametres"
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  isParametresActive
+                    ? 'bg-blue-600 text-white'
+                    : 'text-blue-200 hover:bg-blue-800 hover:text-white'
+                }`}
+              >
+                <Settings size={18} />
+                <span style={{ flex: 1 }}>Paramètres</span>
+              </Link>
+              {isParametresActive && (
+                <div style={{ marginLeft: 14, marginTop: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                  {visibleParametresSubItems.map(item => {
+                    const isSubActive = pathname === item.href
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                          isSubActive
+                            ? 'bg-blue-500 text-white'
+                            : 'text-blue-300 hover:bg-blue-800 hover:text-white'
+                        }`}
+                      >
+                        <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'currentColor', flexShrink: 0 }} />
+                        {item.label}
+                      </Link>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Abonnement — OWNER only */}
+          {isOwnerOrAdmin && (
             <Link
-              href="/parametres"
+              href="/abonnement"
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                isParametresActive
+                isAbonnementActive
                   ? 'bg-blue-600 text-white'
                   : 'text-blue-200 hover:bg-blue-800 hover:text-white'
               }`}
             >
-              <Settings size={18} />
-              <span style={{ flex: 1 }}>Paramètres</span>
+              <Crown size={18} />
+              Abonnement
             </Link>
-            {isParametresActive && (
-              <div style={{ marginLeft: 14, marginTop: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
-                {visibleParametresSubItems.map(item => {
-                  const isSubActive = pathname === item.href
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                        isSubActive
-                          ? 'bg-blue-500 text-white'
-                          : 'text-blue-300 hover:bg-blue-800 hover:text-white'
-                      }`}
-                    >
-                      <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'currentColor', flexShrink: 0 }} />
-                      {item.label}
-                    </Link>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Abonnement */}
-          <Link
-            href="/abonnement"
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-              isAbonnementActive
-                ? 'bg-blue-600 text-white'
-                : 'text-blue-200 hover:bg-blue-800 hover:text-white'
-            }`}
-          >
-            <Crown size={18} />
-            Abonnement
-          </Link>
+          )}
         </nav>
 
         {/* Footer — profile dropdown */}

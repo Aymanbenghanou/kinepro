@@ -40,22 +40,27 @@ export default function ProfileDropdown({
   const nom      = user?.nom    ?? ''
   const fullName = `${prenom} ${nom}`.trim() || 'Utilisateur'
   const email    = user?.email  ?? ''
-  const role     = user?.role   ?? 'CABINET_OWNER'
+  const role     = user?.role   ?? ''
   const has2FA   = user?.twoFactorEnabled ?? false
+  const isOwnerOrAdmin = role === 'CABINET_OWNER' || role === 'SUPER_ADMIN'
 
   const initials    = getInitials(prenom, nom)
   const avatarColor = getAvatarColor(fullName)
 
-  const roleLabel = role === 'CABINET_OWNER'
-    ? 'Propriétaire'
-    : role === 'EMPLOYEE'
-    ? 'Employé'
-    : 'Super Admin'
+  // Mapping rôle → libellé humain. Fallback = chaîne vide (jamais "Super admin" par défaut).
+  const roleLabel =
+    role === 'CABINET_OWNER' ? 'Propriétaire' :
+    role === 'PRATICIEN'     ? 'Praticien'    :
+    role === 'SECRETAIRE'    ? 'Secrétaire'   :
+    role === 'SUPER_ADMIN'   ? 'Super admin'  :
+                               ''
 
   const roleBadge =
     role === 'CABINET_OWNER' ? { bg: '#DBEAFE', color: '#1D4ED8' } :
-    role === 'EMPLOYEE'      ? { bg: '#DCFCE7', color: '#15803D' } :
-                               { bg: '#EDE9FE', color: '#7C3AED' }
+    role === 'PRATICIEN'     ? { bg: '#DBEAFE', color: '#1D4ED8' } :
+    role === 'SECRETAIRE'    ? { bg: '#EDE9FE', color: '#7C3AED' } :
+    role === 'SUPER_ADMIN'   ? { bg: '#FEE2E2', color: '#B91C1C' } :
+                               { bg: '#F1F5F9', color: '#64748B' }
 
   // ── Close on outside click / ESC ────────────────────────────────────────────
   useEffect(() => {
@@ -199,8 +204,12 @@ export default function ProfileDropdown({
         {/* Menu */}
         <div style={{ padding: '6px 6px' }}>
           <MenuItem icon={<User size={15} />}      label="Mon profil"     onClick={() => go('/compte')} />
-          <MenuItem icon={<Building2 size={15} />} label="Profil cabinet" onClick={() => go('/parametres/cabinet')} />
-          <MenuItem icon={<Settings size={15} />}  label="Paramètres"     onClick={() => go('/parametres')} />
+          {isOwnerOrAdmin && (
+            <>
+              <MenuItem icon={<Building2 size={15} />} label="Profil cabinet" onClick={() => go('/parametres/cabinet')} />
+              <MenuItem icon={<Settings size={15} />}  label="Paramètres"     onClick={() => go('/parametres')} />
+            </>
+          )}
         </div>
 
         <div style={{ height: 1, background: '#E2E8F0', margin: '0 14px' }} />
