@@ -109,8 +109,7 @@ function RdvCardBody({ rdv }: { rdv: any }) {
         {rdv.patient?.prenom} {rdv.patient?.nom}
       </div>
       <div style={{ opacity: 0.85 }}>
-        {showPraticien && <>{praticienLabel} · </>}
-        {rdv.typeSeance} · {rdv.duree}min
+        {rdv.typeSeance} · {showPraticien && <>{praticienLabel} · </>}{rdv.duree}min
       </div>
       {rdv.patientNotes && (
         <div style={{ opacity: 0.75, fontSize: 10, fontStyle: 'italic', marginTop: 1 }}>
