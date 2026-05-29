@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useSession } from 'next-auth/react'
 import {
   DndContext, DragOverlay, PointerSensor, useSensor, useSensors,
   useDraggable, useDroppable,
@@ -150,6 +151,12 @@ function DraggableRdv({ rdv, color, children }: {
 }
 
 export default function AgendaPage() {
+  // Session pour scope par praticien : un PRATICIEN ne voit/crée que ses propres RDV.
+  const { data: session } = useSession()
+  const sessionRole         = session?.user?.role
+  const sessionPraticienId  = session?.user?.praticienId
+  const isPraticienScoped   = sessionRole === 'PRATICIEN' && !!sessionPraticienId
+
   const [currentDate, setCurrentDate] = useState(new Date())
   const [rdvList, setRdvList]         = useState<any[]>([])
   const [patients, setPatients]       = useState<any[]>([])
@@ -163,6 +170,13 @@ export default function AgendaPage() {
     patientId: '', praticienId: '', typeSeance: '',
     date: '', heure: '09:00', duree: '45', salle: 'Salle 1', notes: ''
   })
+
+  // Pour un PRATICIEN, on pré-remplit form.praticienId avec son propre id.
+  useEffect(() => {
+    if (isPraticienScoped && sessionPraticienId) {
+      setForm(f => f.praticienId === sessionPraticienId ? f : { ...f, praticienId: sessionPraticienId })
+    }
+  }, [isPraticienScoped, sessionPraticienId])
 
   // Drag & drop : carte en cours de déplacement (pour le DragOverlay)
   const [activeRdv, setActiveRdv] = useState<any>(null)
@@ -420,16 +434,36 @@ export default function AgendaPage() {
               {[
                 ['patientId', 'Patient *', patients, (p: any) => `${p.prenom} ${p.nom}`],
                 ['praticienId', 'Praticien *', praticiens, (p: any) => `Dr. ${p.prenom} ${p.nom}`],
-              ].map(([field, label, opts, fmt]: any) => (
-                <div key={field}>
-                  <label style={{ fontSize: 13, fontWeight: 500, color: '#374151', display: 'block', marginBottom: 6 }}>{label}</label>
-                  <select value={(form as any)[field]} onChange={e => setForm(f => ({...f, [field]: e.target.value}))} required
-                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 14, background: 'white' }}>
-                    <option value="">Sélectionner...</option>
-                    {opts.map((o: any) => <option key={o.id} value={o.id}>{fmt(o)}</option>)}
-                  </select>
-                </div>
-              ))}
+              ].map(([field, label, opts, fmt]: any) => {
+                // Pour un PRATICIEN, on verrouille le champ "Praticien" sur lui-même.
+                const isLockedPraticienField = field === 'praticienId' && isPraticienScoped
+                return (
+                  <div key={field}>
+                    <label style={{ fontSize: 13, fontWeight: 500, color: '#374151', display: 'block', marginBottom: 6 }}>{label}</label>
+                    <select
+                      value={(form as any)[field]}
+                      onChange={e => setForm(f => ({ ...f, [field]: e.target.value }))}
+                      required
+                      disabled={isLockedPraticienField}
+                      style={{
+                        width: '100%', padding: '10px 12px',
+                        border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 14,
+                        background: isLockedPraticienField ? '#F1F5F9' : 'white',
+                        color: isLockedPraticienField ? '#475569' : undefined,
+                        cursor: isLockedPraticienField ? 'not-allowed' : undefined,
+                      }}
+                    >
+                      <option value="">Sélectionner...</option>
+                      {opts.map((o: any) => <option key={o.id} value={o.id}>{fmt(o)}</option>)}
+                    </select>
+                    {isLockedPraticienField && (
+                      <p style={{ fontSize: 11, color: '#94A3B8', marginTop: 4 }}>
+                        Vous ne pouvez créer des RDV que pour vous-même.
+                      </p>
+                    )}
+                  </div>
+                )
+              })}
               <div>
                 <label style={{ fontSize: 13, fontWeight: 500, color: '#374151', display: 'block', marginBottom: 6 }}>Type de séance</label>
                 <select value={form.typeSeance} onChange={e => handleTypeChange(e.target.value)}

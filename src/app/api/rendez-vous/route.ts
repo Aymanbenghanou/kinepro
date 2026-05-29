@@ -14,11 +14,22 @@ export async function GET(request: NextRequest) {
     if (!session?.user?.cabinetId) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
     }
-    const { cabinetId } = session.user
+    const { cabinetId, role, praticienId: sessionPraticienId } = session.user
+
+    // Scope par praticien : un PRATICIEN ne voit QUE ses propres RDV.
+    // Safe-guard : si role=PRATICIEN sans praticienId rattaché → liste vide.
+    if (role === 'PRATICIEN' && !sessionPraticienId) {
+      return NextResponse.json([])
+    }
 
     const { searchParams } = new URL(request.url)
-    const date        = searchParams.get('date')
-    const praticienId = searchParams.get('praticienId')
+    const date          = searchParams.get('date')
+    const queryPraticien = searchParams.get('praticienId')
+
+    // PRATICIEN : on ignore le filtre client, on impose son propre id.
+    const effectivePraticienFilter = role === 'PRATICIEN'
+      ? sessionPraticienId
+      : queryPraticien
 
     const rendezVous = await prisma.rendezVous.findMany({
       where: {
@@ -29,7 +40,7 @@ export async function GET(request: NextRequest) {
             lte: new Date(date + 'T23:59:59'),
           }
         } : {}),
-        ...(praticienId ? { praticienId } : {}),
+        ...(effectivePraticienFilter ? { praticienId: effectivePraticienFilter } : {}),
       },
       include: {
         patient:   { select: { id: true, nom: true, prenom: true } },
@@ -53,9 +64,23 @@ export async function POST(request: NextRequest) {
     if (!session?.user?.cabinetId) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
     }
-    const { cabinetId } = session.user
+    const { cabinetId, role, praticienId: sessionPraticienId } = session.user
 
     const body = await request.json()
+
+    // Garde-fou serveur : un PRATICIEN ne peut créer un RDV que pour lui-même.
+    // OWNER / SECRETAIRE / SUPER_ADMIN choisissent librement le praticien.
+    let praticienIdFinal: string = body.praticienId
+    if (role === 'PRATICIEN') {
+      if (!sessionPraticienId) {
+        return NextResponse.json({ error: 'praticien_not_linked' }, { status: 403 })
+      }
+      praticienIdFinal = sessionPraticienId
+    }
+    if (!praticienIdFinal) {
+      return NextResponse.json({ error: 'praticienId requis' }, { status: 400 })
+    }
+
     const rdv = await prisma.rendezVous.create({
       data: {
         cabinetId,
@@ -66,7 +91,7 @@ export async function POST(request: NextRequest) {
         notes:       body.notes      || null,
         statut:      body.statut     || 'confirme',
         patientId:   body.patientId,
-        praticienId: body.praticienId,
+        praticienId: praticienIdFinal,
       },
       include: {
         patient:   { select: { id: true, nom: true, prenom: true, telephone: true } },

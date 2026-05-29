@@ -43,13 +43,26 @@ export async function PUT(
     if (!session?.user?.cabinetId) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
     }
-    const { cabinetId } = session.user
+    const { cabinetId, role, praticienId: sessionPraticienId } = session.user
     const { id } = await params
 
     const existing = await prisma.rendezVous.findFirst({ where: { id, cabinetId } })
     if (!existing) return NextResponse.json({ error: 'RDV non trouvé' }, { status: 404 })
 
+    // Garde-fou : un PRATICIEN ne peut modifier QUE ses propres RDV.
+    if (role === 'PRATICIEN') {
+      if (!sessionPraticienId || existing.praticienId !== sessionPraticienId) {
+        return NextResponse.json({ error: 'not_your_rdv' }, { status: 403 })
+      }
+    }
+
     const body = await request.json()
+
+    // Un PRATICIEN ne peut pas réassigner le RDV à un collègue : on force.
+    const praticienIdFinal = role === 'PRATICIEN'
+      ? sessionPraticienId
+      : body.praticienId
+
     const rdv = await prisma.rendezVous.update({
       where: { id },
       data: {
@@ -60,7 +73,7 @@ export async function PUT(
         notes:       body.notes,
         statut:      body.statut,
         patientId:   body.patientId,
-        praticienId: body.praticienId,
+        praticienId: praticienIdFinal,
       },
     })
     return NextResponse.json(rdv)
@@ -81,11 +94,18 @@ export async function DELETE(
     if (!session?.user?.cabinetId) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
     }
-    const { cabinetId } = session.user
+    const { cabinetId, role, praticienId: sessionPraticienId } = session.user
     const { id } = await params
 
     const existing = await prisma.rendezVous.findFirst({ where: { id, cabinetId } })
     if (!existing) return NextResponse.json({ error: 'RDV non trouvé' }, { status: 404 })
+
+    // Garde-fou : un PRATICIEN ne peut supprimer QUE ses propres RDV.
+    if (role === 'PRATICIEN') {
+      if (!sessionPraticienId || existing.praticienId !== sessionPraticienId) {
+        return NextResponse.json({ error: 'not_your_rdv' }, { status: 403 })
+      }
+    }
 
     await prisma.rendezVous.delete({ where: { id } })
     return NextResponse.json({ success: true })
