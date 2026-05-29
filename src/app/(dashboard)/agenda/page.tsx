@@ -90,13 +90,28 @@ function RappelBtn({ rdv }: { rdv: any }) {
 // Contenu interne d'une carte RDV — réutilisé dans la carte de la grille
 // ET dans le DragOverlay (le visuel coloré est porté par le conteneur parent).
 function RdvCardBody({ rdv }: { rdv: any }) {
+  // OWNER / SECRETAIRE / SUPER_ADMIN voient tous les RDV du cabinet → on leur
+  // montre quel praticien assure chaque RDV. Un PRATICIEN ne voit que les siens,
+  // donc cette info est inutile pour lui.
+  const { data: session } = useSession()
+  const role = session?.user?.role
+  const canSeePraticien = role === 'CABINET_OWNER' || role === 'SECRETAIRE' || role === 'SUPER_ADMIN'
+
+  const prenom       = rdv.praticien?.prenom?.trim() ?? ''
+  const initialeNom  = rdv.praticien?.nom?.trim()?.[0]?.toUpperCase() ?? ''
+  const praticienLabel = prenom && initialeNom ? `${prenom} ${initialeNom}.` : (prenom || '')
+  const showPraticien = canSeePraticien && praticienLabel
+
   return (
     <>
       <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
         {rdv.source === 'online' && <span style={{ fontSize: 9 }}>🌐</span>}
         {rdv.patient?.prenom} {rdv.patient?.nom}
       </div>
-      <div style={{ opacity: 0.85 }}>{rdv.typeSeance} · {rdv.duree}min</div>
+      <div style={{ opacity: 0.85 }}>
+        {showPraticien && <>{praticienLabel} · </>}
+        {rdv.typeSeance} · {rdv.duree}min
+      </div>
       {rdv.patientNotes && (
         <div style={{ opacity: 0.75, fontSize: 10, fontStyle: 'italic', marginTop: 1 }}>
           {rdv.patientNotes.slice(0, 30)}{rdv.patientNotes.length > 30 ? '…' : ''}
