@@ -4,6 +4,8 @@ import { auth } from '@/auth'
 import { assertNotWalled } from '@/lib/plan-server'
 import { assertOwner } from '@/lib/permissions-server'
 import { PERMISSION_KEYS } from '@/lib/permissions'
+import { validateBody } from '@/lib/validate'
+import { updatePraticienSchema } from '@/lib/schemas/staff'
 
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : 'Erreur inconnue'
@@ -34,11 +36,14 @@ export async function PATCH(
     }
     const { cabinetId } = session.user
     const { id } = await params
-    const body = await request.json()
+
+    const v = await validateBody(request, updatePraticienSchema)
+    if ('error' in v) return v.error
+    const body = v.data
 
     // INTERDIT : changer le rôle d'un membre existant.
     if (body.role) {
-      const targetRole = body.role as string
+      const targetRole = body.role
       const praticienCheck = await prisma.praticien.findFirst({ where: { id, cabinetId } })
       const currentRole = praticienCheck ? 'PRATICIEN' : 'SECRETAIRE'
       if (targetRole !== currentRole) {

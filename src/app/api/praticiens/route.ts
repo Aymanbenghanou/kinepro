@@ -5,6 +5,8 @@ import { assertNotWalled } from '@/lib/plan-server'
 import { assertOwner } from '@/lib/permissions-server'
 import { PERMISSION_KEYS } from '@/lib/permissions'
 import bcrypt from 'bcryptjs'
+import { validateBody } from '@/lib/validate'
+import { createPraticienSchema } from '@/lib/schemas/staff'
 
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : 'Erreur inconnue'
@@ -114,20 +116,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
     }
     const { cabinetId } = session.user
-    const body = await request.json()
-    const role = body.role as string | undefined
 
-    if (role !== 'PRATICIEN' && role !== 'SECRETAIRE') {
-      return NextResponse.json({ error: 'role doit être PRATICIEN ou SECRETAIRE' }, { status: 400 })
-    }
-    if (!body.nom?.trim() || !body.prenom?.trim()) {
-      return NextResponse.json({ error: 'Nom et prénom sont obligatoires' }, { status: 400 })
-    }
-    if (role === 'PRATICIEN' && !body.specialite?.trim()) {
-      return NextResponse.json({ error: 'Spécialité requise pour un praticien' }, { status: 400 })
-    }
+    const v = await validateBody(request, createPraticienSchema)
+    if ('error' in v) return v.error
+    const body = v.data
+    const role = body.role
 
     const acces = !!body.acces
+    // Garde-fou métier conservé : un Secrétaire requiert toujours un accès app.
+    // Le schema le force déjà (literal true), mais on garde le check pour la
+    // cohérence avec l'historique des erreurs renvoyées.
     if (role === 'SECRETAIRE' && !acces) {
       return NextResponse.json({ error: 'Un secrétaire requiert un accès application' }, { status: 400 })
     }

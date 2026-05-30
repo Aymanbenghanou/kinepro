@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import { requirePermission } from '@/lib/permissions-server'
 import { assertNotWalled } from '@/lib/plan-server'
+import { validateBody } from '@/lib/validate'
+import { updatePatientSchema } from '@/lib/schemas/medical'
 
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : 'Erreur inconnue'
@@ -66,7 +68,10 @@ export async function PUT(
     const existing = await prisma.patient.findFirst({ where: { id, cabinetId } })
     if (!existing) return NextResponse.json({ error: 'Patient non trouvé' }, { status: 404 })
 
-    const body = await request.json()
+    const v = await validateBody(request, updatePatientSchema)
+    if ('error' in v) return v.error
+    const body = v.data
+
     const patient = await prisma.patient.update({
       where: { id },
       data: {
@@ -87,9 +92,9 @@ export async function PUT(
         medecinTelephone:body.medecinTelephone|| null,
         mutuelle:        body.mutuelle        || null,
         numeroPolice:    body.numeroPolice    || null,
-        tarifSeance:     body.tarifSeance     ? parseFloat(body.tarifSeance) : null,
+        tarifSeance:     body.tarifSeance     ? parseFloat(String(body.tarifSeance)) : null,
         modePaiement:    body.modePaiement    || null,
-        nbSeancesPrescrites: body.nbSeancesPrescrites ? parseInt(body.nbSeancesPrescrites) : null,
+        nbSeancesPrescrites: body.nbSeancesPrescrites ? parseInt(String(body.nbSeancesPrescrites)) : null,
         frequence:       body.frequence       || null,
         praticienAssigneId: body.praticienAssigneId || null,
         objectifsTraitement: body.objectifsTraitement || null,

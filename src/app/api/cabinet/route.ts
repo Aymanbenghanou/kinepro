@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import { assertOwner } from '@/lib/permissions-server'
+import { validateBody } from '@/lib/validate'
+import { updateCabinetSchema } from '@/lib/schemas/cabinet'
 
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : 'Erreur inconnue'
@@ -33,7 +35,10 @@ export async function PATCH(request: NextRequest) {
     }
     const { cabinetId } = session.user
 
-    const body = await request.json()
+    const v = await validateBody(request, updateCabinetSchema)
+    if ('error' in v) return v.error
+    const body = v.data
+
     const data = {
       ...(body.nom              !== undefined && { nom: body.nom }),
       ...(body.ville            !== undefined && { ville: body.ville }),

@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import { requirePermission } from '@/lib/permissions-server'
 import { assertNotWalled } from '@/lib/plan-server'
+import { validateBody } from '@/lib/validate'
+import { createSeanceSchema } from '@/lib/schemas/medical'
 
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : 'Erreur inconnue'
@@ -51,7 +53,10 @@ export async function POST(request: NextRequest) {
     }
     const { cabinetId } = session.user
 
-    const body = await request.json()
+    const v = await validateBody(request, createSeanceSchema)
+    if ('error' in v) return v.error
+    const body = v.data
+
     const seance = await prisma.seance.create({
       data: {
         cabinetId,

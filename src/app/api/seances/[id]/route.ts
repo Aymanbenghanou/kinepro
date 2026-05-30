@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import { requirePermission } from '@/lib/permissions-server'
 import { assertNotWalled } from '@/lib/plan-server'
+import { validateBody } from '@/lib/validate'
+import { updateSeanceSchema } from '@/lib/schemas/medical'
 
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : 'Erreur inconnue'
@@ -52,7 +54,10 @@ export async function PATCH(
     const existing = await prisma.seance.findFirst({ where: { id, cabinetId } })
     if (!existing) return NextResponse.json({ error: 'Séance non trouvée' }, { status: 404 })
 
-    const body = await request.json()
+    const v = await validateBody(request, updateSeanceSchema)
+    if ('error' in v) return v.error
+    const body = v.data
+
     const seance = await prisma.seance.update({
       where: { id },
       data: {

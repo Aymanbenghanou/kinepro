@@ -10,6 +10,8 @@ import { assertNotWalled } from '@/lib/plan-server'
 import { assertOwner } from '@/lib/permissions-server'
 import { PRESETS, PERMISSION_KEYS } from '@/lib/permissions'
 import bcrypt from 'bcryptjs'
+import { validateBody } from '@/lib/validate'
+import { accesPraticienSchema } from '@/lib/schemas/staff'
 
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : 'Erreur inconnue'
@@ -39,12 +41,12 @@ export async function POST(
     }
     const { cabinetId } = session.user
     const { id } = await params
-    const body = await request.json()
-    const email = String(body.email ?? '').trim().toLowerCase()
-    const password = String(body.password ?? '')
 
-    if (!email) return NextResponse.json({ error: 'Email requis pour activer l\'accès' }, { status: 400 })
-    if (password.length < 6) return NextResponse.json({ error: 'Mot de passe requis (min. 6 caractères)' }, { status: 400 })
+    const v = await validateBody(request, accesPraticienSchema)
+    if ('error' in v) return v.error
+    const body = v.data
+    const email = body.email.trim().toLowerCase()
+    const password = body.password
 
     // 1) id = Praticien ?
     const praticien = await prisma.praticien.findFirst({

@@ -6,19 +6,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { requirePermission } from '@/lib/permissions-server'
 import { assertPro } from '@/lib/plan-server'
+import { validateBody } from '@/lib/validate'
+import { aiExerciseProgramSchema } from '@/lib/schemas/medical'
+import type { z } from 'zod'
 
-interface Input {
-  patientPrenom: string
-  pathologie: string
-  seanceNumero: number
-  seanceTotal: number
-  niveauDouleur: number
-  objectif: string
-  contraintes?: string
-  duree: number      // minutes
-  frequence: string
-  langue: 'fr' | 'ar'
-}
+type Input = z.infer<typeof aiExerciseProgramSchema>
 
 function buildFrenchPrompt(i: Input): string {
   return `Tu es un kinésithérapeute expert. Génère un programme d'exercices personnalisé.
@@ -109,10 +101,9 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const body = (await req.json()) as Input
-    if (!body.patientPrenom || !body.pathologie || !body.objectif) {
-      return NextResponse.json({ error: 'Champs obligatoires manquants' }, { status: 400 })
-    }
+    const v = await validateBody(req, aiExerciseProgramSchema)
+    if ('error' in v) return v.error
+    const body = v.data
 
     const prompt = body.langue === 'ar' ? buildArabicPrompt(body) : buildFrenchPrompt(body)
 

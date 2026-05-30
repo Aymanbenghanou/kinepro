@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import { requirePermission } from '@/lib/permissions-server'
 import { assertNotWalled } from '@/lib/plan-server'
+import { validateBody } from '@/lib/validate'
+import { updateRdvSchema } from '@/lib/schemas/medical'
 
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : 'Erreur inconnue'
@@ -56,7 +58,9 @@ export async function PUT(
       }
     }
 
-    const body = await request.json()
+    const v = await validateBody(request, updateRdvSchema)
+    if ('error' in v) return v.error
+    const body = v.data
 
     // Un PRATICIEN ne peut pas réassigner le RDV à un collègue : on force.
     const praticienIdFinal = role === 'PRATICIEN'

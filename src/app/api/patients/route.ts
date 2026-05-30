@@ -4,6 +4,8 @@ import { auth } from '@/auth'
 import { requirePermission } from '@/lib/permissions-server'
 import { assertNotWalled } from '@/lib/plan-server'
 import { randomBytes } from 'crypto'
+import { validateBody } from '@/lib/validate'
+import { createPatientSchema } from '@/lib/schemas/medical'
 
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : 'Erreur inconnue'
@@ -59,10 +61,10 @@ export async function POST(request: NextRequest) {
     }
     const { cabinetId } = session.user
 
-    const body = await request.json()
-    if (!body.nom?.trim() || !body.prenom?.trim()) {
-      return NextResponse.json({ error: 'Nom et prénom sont obligatoires' }, { status: 400 })
-    }
+    const v = await validateBody(request, createPatientSchema)
+    if ('error' in v) return v.error
+    const body = v.data
+
     const patient = await prisma.patient.create({
       data: {
         cabinetId,
@@ -84,9 +86,9 @@ export async function POST(request: NextRequest) {
         medecinTelephone:    body.medecinTelephone    || null,
         mutuelle:            body.mutuelle            || null,
         numeroPolice:        body.numeroPolice        || null,
-        tarifSeance:         body.tarifSeance         ? parseFloat(body.tarifSeance)      : null,
+        tarifSeance:         body.tarifSeance         ? parseFloat(String(body.tarifSeance))      : null,
         modePaiement:        body.modePaiement        || null,
-        nbSeancesPrescrites: body.nbSeancesPrescrites ? parseInt(body.nbSeancesPrescrites) : null,
+        nbSeancesPrescrites: body.nbSeancesPrescrites ? parseInt(String(body.nbSeancesPrescrites)) : null,
         frequence:           body.frequence           || null,
         praticienAssigneId:  body.praticienAssigneId  || null,
         typesSeances:        body.typesSeances        || null,

@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import { requirePermission } from '@/lib/permissions-server'
 import { assertNotWalled } from '@/lib/plan-server'
+import { validateBody } from '@/lib/validate'
+import { createRdvSchema } from '@/lib/schemas/medical'
 
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : 'Erreur inconnue'
@@ -66,7 +68,9 @@ export async function POST(request: NextRequest) {
     }
     const { cabinetId, role, praticienId: sessionPraticienId } = session.user
 
-    const body = await request.json()
+    const v = await validateBody(request, createRdvSchema)
+    if ('error' in v) return v.error
+    const body = v.data
 
     // Garde-fou serveur : un PRATICIEN ne peut créer un RDV que pour lui-même.
     // OWNER / SECRETAIRE / SUPER_ADMIN choisissent librement le praticien.
