@@ -22,6 +22,8 @@
     "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-separator": "^1.1.8",
     "@types/bcryptjs": "^2.4.6",
+    "@upstash/ratelimit": "^2.0.8",
+    "@upstash/redis": "^1.38.0",
     "@zxing/library": "^0.23.0",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",

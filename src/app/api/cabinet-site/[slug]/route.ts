@@ -4,10 +4,12 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { publicLimiter, checkRateLimit } from '@/lib/rate-limit'
 
 type Context = { params: Promise<{ slug: string }> }
 
-export async function GET(_req: NextRequest, { params }: Context) {
+export async function GET(req: NextRequest, { params }: Context) {
+  const rl = await checkRateLimit(req, publicLimiter); if (rl) return rl
   const { slug } = await params
 
   try {

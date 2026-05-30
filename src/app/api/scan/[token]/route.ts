@@ -1,30 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { publicLimiter, checkRateLimit } from '@/lib/rate-limit'
 
-// Simple in-memory rate limiter: token → { count, resetAt }
-const rateMap = new Map<string, { count: number; resetAt: number }>()
-
-function isRateLimited(token: string): boolean {
-  const now = Date.now()
-  const entry = rateMap.get(token)
-  if (!entry || now > entry.resetAt) {
-    rateMap.set(token, { count: 1, resetAt: now + 60_000 })
-    return false
-  }
-  if (entry.count >= 10) return true
-  entry.count++
-  return false
-}
+// Rate limit centralisé via Upstash (cf. src/lib/rate-limit.ts).
+// L'ancien rate limiter en-mémoire (par token) ne survivait pas entre
+// instances serverless ; remplacé par le limiter Upstash par IP.
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ token: string }> }
 ) {
+  const rl = await checkRateLimit(req, publicLimiter); if (rl) return rl
   const { token } = await params
-
-  if (isRateLimited(token)) {
-    return NextResponse.json({ error: 'Trop de requêtes' }, { status: 429 })
-  }
 
   try {
     const patient = await prisma.patient.findUnique({

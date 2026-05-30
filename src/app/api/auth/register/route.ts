@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import { DEFAULT_SEANCE_TYPES } from '@/lib/default-seance-types'
+import { authLimiter, checkRateLimit } from '@/lib/rate-limit'
 
 function errMsg(e: unknown) {
   return e instanceof Error ? e.message : 'Erreur inconnue'
 }
 
 export async function POST(request: NextRequest) {
+  const rl = await checkRateLimit(request, authLimiter); if (rl) return rl
   try {
     const { cabinet: cab, admin } = await request.json()
 

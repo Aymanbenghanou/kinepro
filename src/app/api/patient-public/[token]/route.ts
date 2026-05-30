@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { publicLimiter, checkRateLimit } from '@/lib/rate-limit'
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ token: string }> }
 ) {
+  const rl = await checkRateLimit(request, publicLimiter); if (rl) return rl
   const { token } = await params
 
   const patient = await prisma.patient.findUnique({

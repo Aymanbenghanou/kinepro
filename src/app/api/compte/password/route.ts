@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import bcrypt from 'bcryptjs'
+import { publicLimiter, checkRateLimit } from '@/lib/rate-limit'
 
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : 'Erreur inconnue'
 }
 
 export async function POST(request: NextRequest) {
+  const rl = await checkRateLimit(request, publicLimiter); if (rl) return rl
   try {
     const session = await auth()
     if (!session?.user?.id) {

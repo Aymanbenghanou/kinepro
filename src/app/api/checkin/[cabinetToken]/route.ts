@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { publicLimiter, checkRateLimit } from '@/lib/rate-limit'
 
 async function getCabinetByToken(cabinetToken: string) {
   return prisma.cabinet.findUnique({
@@ -13,6 +14,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ cabinetToken: string }> }
 ) {
+  const rl = await checkRateLimit(request, publicLimiter); if (rl) return rl
   const { cabinetToken } = await params
   const phone = request.nextUrl.searchParams.get('phone')
 
@@ -76,6 +78,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ cabinetToken: string }> }
 ) {
+  const rl = await checkRateLimit(request, publicLimiter); if (rl) return rl
   const { cabinetToken } = await params
   const cabinet = await getCabinetByToken(cabinetToken)
   if (!cabinet) {

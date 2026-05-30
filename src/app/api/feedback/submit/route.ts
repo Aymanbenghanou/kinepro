@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { publicLimiter, checkRateLimit } from '@/lib/rate-limit'
 
 export async function POST(request: NextRequest) {
+  const rl = await checkRateLimit(request, publicLimiter); if (rl) return rl
   try {
     const body = await request.json()
     const { token, score, commentaire } = body
