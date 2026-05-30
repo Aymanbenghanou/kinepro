@@ -13,8 +13,12 @@ import ExercicesModal from '@/components/whatsapp/ExercicesModal'
 import { generateDossierPatientPDF } from '@/lib/pdf-utils'
 import ProgressionTab from '@/components/patients/ProgressionTab'
 import DocumentsTab from '@/components/patients/DocumentsTab'
+import EditPatientModal from '@/components/patients/EditPatientModal'
 import ExerciseProgramModal from '@/components/exercise-program/ExerciseProgramModal'
 import { formatWhatsAppMessage, waUrl } from '@/lib/exercise-program'
+import Toast from '@/components/ui/Toast'
+import { useCan } from '@/lib/use-permissions'
+import { Edit2 } from 'lucide-react'
 import dynamic from 'next/dynamic'
 
 const QrCodeModal = dynamic(() => import('@/components/qr/QrCodeModal'), { ssr: false })
@@ -197,6 +201,11 @@ export default function PatientDetailPage() {
   const [showQr, setShowQr] = useState(false)
   const [qrToken, setQrToken] = useState<string | null>(null)
   const [qrLoading, setQrLoading] = useState(false)
+  const [showEdit, setShowEdit] = useState(false)
+  const [toast, setToast]       = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+
+  const can      = useCan()
+  const canEdit  = can('patients')
 
   async function openQr() {
     setShowQr(true)
@@ -307,6 +316,12 @@ export default function PatientDetailPage() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: 10, flexShrink: 0, flexWrap: 'wrap' }}>
+              {canEdit && (
+                <button onClick={() => setShowEdit(true)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'white', color: '#374151', border: '1px solid #E2E8F0', borderRadius: 10, padding: '10px 14px', cursor: 'pointer', fontWeight: 500, fontSize: 14 }}>
+                  <Edit2 size={15} /> Modifier
+                </button>
+              )}
               <button onClick={openQr}
                 style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'white', color: '#374151', border: '1px solid #E2E8F0', borderRadius: 10, padding: '10px 14px', cursor: 'pointer', fontWeight: 500, fontSize: 14 }}>
                 <QrCode size={15} /> QR Code
@@ -599,6 +614,16 @@ export default function PatientDetailPage() {
           onSuccess={fetchPatient}
         />
       )}
+
+      {showEdit && patient && (
+        <EditPatientModal
+          patient={patient}
+          onClose={() => setShowEdit(false)}
+          onSuccess={(t) => { setToast(t); fetchPatient() }}
+        />
+      )}
+
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       {showExercices && patient && (
         <ExercicesModal
           patient={{ id: patient.id, prenom: patient.prenom, nom: patient.nom, telephone: patient.telephone }}
