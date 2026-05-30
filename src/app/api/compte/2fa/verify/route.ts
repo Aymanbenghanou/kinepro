@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import { TOTP, Secret } from 'otpauth'
+import { decryptSecret } from '@/lib/crypto'
 
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : 'Erreur inconnue'
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest) {
     const totp = new TOTP({
       issuer:    'KinéPro',
       label:     user.email,
-      secret:    Secret.fromBase32(user.twoFactorSecret),
+      secret:    Secret.fromBase32(decryptSecret(user.twoFactorSecret)),
       algorithm: 'SHA1',
       digits:    6,
       period:    30,

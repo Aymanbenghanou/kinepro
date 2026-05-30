@@ -4,25 +4,13 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { auth } from '@/auth'
+import { assertSuperAdmin } from '@/lib/super-admin-guard'
 
 type Context = { params: Promise<{ cabinetId: string }> }
 
-async function requireSuperAdmin() {
-  const session = await auth()
-  if (!session?.user || session.user.role !== 'SUPER_ADMIN') return null
-  return session
-}
-
 export async function POST(req: NextRequest, { params }: Context) {
-  if (!await requireSuperAdmin()) {
-    return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
-  }
+  const __sa = await assertSuperAdmin(); if (__sa) return __sa
   const { cabinetId } = await params
-
-  // ── Debug logs ──────────────────────────────────────────────────────────────
-  console.log('[generate-content] Cabinet ID:', cabinetId)
-  console.log('[generate-content] ANTHROPIC_API_KEY exists:', !!process.env.ANTHROPIC_API_KEY)
 
   if (!process.env.ANTHROPIC_API_KEY) {
     console.error('[generate-content] Missing ANTHROPIC_API_KEY env variable')
@@ -47,8 +35,6 @@ export async function POST(req: NextRequest, { params }: Context) {
     if (!cabinet) {
       return NextResponse.json({ error: 'Cabinet introuvable' }, { status: 404 })
     }
-
-    console.log('[generate-content] Cabinet found:', cabinet.nom, '| Praticiens:', cabinet.praticiens.length, '| Services:', cabinet.seanceTypes.length)
 
     const praticiensList = cabinet.praticiens
       .map(p => `${p.prenom} ${p.nom}${p.specialite ? ` (${p.specialite})` : ''}`)
@@ -123,7 +109,6 @@ Réponds UNIQUEMENT en JSON valide sans markdown ni backticks. Commence directem
 }`
 
     // ── Call Claude API ──────────────────────────────────────────────────────
-    console.log('[generate-content] Calling Anthropic API...')
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -138,8 +123,6 @@ Réponds UNIQUEMENT en JSON valide sans markdown ni backticks. Commence directem
       }),
     })
 
-    console.log('[generate-content] Anthropic status:', anthropicRes.status)
-
     if (!anthropicRes.ok) {
       const errBody = await anthropicRes.text()
       console.error('[generate-content] Anthropic API error:', anthropicRes.status, errBody)
@@ -151,8 +134,6 @@ Réponds UNIQUEMENT en JSON valide sans markdown ni backticks. Commence directem
 
     const anthropicData = await anthropicRes.json()
     const rawText: string = anthropicData.content?.[0]?.text ?? ''
-    console.log('[generate-content] Raw response length:', rawText.length)
-    console.log('[generate-content] Raw response preview:', rawText.slice(0, 200))
 
     // Strip markdown code fences if present
     const jsonText = rawText
@@ -213,7 +194,6 @@ Réponds UNIQUEMENT en JSON valide sans markdown ni backticks. Commence directem
       include: { testimonials: { orderBy: { createdAt: 'desc' } } },
     })
 
-    console.log('[generate-content] Done. Testimonials saved:', maxLen)
     return NextResponse.json(updatedSite)
 
   } catch (err) {

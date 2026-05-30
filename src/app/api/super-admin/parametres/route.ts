@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { auth } from '@/auth'
+import { assertSuperAdmin } from '@/lib/super-admin-guard'
 
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : 'Erreur inconnue'
@@ -13,11 +13,8 @@ async function getOrCreateConfig() {
 }
 
 export async function GET() {
+  const __sa = await assertSuperAdmin(); if (__sa) return __sa
   try {
-    const session = await auth()
-    if (!session?.user || session.user.role !== 'SUPER_ADMIN') {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
-    }
     const config = await getOrCreateConfig()
     return NextResponse.json(config)
   } catch (error) {
@@ -27,11 +24,8 @@ export async function GET() {
 }
 
 export async function PATCH(request: NextRequest) {
+  const __sa = await assertSuperAdmin(); if (__sa) return __sa
   try {
-    const session = await auth()
-    if (!session?.user || session.user.role !== 'SUPER_ADMIN') {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
-    }
     const body = await request.json()
     const data: Record<string, unknown> = {}
     if (body.whatsappNumber !== undefined) data.whatsappNumber = body.whatsappNumber

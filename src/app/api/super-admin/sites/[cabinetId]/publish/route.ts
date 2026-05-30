@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { auth } from '@/auth'
+import { assertSuperAdmin } from '@/lib/super-admin-guard'
 
 type Context = { params: Promise<{ cabinetId: string }> }
 
 export async function POST(_req: NextRequest, { params }: Context) {
-  const session = await auth()
-  if (!session?.user || session.user.role !== 'SUPER_ADMIN') {
-    return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
-  }
+  const __sa = await assertSuperAdmin(); if (__sa) return __sa
   const { cabinetId } = await params
   try {
     const existing = await prisma.cabinetSite.findUnique({ where: { cabinetId } })
@@ -19,7 +16,7 @@ export async function POST(_req: NextRequest, { params }: Context) {
       update: { published },
     })
     return NextResponse.json({ published: site.published })
-  } catch (err) {
+  } catch {
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
   }
 }

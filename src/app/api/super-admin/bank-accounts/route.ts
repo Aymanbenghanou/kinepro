@@ -4,22 +4,14 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { auth } from '@/auth'
-
-async function requireSuperAdmin() {
-  const session = await auth()
-  if (!session?.user || session.user.role !== 'SUPER_ADMIN') return null
-  return session
-}
+import { assertSuperAdmin } from '@/lib/super-admin-guard'
 
 function normalizeRib(raw: unknown): string {
   return String(raw ?? '').replace(/\s+/g, '').trim()
 }
 
 export async function GET() {
-  if (!await requireSuperAdmin()) {
-    return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
-  }
+  const __sa = await assertSuperAdmin(); if (__sa) return __sa
   const accounts = await prisma.bankAccount.findMany({
     orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }],
   })
@@ -27,9 +19,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  if (!await requireSuperAdmin()) {
-    return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
-  }
+  const __sa = await assertSuperAdmin(); if (__sa) return __sa
   try {
     const body = await req.json()
     const rib = normalizeRib(body.rib)

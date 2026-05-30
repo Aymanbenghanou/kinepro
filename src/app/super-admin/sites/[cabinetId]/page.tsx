@@ -142,10 +142,8 @@ export default function SuperAdminSiteConfigPage() {
     setGenerating(true)
     setGenerationDone(false)
     setGenError(null)
-    console.log('[generateAI] Starting — cabinetId:', cabinetId)
     try {
       const res = await fetch(`/api/super-admin/sites/${cabinetId}/generate-content`, { method: 'POST' })
-      console.log('[generateAI] Response status:', res.status)
 
       let body: any
       try { body = await res.json() } catch { body = { error: `HTTP ${res.status}` } }
@@ -158,7 +156,6 @@ export default function SuperAdminSiteConfigPage() {
         return
       }
 
-      console.log('[generateAI] Success — contentFr keys:', Object.keys(body.contentFr ?? {}))
       setSite(prev => prev ? { ...prev, ...body } : prev)
       setContentFr((body.contentFr as SiteContent) ?? {})
       setContentAr((body.contentAr as SiteContent) ?? {})

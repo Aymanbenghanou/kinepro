@@ -1,6 +1,17 @@
 /**
- * Migration de la data existante vers le nouveau système de rôles.
- * Exécuté SUR PROD à chaque build Vercel (étape buildCommand). Idempotent :
+ * ARCHIVÉ le 2026-05-30. PLUS APPELÉ AU BUILD.
+ *
+ * A été utilisé pendant plusieurs déploiements après l'introduction du système
+ * de rôles à 3 niveaux pour convertir les anciens User.role=EMPLOYEE en
+ * PRATICIEN / SECRETAIRE selon la spécialité du Praticien lié. Désormais le
+ * rôle est posé directement à la création (auth/register +
+ * praticiens/route POST), donc plus rien à migrer.
+ *
+ * Conservé en l'état pour mémoire et pour pouvoir le rejouer manuellement si
+ * un cabinet legacy non migré refait surface :
+ *   npx tsx scripts/migrate-roles.archived.ts
+ *
+ * Migration de la data existante vers le nouveau système de rôles. Idempotent :
  * - Users déjà en PRATICIEN / SECRETAIRE / SUPER_ADMIN → skip.
  * - CABINET_OWNER → laissé tel quel (permissions ignorées par hasPermission).
  * - EMPLOYEE avec Praticien spécialité "Secrétaire"/"Secretaire" →

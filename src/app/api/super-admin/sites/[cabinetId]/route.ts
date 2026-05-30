@@ -5,18 +5,12 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { auth } from '@/auth'
+import { assertSuperAdmin } from '@/lib/super-admin-guard'
 
 type Context = { params: Promise<{ cabinetId: string }> }
 
-async function requireSuperAdmin() {
-  const session = await auth()
-  if (!session?.user || session.user.role !== 'SUPER_ADMIN') return null
-  return session
-}
-
 export async function GET(_req: NextRequest, { params }: Context) {
-  if (!await requireSuperAdmin()) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  const __sa = await assertSuperAdmin(); if (__sa) return __sa
   const { cabinetId } = await params
 
   try {
@@ -46,7 +40,7 @@ export async function GET(_req: NextRequest, { params }: Context) {
 }
 
 export async function PATCH(req: NextRequest, { params }: Context) {
-  if (!await requireSuperAdmin()) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  const __sa = await assertSuperAdmin(); if (__sa) return __sa
   const { cabinetId } = await params
 
   try {
@@ -72,7 +66,7 @@ export async function PATCH(req: NextRequest, { params }: Context) {
 
 // POST to this route = add testimonial
 export async function POST(req: NextRequest, { params }: Context) {
-  if (!await requireSuperAdmin()) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+  const __sa = await assertSuperAdmin(); if (__sa) return __sa
   const { cabinetId } = await params
 
   try {

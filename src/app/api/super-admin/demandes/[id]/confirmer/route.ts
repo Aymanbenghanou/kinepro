@@ -1,14 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
+import { assertSuperAdmin } from '@/lib/super-admin-guard'
 
 // POST /api/super-admin/demandes/[id]/confirmer
 // Confirme une demande d'abonnement → active le plan du cabinet. Super Admin only.
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth()
-  if (!session?.user || session.user.role !== 'SUPER_ADMIN') {
-    return NextResponse.json({ error: 'Non autorisé' }, { status: 403 })
-  }
+  const __sa = await assertSuperAdmin(); if (__sa) return __sa
 
   try {
     const { id } = await params

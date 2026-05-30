@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import { TOTP, Secret } from 'otpauth'
 import QRCode from 'qrcode'
+import { encryptSecret } from '@/lib/crypto'
 
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : 'Erreur inconnue'
@@ -33,10 +34,10 @@ export async function POST() {
     // Generate QR code as data URL
     const qrCode = await QRCode.toDataURL(otpAuthUrl)
 
-    // Store secret temporarily (we'll confirm it in /verify)
+    // Store secret temporarily (we'll confirm it in /verify), chiffré at-rest.
     await prisma.user.update({
       where: { id: session.user.id },
-      data: { twoFactorSecret: secretBase32 },
+      data: { twoFactorSecret: encryptSecret(secretBase32) },
     })
 
     return NextResponse.json({ qrCode, secret: secretBase32 })

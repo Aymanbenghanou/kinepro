@@ -36,8 +36,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // 2FA check
         if (user.twoFactorEnabled && user.twoFactorSecret) {
           if (!credentials.totp) return null
-          const { TOTP } = await import('otpauth')
-          const totp = new TOTP({ secret: user.twoFactorSecret, digits: 6, period: 30 })
+          const { TOTP, Secret } = await import('otpauth')
+          const { decryptSecret } = await import('@/lib/crypto')
+          const totp = new TOTP({
+            secret: Secret.fromBase32(decryptSecret(user.twoFactorSecret)),
+            digits: 6, period: 30,
+          })
           const delta = totp.validate({ token: credentials.totp as string, window: 1 })
           if (delta === null) return null
         }
