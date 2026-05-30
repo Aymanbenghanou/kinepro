@@ -2,10 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/auth'
 import { assertOwner } from '@/lib/permissions-server'
 import { prisma } from '@/lib/prisma'
-import { getMontant, type Plan, type BillingCycle } from '@/lib/abonnement'
-
-const PLANS: Plan[] = ['starter', 'pro']
-const CYCLES: BillingCycle[] = ['monthly', 'annual']
+import { getMontant } from '@/lib/abonnement'
+import { validateBody } from '@/lib/validate'
+import { demandeAbonnementSchema } from '@/lib/schemas/billing'
 
 // POST /api/abonnement/demande — crée (ou met à jour) une demande "en_attente"
 // pour le cabinet. Le montant est calculé côté serveur (jamais reçu du client).
@@ -18,13 +17,9 @@ export async function POST(request: NextRequest) {
     }
     const { cabinetId } = session.user
 
-    const body = await request.json().catch(() => ({}))
-    const plan = body?.plan
-    const billingCycle = body?.billingCycle
-
-    if (!PLANS.includes(plan) || !CYCLES.includes(billingCycle)) {
-      return NextResponse.json({ error: 'Plan ou cycle invalide' }, { status: 400 })
-    }
+    const v = await validateBody(request, demandeAbonnementSchema)
+    if ('error' in v) return v.error
+    const { plan, billingCycle } = v.data
 
     // Montant calculé serveur — on ne fait jamais confiance au client.
     const montant = getMontant(plan, billingCycle)

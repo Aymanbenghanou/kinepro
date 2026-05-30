@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import { DEFAULT_SEANCE_TYPES } from '@/lib/default-seance-types'
 import { authLimiter, checkRateLimit } from '@/lib/rate-limit'
+import { validateBody } from '@/lib/validate'
+import { registerSchema } from '@/lib/schemas/auth'
 
 function errMsg(e: unknown) {
   return e instanceof Error ? e.message : 'Erreur inconnue'
@@ -10,13 +12,10 @@ function errMsg(e: unknown) {
 
 export async function POST(request: NextRequest) {
   const rl = await checkRateLimit(request, authLimiter); if (rl) return rl
+  const v = await validateBody(request, registerSchema)
+  if ('error' in v) return v.error
+  const { cabinet: cab, admin } = v.data
   try {
-    const { cabinet: cab, admin } = await request.json()
-
-    if (!cab?.nom?.trim() || !admin?.email?.trim() || !admin?.password) {
-      return NextResponse.json({ error: 'Données manquantes' }, { status: 400 })
-    }
-
     // Check email uniqueness
     const exists = await prisma.user.findUnique({ where: { email: admin.email } })
     if (exists) {

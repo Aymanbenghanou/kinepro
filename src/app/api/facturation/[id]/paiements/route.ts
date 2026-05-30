@@ -9,7 +9,9 @@ import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import { requirePermission } from '@/lib/permissions-server'
 import { assertNotWalled } from '@/lib/plan-server'
-import { computeStatut, MODE_PAIEMENT } from '@/lib/facture-statut'
+import { computeStatut } from '@/lib/facture-statut'
+import { validateBody } from '@/lib/validate'
+import { enregistrerPaiementSchema } from '@/lib/schemas/billing'
 
 type Context = { params: Promise<{ id: string }> }
 
@@ -32,15 +34,10 @@ export async function POST(req: NextRequest, { params }: Context) {
     const { cabinetId } = session.user
     const { id } = await params
 
-    const body = await req.json()
-    const montant = Number(body.montant)
-    if (!Number.isFinite(montant) || montant <= 0) {
-      return NextResponse.json({ error: 'Montant invalide' }, { status: 400 })
-    }
-    const mode = String(body.modePaiement || '').toLowerCase()
-    if (!(mode in MODE_PAIEMENT)) {
-      return NextResponse.json({ error: 'Mode de paiement invalide' }, { status: 400 })
-    }
+    const v = await validateBody(req, enregistrerPaiementSchema)
+    if ('error' in v) return v.error
+    const body = v.data
+    const montant = body.montant
 
     const facture = await prisma.facture.findFirst({ where: { id, cabinetId } })
     if (!facture) return NextResponse.json({ error: 'Facture introuvable' }, { status: 404 })
@@ -58,9 +55,9 @@ export async function POST(req: NextRequest, { params }: Context) {
           factureId:    id,
           cabinetId,
           montant,
-          modePaiement: mode,
+          modePaiement: body.modePaiement,
           datePaiement,
-          notes:        body.notes ? String(body.notes).trim() : null,
+          notes:        body.notes ? body.notes.trim() : null,
         },
       }),
       prisma.facture.update({

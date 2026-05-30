@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import { TOTP, Secret } from 'otpauth'
 import { decryptSecret } from '@/lib/crypto'
+import { validateBody } from '@/lib/validate'
+import { verify2faSchema } from '@/lib/schemas/auth'
 
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : 'Erreur inconnue'
@@ -15,10 +17,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
     }
 
-    const { token } = await request.json()
-    if (!token || token.length !== 6) {
-      return NextResponse.json({ error: 'Code invalide' }, { status: 400 })
-    }
+    const v = await validateBody(request, verify2faSchema)
+    if ('error' in v) return v.error
+    const { token } = v.data
 
     const user = await prisma.user.findUnique({ where: { id: session.user.id } })
     if (!user?.twoFactorSecret) {

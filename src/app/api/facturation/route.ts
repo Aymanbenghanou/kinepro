@@ -12,6 +12,8 @@ import { auth } from '@/auth'
 import { requirePermission } from '@/lib/permissions-server'
 import { assertNotWalled } from '@/lib/plan-server'
 import { computeStatut } from '@/lib/facture-statut'
+import { validateBody } from '@/lib/validate'
+import { createFactureSchema } from '@/lib/schemas/billing'
 
 function errMsg(e: unknown): string { return e instanceof Error ? e.message : 'Erreur' }
 
@@ -85,10 +87,9 @@ export async function POST(req: NextRequest) {
     if (!session?.user?.cabinetId) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
     const { cabinetId } = session.user
 
-    const body = await req.json()
-    if (!body.patientId || typeof body.montant !== 'number') {
-      return NextResponse.json({ error: 'patientId et montant requis' }, { status: 400 })
-    }
+    const v = await validateBody(req, createFactureSchema)
+    if ('error' in v) return v.error
+    const body = v.data
 
     const facture = await prisma.facture.create({
       data: {

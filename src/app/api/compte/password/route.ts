@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import bcrypt from 'bcryptjs'
 import { publicLimiter, checkRateLimit } from '@/lib/rate-limit'
+import { validateBody } from '@/lib/validate'
+import { changePasswordSchema } from '@/lib/schemas/auth'
 
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : 'Erreur inconnue'
@@ -16,13 +18,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
     }
 
-    const { currentPassword, newPassword } = await request.json()
-    if (!currentPassword || !newPassword) {
-      return NextResponse.json({ error: 'Données manquantes' }, { status: 400 })
-    }
-    if (newPassword.length < 8) {
-      return NextResponse.json({ error: 'Le mot de passe doit faire au moins 8 caractères' }, { status: 400 })
-    }
+    const v = await validateBody(request, changePasswordSchema)
+    if ('error' in v) return v.error
+    const { currentPassword, newPassword } = v.data
 
     const user = await prisma.user.findUnique({ where: { id: session.user.id } })
     if (!user) return NextResponse.json({ error: 'Utilisateur non trouvé' }, { status: 404 })
