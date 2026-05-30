@@ -72,34 +72,45 @@ export async function PUT(
     if ('error' in v) return v.error
     const body = v.data
 
+    // PATCH-style update : on ne touche QUE les champs effectivement présents
+    // dans le body validé. Champ absent → DB intacte. Champ null explicite →
+    // effacement. (Avant : tous les champs absents étaient écrasés à null par
+    // `body.X || null`, ce qui détruisait silencieusement le dossier.)
+    const WRITEABLE = [
+      'nom', 'prenom', 'sexe', 'telephone', 'email', 'adresse', 'ville', 'cin',
+      'pathologie', 'antecedents', 'allergies', 'medicaments',
+      'medecinReferent', 'medecinTelephone', 'mutuelle', 'numeroPolice',
+      'modePaiement', 'frequence', 'praticienAssigneId', 'objectifsTraitement',
+      'actif',
+    ] as const
+
+    const updates: Record<string, unknown> = {}
+
+    // Champs scalaires : on copie tel quel (string, boolean, null).
+    for (const key of WRITEABLE) {
+      if (key in body) updates[key] = (body as Record<string, unknown>)[key]
+    }
+
+    // Date : conversion conservée — string → Date, falsy → null.
+    if ('dateNaissance' in body) {
+      updates.dateNaissance = body.dateNaissance ? new Date(body.dateNaissance) : null
+    }
+
+    // Conversions numériques conservées — truthy → parseFloat/parseInt, sinon null.
+    if ('tarifSeance' in body) {
+      updates.tarifSeance = body.tarifSeance
+        ? parseFloat(String(body.tarifSeance))
+        : null
+    }
+    if ('nbSeancesPrescrites' in body) {
+      updates.nbSeancesPrescrites = body.nbSeancesPrescrites
+        ? parseInt(String(body.nbSeancesPrescrites))
+        : null
+    }
+
     const patient = await prisma.patient.update({
       where: { id },
-      data: {
-        nom:             body.nom,
-        prenom:          body.prenom,
-        dateNaissance:   body.dateNaissance ? new Date(body.dateNaissance) : null,
-        sexe:            body.sexe            || null,
-        telephone:       body.telephone       || null,
-        email:           body.email           || null,
-        adresse:         body.adresse         || null,
-        ville:           body.ville           || null,
-        cin:             body.cin             || null,
-        pathologie:      body.pathologie      || null,
-        antecedents:     body.antecedents     || null,
-        allergies:       body.allergies       || null,
-        medicaments:     body.medicaments     || null,
-        medecinReferent: body.medecinReferent || null,
-        medecinTelephone:body.medecinTelephone|| null,
-        mutuelle:        body.mutuelle        || null,
-        numeroPolice:    body.numeroPolice    || null,
-        tarifSeance:     body.tarifSeance     ? parseFloat(String(body.tarifSeance)) : null,
-        modePaiement:    body.modePaiement    || null,
-        nbSeancesPrescrites: body.nbSeancesPrescrites ? parseInt(String(body.nbSeancesPrescrites)) : null,
-        frequence:       body.frequence       || null,
-        praticienAssigneId: body.praticienAssigneId || null,
-        objectifsTraitement: body.objectifsTraitement || null,
-        actif:           body.actif !== undefined ? body.actif : undefined,
-      },
+      data: updates,
     })
     return NextResponse.json(patient)
   } catch (error) {
