@@ -137,6 +137,8 @@ model DemandeAbonnement {
   statut       String    @default("en_attente")  // "en_attente" | "confirmee" | "rejetee"
   createdAt    DateTime  @default(now())
   confirmedAt  DateTime?                          // rempli à la confirmation
+
+  @@index([cabinetId, statut, createdAt])
 }
 
 // ─── Domain models ───────────────────────────────────────────────────────────
@@ -175,6 +177,8 @@ model Praticien {
   seances      Seance[]
   seanceTypes  SeanceType[]
   createdAt    DateTime     @default(now())
+
+  @@index([cabinetId, actif])
 }
 
 model Patient {
@@ -216,6 +220,8 @@ model Patient {
   documents            Document[]
   exerciseProgrammes   ExerciceProgram[]
   createdAt            DateTime      @default(now())
+
+  @@index([cabinetId, nom, prenom])
 }
 
 model ExerciceProgram {
@@ -230,6 +236,8 @@ model ExerciceProgram {
   envoyeWhatsApp Boolean   @default(false)
   dateEnvoi      DateTime?
   createdAt      DateTime  @default(now())
+
+  @@index([cabinetId, patientId])
 }
 
 model RendezVous {
@@ -251,6 +259,8 @@ model RendezVous {
   praticien    Praticien   @relation(fields: [praticienId], references: [id])
   seanceType   SeanceType? @relation(fields: [seanceTypeId], references: [id])
   createdAt    DateTime    @default(now())
+
+  @@index([cabinetId, date])
 }
 
 model Seance {
@@ -281,6 +291,9 @@ model Seance {
   seanceType        SeanceType? @relation(fields: [seanceTypeId], references: [id])
   facture           Facture?
   createdAt         DateTime    @default(now())
+
+  @@index([cabinetId, date])
+  @@index([cabinetId, statut])
 }
 
 model Facture {
@@ -297,6 +310,9 @@ model Facture {
   patient      Patient    @relation(fields: [patientId], references: [id])
   seance       Seance?    @relation(fields: [seanceId], references: [id])
   createdAt    DateTime   @default(now())
+
+  @@index([cabinetId, statut])
+  @@index([cabinetId, createdAt])
 }
 
 model Paiement {
@@ -309,6 +325,8 @@ model Paiement {
   notes        String?
   cabinetId    String?
   createdAt    DateTime @default(now())
+
+  @@index([cabinetId, datePaiement])
 }
 
 model Feedback {
@@ -333,6 +351,8 @@ model WhatsAppLog {
   message    String
   patient    Patient  @relation(fields: [patientId], references: [id])
   createdAt  DateTime @default(now())
+
+  @@index([cabinetId, patientId, createdAt])
 }
 
 model Document {
@@ -346,6 +366,8 @@ model Document {
   cabinetId   String?
   uploadedBy  String?
   createdAt   DateTime @default(now())
+
+  @@index([cabinetId, patientId])
 }
 
 // ─── Global system config (one row, key = "global") ──────────────────────────
