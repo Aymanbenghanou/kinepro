@@ -1,3 +1,6 @@
+// Schema géré par les migrations Prisma. Tout changement passe par
+// `prisma migrate dev`, plus jamais `prisma db push`.
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -152,8 +155,8 @@ model SeanceType {
   couleur      String       @default("#2563EB")
   actif        Boolean      @default(true)
   isDefault    Boolean      @default(false)
-  cabinetId    String?
-  cabinet      Cabinet?     @relation(fields: [cabinetId], references: [id])
+  cabinetId    String
+  cabinet      Cabinet      @relation(fields: [cabinetId], references: [id])
   praticienId  String?
   praticien    Praticien?   @relation(fields: [praticienId], references: [id])
   seances      Seance[]
@@ -170,8 +173,8 @@ model Praticien {
   email        String?
   couleur      String       @default("#2563EB")
   actif        Boolean      @default(true)
-  cabinetId    String?
-  cabinet      Cabinet?     @relation(fields: [cabinetId], references: [id])
+  cabinetId    String
+  cabinet      Cabinet      @relation(fields: [cabinetId], references: [id])
   user         User?
   rendezVous   RendezVous[]
   seances      Seance[]
@@ -210,8 +213,8 @@ model Patient {
   dateDebutSouhaite    DateTime?
   actif                Boolean       @default(true)
   publicToken          String?       @unique
-  cabinetId            String?
-  cabinet              Cabinet?      @relation(fields: [cabinetId], references: [id])
+  cabinetId            String
+  cabinet              Cabinet       @relation(fields: [cabinetId], references: [id])
   rendezVous           RendezVous[]
   seances              Seance[]
   factures             Facture[]
@@ -229,7 +232,7 @@ model ExerciceProgram {
   patientId      String
   patient        Patient   @relation(fields: [patientId], references: [id], onDelete: Cascade)
   seanceId       String?
-  cabinetId      String?
+  cabinetId      String
   titre          String
   contenu        Json
   langue         String    @default("fr")
@@ -251,7 +254,7 @@ model RendezVous {
   source       String      @default("cabinet")  // "cabinet" | "online" | "phone"
   patientNotes String?
   confirmedAt  DateTime?
-  cabinetId    String?
+  cabinetId    String
   patientId    String
   praticienId  String
   seanceTypeId String?
@@ -282,7 +285,7 @@ model Seance {
   feedbackStatus    String?
   feedbackToken     String?   @unique
   feedbackReadyAt   DateTime?
-  cabinetId         String?
+  cabinetId         String
   patientId         String
   praticienId       String
   seanceTypeId      String?
@@ -303,7 +306,7 @@ model Facture {
   statut       String     @default("en_attente") // paye | en_attente | partielle | en_retard
   dateEmise    DateTime   @default(now())
   datePaiement DateTime?
-  cabinetId    String?
+  cabinetId    String
   patientId    String
   seanceId     String?    @unique
   paiements    Paiement[]
@@ -323,7 +326,7 @@ model Paiement {
   modePaiement String   // especes | virement | cheque | carte
   datePaiement DateTime @default(now())
   notes        String?
-  cabinetId    String?
+  cabinetId    String
   createdAt    DateTime @default(now())
 
   @@index([cabinetId, datePaiement])
@@ -334,7 +337,7 @@ model Feedback {
   score       Int
   commentaire String?
   typeMessage String   @default("post_seance")
-  cabinetId   String?
+  cabinetId   String
   patientId   String
   seanceId    String?
   patient     Patient  @relation(fields: [patientId], references: [id])
@@ -344,7 +347,7 @@ model Feedback {
 model WhatsAppLog {
   id         String   @id @default(cuid())
   type       String
-  cabinetId  String?
+  cabinetId  String
   patientId  String
   patientNom String
   telephone  String
@@ -363,7 +366,7 @@ model Document {
   size        Int?
   patientId   String
   patient     Patient  @relation(fields: [patientId], references: [id])
-  cabinetId   String?
+  cabinetId   String
   uploadedBy  String?
   createdAt   DateTime @default(now())
 
