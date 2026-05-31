@@ -1,9 +1,15 @@
 import NextAuth from 'next-auth'
 import { NextResponse, userAgent } from 'next/server'
 import { authConfig } from './auth.config'
-import { UserRole } from '@prisma/client'
 
 const { auth } = NextAuth(authConfig)
+
+// NOTE: pas d'import depuis '@prisma/client' ici. Le middleware tourne sur Edge
+// Runtime et un seul import @prisma/client gonfle le bundle de >1 MB (limite
+// Vercel Hobby = 1 MB). On compare le rôle (string dans le JWT) à la valeur
+// littérale. AGENTS.md §8 demande l'enum partout — exception assumée ici pour
+// rester sous la limite Edge. Source de vérité = enum Prisma au niveau DB.
+const SUPER_ADMIN_ROLE = 'SUPER_ADMIN'
 
 /** Desktop paths that have a /m/* mobile counterpart. */
 const MOBILE_REDIRECTS: Record<string, string> = {
@@ -35,7 +41,7 @@ export default auth(function middleware(req) {
   if (authPaths.some(p => pathname.startsWith(p))) {
     if (session) {
       let dest: string
-      if (session.user.role === UserRole.SUPER_ADMIN) dest = '/super-admin'
+      if (session.user.role === SUPER_ADMIN_ROLE) dest = '/super-admin'
       else dest = isMobile ? '/m/dashboard' : '/dashboard'
       return NextResponse.redirect(new URL(dest, req.url))
     }
@@ -50,13 +56,13 @@ export default auth(function middleware(req) {
   }
 
   // Super admin guard
-  if (pathname.startsWith('/super-admin') && session.user.role !== UserRole.SUPER_ADMIN) {
+  if (pathname.startsWith('/super-admin') && session.user.role !== SUPER_ADMIN_ROLE) {
     return NextResponse.redirect(new URL(isMobile ? '/m/dashboard' : '/dashboard', req.url))
   }
 
   // ── Mobile / desktop route routing ──────────────────────────────────────
   // Mobile users on a desktop route → bounce them to the /m/* equivalent.
-  if (isMobile && session.user.role !== UserRole.SUPER_ADMIN) {
+  if (isMobile && session.user.role !== SUPER_ADMIN_ROLE) {
     if (MOBILE_REDIRECTS[pathname]) {
       return NextResponse.redirect(new URL(MOBILE_REDIRECTS[pathname], req.url))
     }
