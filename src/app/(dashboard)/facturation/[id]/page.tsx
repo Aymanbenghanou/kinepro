@@ -138,7 +138,7 @@ export default function FactureDetailPage({ params }: { params: Promise<{ id: st
                 </thead>
                 <tbody>
                   {facture.paiements.map((p: any) => {
-                    const m = MODE_PAIEMENT[p.modePaiement] ?? { label: p.modePaiement, icon: '💰', color: '#64748B' }
+                    const m = MODE_PAIEMENT[p.modePaiement as keyof typeof MODE_PAIEMENT] ?? { label: p.modePaiement, icon: '💰', color: '#64748B' }
                     return (
                       <tr key={p.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
                         <td style={td}>{formatDate(p.datePaiement)}</td>

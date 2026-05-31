@@ -1,5 +1,6 @@
 import 'server-only'
 import { NextResponse } from 'next/server'
+import { UserRole } from '@prisma/client'
 import { auth } from '@/auth'
 
 /**
@@ -12,7 +13,7 @@ import { auth } from '@/auth'
  */
 export async function assertSuperAdmin(): Promise<NextResponse | null> {
   const session = await auth()
-  if (!session?.user || session.user.role !== 'SUPER_ADMIN') {
+  if (!session?.user || session.user.role !== UserRole.SUPER_ADMIN) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   }
   return null

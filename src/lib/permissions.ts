@@ -1,5 +1,6 @@
 // Permissions granulaires pour les rôles PRATICIEN / SECRETAIRE.
 // SUPER_ADMIN et CABINET_OWNER ignorent ce mécanisme (accès total).
+import { UserRole } from '@prisma/client'
 
 export type PermissionKey =
   | 'agenda'
@@ -21,8 +22,8 @@ export function hasPermission(
   user: { role?: string | null; permissions?: Record<string, unknown> | null },
   key: PermissionKey,
 ): boolean {
-  if (user.role === 'SUPER_ADMIN' || user.role === 'CABINET_OWNER') return true
-  if (user.role === 'PRATICIEN' || user.role === 'SECRETAIRE') {
+  if (user.role === UserRole.SUPER_ADMIN || user.role === UserRole.CABINET_OWNER) return true
+  if (user.role === UserRole.PRATICIEN || user.role === UserRole.SECRETAIRE) {
     return user.permissions?.[key] === true
   }
   return false

@@ -2,7 +2,10 @@ import { config } from 'dotenv'
 config({ path: '.env.development.local', override: true })
 config({ path: '.env' })
 
-import { PrismaClient } from '@prisma/client'
+import {
+  PrismaClient,
+  UserRole, RdvStatut, SeanceStatut, FactureStatut, ModePaiement,
+} from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import { Pool } from 'pg'
 import bcrypt from 'bcryptjs'
@@ -47,7 +50,7 @@ async function main() {
     data: {
       email:    'admin@kinepro.ma',
       password: await bcrypt.hash('Admin123!', 12),
-      role:     'SUPER_ADMIN',
+      role:     UserRole.SUPER_ADMIN,
       nom:      'Admin',
       prenom:   'Super',
     },
@@ -76,7 +79,7 @@ async function main() {
     data: {
       email:     'amrani@test.com',
       password:  await bcrypt.hash('Test123!', 12),
-      role:      'CABINET_OWNER',
+      role:      UserRole.CABINET_OWNER,
       nom:       'Amrani',
       prenom:    'Rachid',
       cabinetId: cabinet1.id,
@@ -179,7 +182,7 @@ async function main() {
         duree:       [30, 45, 60][Math.floor(Math.random() * 3)],
         typeSeance:  typesLabels[Math.floor(Math.random() * typesLabels.length)],
         salle:       salles[Math.floor(Math.random() * salles.length)],
-        statut:      ['confirme', 'confirme', 'confirme', 'en_attente'][Math.floor(Math.random() * 4)],
+        statut:      [RdvStatut.confirme, RdvStatut.confirme, RdvStatut.confirme, RdvStatut.en_attente][Math.floor(Math.random() * 4)],
         patientId:   patients1[Math.floor(Math.random() * patients1.length)].id,
         praticienId: praticiens1[Math.floor(Math.random() * praticiens1.length)].id,
       },
@@ -193,7 +196,7 @@ async function main() {
     const seanceDate = new Date(now)
     seanceDate.setDate(seanceDate.getDate() - daysBack)
     seanceDate.setHours(8 + Math.floor(Math.random() * 10), 0, 0, 0)
-    const statuts = ['realisee', 'realisee', 'realisee', 'annulee', 'no_show']
+    const statuts: SeanceStatut[] = [SeanceStatut.realisee, SeanceStatut.realisee, SeanceStatut.realisee, SeanceStatut.annulee, SeanceStatut.no_show]
     const statut = statuts[Math.floor(Math.random() * statuts.length)]
     const seance = await prisma.seance.create({
       data: {
@@ -202,7 +205,7 @@ async function main() {
         duree:       [30, 45, 60][Math.floor(Math.random() * 3)],
         typeSeance:  typesLabels[Math.floor(Math.random() * typesLabels.length)],
         statut,
-        notes:       statut === 'realisee' ? 'Séance bien déroulée. Patient coopératif. Amélioration notable.' : null,
+        notes:       statut === SeanceStatut.realisee ? 'Séance bien déroulée. Patient coopératif. Amélioration notable.' : null,
         patientId:   patients1[Math.floor(Math.random() * patients1.length)].id,
         praticienId: praticiens1[Math.floor(Math.random() * praticiens1.length)].id,
       },
@@ -211,7 +214,7 @@ async function main() {
   }
 
   // 40 factures for Cabinet 1
-  const statutsFacture = ['paye', 'paye', 'paye', 'en_attente', 'en_attente', 'en_retard']
+  const statutsFacture: FactureStatut[] = [FactureStatut.paye, FactureStatut.paye, FactureStatut.paye, FactureStatut.en_attente, FactureStatut.en_attente, FactureStatut.en_retard]
   for (let i = 0; i < 40; i++) {
     const seance = seances1[i % seances1.length]
     const statut = statutsFacture[Math.floor(Math.random() * statutsFacture.length)]
@@ -224,7 +227,7 @@ async function main() {
         montant:      [150, 200, 250, 300, 350, 400][Math.floor(Math.random() * 6)],
         statut,
         dateEmise,
-        datePaiement: statut === 'paye' ? new Date(dateEmise.getTime() + 86400000 * Math.floor(Math.random() * 7)) : null,
+        datePaiement: statut === FactureStatut.paye ? new Date(dateEmise.getTime() + 86400000 * Math.floor(Math.random() * 7)) : null,
         patientId:    seance.patientId,
       },
     })
@@ -252,7 +255,7 @@ async function main() {
     data: {
       email:     'benali@test.com',
       password:  await bcrypt.hash('Test123!', 12),
-      role:      'CABINET_OWNER',
+      role:      UserRole.CABINET_OWNER,
       nom:       'Benali',
       prenom:    'Karim',
       cabinetId: cabinet2.id,

@@ -5,6 +5,7 @@ import { requirePermission } from '@/lib/permissions-server'
 import { assertNotWalled } from '@/lib/plan-server'
 import { validateBody } from '@/lib/validate'
 import { createSeanceSchema } from '@/lib/schemas/medical'
+import { SeanceStatut } from '@prisma/client'
 
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : 'Erreur inconnue'
@@ -21,7 +22,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const patientId   = searchParams.get('patientId')
     const praticienId = searchParams.get('praticienId')
-    const statut      = searchParams.get('statut')
+    const statutRaw   = searchParams.get('statut')
+    const statut      = statutRaw && statutRaw in SeanceStatut ? statutRaw as SeanceStatut : null
 
     const seances = await prisma.seance.findMany({
       where: {

@@ -1,5 +1,6 @@
 import { auth } from '@/auth'
 import { NextResponse } from 'next/server'
+import { UserRole } from '@prisma/client'
 
 export async function getSession() {
   return await auth()
@@ -10,8 +11,8 @@ export async function requireCabinet(): Promise<{ cabinetId: string; role: strin
   const session = await auth()
   if (!session?.user) throw unauthorized()
   // SUPER_ADMIN has no cabinetId but can act on any cabinet
-  if (session.user.role === 'SUPER_ADMIN') {
-    return { cabinetId: '__SUPER_ADMIN__', role: 'SUPER_ADMIN', userId: session.user.id }
+  if (session.user.role === UserRole.SUPER_ADMIN) {
+    return { cabinetId: '__SUPER_ADMIN__', role: UserRole.SUPER_ADMIN, userId: session.user.id }
   }
   if (!session.user.cabinetId) throw unauthorized()
   return { cabinetId: session.user.cabinetId, role: session.user.role, userId: session.user.id }

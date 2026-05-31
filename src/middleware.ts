@@ -1,6 +1,7 @@
 import NextAuth from 'next-auth'
 import { NextResponse, userAgent } from 'next/server'
 import { authConfig } from './auth.config'
+import { UserRole } from '@prisma/client'
 
 const { auth } = NextAuth(authConfig)
 
@@ -34,7 +35,7 @@ export default auth(function middleware(req) {
   if (authPaths.some(p => pathname.startsWith(p))) {
     if (session) {
       let dest: string
-      if (session.user.role === 'SUPER_ADMIN') dest = '/super-admin'
+      if (session.user.role === UserRole.SUPER_ADMIN) dest = '/super-admin'
       else dest = isMobile ? '/m/dashboard' : '/dashboard'
       return NextResponse.redirect(new URL(dest, req.url))
     }
@@ -49,13 +50,13 @@ export default auth(function middleware(req) {
   }
 
   // Super admin guard
-  if (pathname.startsWith('/super-admin') && session.user.role !== 'SUPER_ADMIN') {
+  if (pathname.startsWith('/super-admin') && session.user.role !== UserRole.SUPER_ADMIN) {
     return NextResponse.redirect(new URL(isMobile ? '/m/dashboard' : '/dashboard', req.url))
   }
 
   // ── Mobile / desktop route routing ──────────────────────────────────────
   // Mobile users on a desktop route → bounce them to the /m/* equivalent.
-  if (isMobile && session.user.role !== 'SUPER_ADMIN') {
+  if (isMobile && session.user.role !== UserRole.SUPER_ADMIN) {
     if (MOBILE_REDIRECTS[pathname]) {
       return NextResponse.redirect(new URL(MOBILE_REDIRECTS[pathname], req.url))
     }

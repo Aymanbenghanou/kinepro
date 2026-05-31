@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { publicLimiter, checkRateLimit } from '@/lib/rate-limit'
+import { RdvStatut } from '@prisma/client'
 
 async function getCabinetByToken(cabinetToken: string) {
   return prisma.cabinet.findUnique({
@@ -103,7 +104,11 @@ export async function POST(
 
   await prisma.rendezVous.update({
     where: { id: rdvId },
-    data: { statut: 'present' },
+    // NOTE A3 : la valeur historique 'present' (1 row legacy) a été migrée
+    // vers 'confirme' pour entrer dans l'enum RdvStatut. Cette ligne suit
+    // la même règle. À reconsidérer si « patient arrivé » mérite un statut
+    // dédié dans l'enum.
+    data: { statut: RdvStatut.confirme },
   })
 
   return NextResponse.json({ success: true })

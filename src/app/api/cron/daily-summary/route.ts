@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { sendPushToCabinet } from '@/lib/push'
+import { RdvStatut } from '@prisma/client'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
           where: {
             cabinetId: cabinet.id,
             date: { gte: todayStart, lte: todayEnd },
-            statut: { not: 'annulee' },
+            statut: { not: RdvStatut.annule },
           },
         }),
         prisma.seance.count({

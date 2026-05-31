@@ -1,5 +1,6 @@
 import 'server-only'
 import { NextResponse } from 'next/server'
+import { UserRole } from '@prisma/client'
 import { auth } from '@/auth'
 import { hasPermission, type PermissionKey } from '@/lib/permissions'
 
@@ -11,7 +12,7 @@ import { hasPermission, type PermissionKey } from '@/lib/permissions'
 export async function requirePermission(key: PermissionKey) {
   const session = await auth()
   const user = session?.user
-  if (!user || (!user.cabinetId && user.role !== 'SUPER_ADMIN')) {
+  if (!user || (!user.cabinetId && user.role !== UserRole.SUPER_ADMIN)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
   const role = user.role as string | undefined
@@ -34,7 +35,7 @@ export async function requirePermission(key: PermissionKey) {
 export async function assertOwner(): Promise<NextResponse | null> {
   const session = await auth()
   const role = session?.user?.role
-  if (role !== 'CABINET_OWNER' && role !== 'SUPER_ADMIN') {
+  if (role !== UserRole.CABINET_OWNER && role !== UserRole.SUPER_ADMIN) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   }
   return null

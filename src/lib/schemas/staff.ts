@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { UserRole } from '@prisma/client'
 
 /**
  * Schemas zod pour les routes praticien/secrétaire (/api/praticiens/*).
@@ -32,14 +33,14 @@ const basePraticienFields = {
 }
 
 const praticienBranch = z.object({
-  role:       z.literal('PRATICIEN'),
+  role:       z.literal(UserRole.PRATICIEN),
   specialite: z.string().min(1).max(200),
   couleur:    z.string().min(1).max(20).optional(),
   ...basePraticienFields,
 })
 
 const secretaireBranch = z.object({
-  role:       z.literal('SECRETAIRE'),
+  role:       z.literal(UserRole.SECRETAIRE),
   // specialite et couleur interdites pour Secrétaire — strict undefined.
   specialite: z.undefined().optional(),
   couleur:    z.undefined().optional(),
@@ -64,7 +65,7 @@ export const createPraticienSchema = z.discriminatedUnion('role', [
 // de celui en base (`role_change_not_allowed` 400). On l'accepte ici en
 // optionnel — la décision reste côté handler.
 export const updatePraticienSchema = z.object({
-  role:        z.enum(['PRATICIEN', 'SECRETAIRE']).optional(),
+  role:        z.enum([UserRole.PRATICIEN, UserRole.SECRETAIRE]).optional(),
   nom:         z.string().min(1).max(100).optional(),
   prenom:      z.string().min(1).max(100).optional(),
   specialite:  z.string().max(200).optional().nullable(),

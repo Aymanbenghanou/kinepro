@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { RdvStatut, SeanceStatut } from '@prisma/client'
 
 /**
  * Schemas zod pour les routes médicales :
@@ -59,7 +60,7 @@ export const createRdvSchema = z.object({
   typeSeance:  z.string().min(1).max(200),
   salle:       z.string().max(100).optional().nullable(),
   notes:       z.string().max(2000).optional().nullable(),
-  statut:      z.enum(['confirme', 'en_attente', 'annule', 'realise']).optional(),
+  statut:      z.nativeEnum(RdvStatut).optional(),
   patientId:   z.string().min(1),
   praticienId: z.string().min(1),
   patientNotes: z.string().max(2000).optional().nullable(),
@@ -79,7 +80,7 @@ export const createSeanceSchema = z.object({
   duree:       z.number().int().positive().max(600).optional(),
   typeSeance:  z.string().min(1).max(200),
   notes:       z.string().max(5000).optional().nullable(),
-  statut:      z.enum(['realisee', 'planifiee', 'annulee']).optional(),
+  statut:      z.nativeEnum(SeanceStatut).optional(),
   patientId:   z.string().min(1),
   praticienId: z.string().min(1),
 })
@@ -88,7 +89,7 @@ export const createSeanceSchema = z.object({
 // Scores : 0..10 (échelle douleur/mobilité/force) ; scorePatient idem.
 const score0to10 = z.number().int().min(0).max(10)
 export const updateSeanceSchema = z.object({
-  statut:           z.enum(['realisee', 'planifiee', 'annulee']).optional(),
+  statut:           z.nativeEnum(SeanceStatut).optional(),
   scorePatient:     score0to10.optional().nullable(),
   notesInternes:    z.string().max(5000).optional().nullable(),
   feedbackEnvoye:   z.boolean().optional(),

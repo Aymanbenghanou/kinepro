@@ -5,8 +5,10 @@
  *  - partielle  → some paid, but not all
  *  - en_retard  → unpaid (or partial) and > 30 days since emise
  */
+import { FactureStatut, ModePaiement } from '@prisma/client'
 
-export type FactureStatut = 'paye' | 'en_attente' | 'partielle' | 'en_retard'
+// Re-export pour les consommateurs qui importaient le type local.
+export { FactureStatut, ModePaiement } from '@prisma/client'
 
 const OVERDUE_DAYS = 30
 
@@ -15,23 +17,23 @@ export function computeStatut(
   montantPaye: number,
   dateEmise: Date | string
 ): FactureStatut {
-  if (montantPaye >= montant) return 'paye'
+  if (montantPaye >= montant) return FactureStatut.paye
   const age = (Date.now() - new Date(dateEmise).getTime()) / 86400000
-  if (age > OVERDUE_DAYS) return 'en_retard'
-  if (montantPaye > 0) return 'partielle'
-  return 'en_attente'
+  if (age > OVERDUE_DAYS) return FactureStatut.en_retard
+  if (montantPaye > 0) return FactureStatut.partielle
+  return FactureStatut.en_attente
 }
 
 export const STATUT_LABELS: Record<FactureStatut, { label: string; bg: string; color: string; icon: string }> = {
-  paye:       { label: 'Payée',                 bg: '#DCFCE7', color: '#15803D', icon: '✅' },
-  en_attente: { label: 'En attente',            bg: '#FEF3C7', color: '#92400E', icon: '⏳' },
-  partielle:  { label: 'Partiellement payée',   bg: '#FFEDD5', color: '#9A3412', icon: '🔶' },
-  en_retard:  { label: 'En retard',             bg: '#FEE2E2', color: '#991B1B', icon: '🔴' },
+  [FactureStatut.paye]:       { label: 'Payée',                 bg: '#DCFCE7', color: '#15803D', icon: '✅' },
+  [FactureStatut.en_attente]: { label: 'En attente',            bg: '#FEF3C7', color: '#92400E', icon: '⏳' },
+  [FactureStatut.partielle]:  { label: 'Partiellement payée',   bg: '#FFEDD5', color: '#9A3412', icon: '🔶' },
+  [FactureStatut.en_retard]:  { label: 'En retard',             bg: '#FEE2E2', color: '#991B1B', icon: '🔴' },
 }
 
-export const MODE_PAIEMENT: Record<string, { label: string; icon: string; color: string }> = {
-  especes:  { label: 'Espèces',  icon: '💵', color: '#16A34A' },
-  virement: { label: 'Virement', icon: '🏦', color: '#2563EB' },
-  cheque:   { label: 'Chèque',   icon: '📝', color: '#7C3AED' },
-  carte:    { label: 'Carte',    icon: '💳', color: '#F59E0B' },
+export const MODE_PAIEMENT: Record<ModePaiement, { label: string; icon: string; color: string }> = {
+  [ModePaiement.especes]:  { label: 'Espèces',  icon: '💵', color: '#16A34A' },
+  [ModePaiement.virement]: { label: 'Virement', icon: '🏦', color: '#2563EB' },
+  [ModePaiement.cheque]:   { label: 'Chèque',   icon: '📝', color: '#7C3AED' },
+  [ModePaiement.carte]:    { label: 'Carte',    icon: '💳', color: '#F59E0B' },
 }

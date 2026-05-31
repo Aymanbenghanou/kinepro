@@ -5,6 +5,7 @@ import { requirePermission } from '@/lib/permissions-server'
 import { assertNotWalled } from '@/lib/plan-server'
 import { validateBody } from '@/lib/validate'
 import { createFactureSchema } from '@/lib/schemas/billing'
+import { FactureStatut } from '@prisma/client'
 
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : 'Erreur inconnue'
@@ -19,7 +20,8 @@ export async function GET(request: NextRequest) {
     const { cabinetId } = session.user
 
     const { searchParams } = new URL(request.url)
-    const statut = searchParams.get('statut')
+    const statutRaw = searchParams.get('statut')
+    const statut = statutRaw && statutRaw in FactureStatut ? statutRaw as FactureStatut : null
 
     const factures = await prisma.facture.findMany({
       where: {

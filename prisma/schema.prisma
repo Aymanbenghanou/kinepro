@@ -9,31 +9,92 @@ datasource db {
   provider = "postgresql"
 }
 
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  CABINET_OWNER
+  PRATICIEN
+  SECRETAIRE
+  SUPER_ADMIN
+}
+
+enum RdvStatut {
+  confirme
+  en_attente
+  annule
+  realise
+}
+
+enum SeanceStatut {
+  realisee
+  planifiee
+  annulee
+  no_show
+}
+
+enum FactureStatut {
+  en_attente
+  partielle
+  paye
+  en_retard
+}
+
+enum ModePaiement {
+  especes
+  cheque
+  virement
+  carte
+}
+
+enum CabinetPlan {
+  trial
+  starter
+  pro
+}
+
+enum CabinetPlanStatus {
+  trialing
+  active
+  expired
+  suspended
+}
+
+enum BillingCycle {
+  monthly
+  annual
+}
+
+enum DemandeStatut {
+  en_attente
+  confirmee
+  refusee
+}
+
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
 model User {
-  id               String              @id @default(cuid())
-  email            String              @unique
-  password         String
-  role             String              @default("CABINET_OWNER") // SUPER_ADMIN | CABINET_OWNER | PRATICIEN | SECRETAIRE
-  permissions      Json                @default("{}")             // granular permissions for PRATICIEN/SECRETAIRE
-  nom              String
-  prenom           String
-  telephone        String?
-  twoFactorEnabled Boolean             @default(false)
-  twoFactorSecret  String?
-  cabinetId        String?
-  cabinet          Cabinet?            @relation("CabinetUsers", fields: [cabinetId], references: [id])
-  ownedCabinet     Cabinet?            @relation("CabinetOwner")
-  praticienId      String?             @unique
-  praticien        Praticien?          @relation(fields: [praticienId], references: [id])
+  id                String             @id @default(cuid())
+  email             String             @unique
+  password          String
+  role              UserRole           @default(CABINET_OWNER)
+  permissions       Json               @default("{}") // granular permissions for PRATICIEN/SECRETAIRE
+  nom               String
+  prenom            String
+  telephone         String?
+  twoFactorEnabled  Boolean            @default(false)
+  twoFactorSecret   String?
+  cabinetId         String?
+  cabinet           Cabinet?           @relation("CabinetUsers", fields: [cabinetId], references: [id])
+  ownedCabinet      Cabinet?           @relation("CabinetOwner")
+  praticienId       String?            @unique
+  praticien         Praticien?         @relation(fields: [praticienId], references: [id])
   pushSubscriptions PushSubscription[]
-  createdAt        DateTime            @default(now())
-  lastLoginAt      DateTime?
-  isActive         Boolean             @default(true)
+  createdAt         DateTime           @default(now())
+  lastLoginAt       DateTime?
+  isActive          Boolean            @default(true)
   /// Kept in DB after the Arabic feature was reverted. Currently unused
   /// by the app code; retained so prisma db push doesn't drop the column.
-  preferredLang    String              @default("fr")
+  preferredLang     String             @default("fr")
 }
 
 model PushSubscription {
@@ -90,56 +151,56 @@ model Testimonial {
 }
 
 model Cabinet {
-  id               String        @id @default(cuid())
-  nom              String
-  adresse          String?
-  ville            String?
-  telephone        String?
-  email            String?
-  googleMapsLink   String?
-  whatsappNumber   String?
-  googleReviewLink String?
-  ownerId          String?       @unique
-  subdomain        String?       @unique
-  logoUrl          String?
-  publicToken      String?       @unique
+  id                 String              @id @default(cuid())
+  nom                String
+  adresse            String?
+  ville              String?
+  telephone          String?
+  email              String?
+  googleMapsLink     String?
+  whatsappNumber     String?
+  googleReviewLink   String?
+  ownerId            String?             @unique
+  subdomain          String?             @unique
+  logoUrl            String?
+  publicToken        String?             @unique
   // ── Online booking ────────────────────────────────────────────
-  slug             String?       @unique
-  bookingEnabled   Boolean       @default(false)
-  workStartTime    String        @default("08:00")
-  workEndTime      String        @default("18:00")
-  lunchStartTime   String        @default("12:00")
-  lunchEndTime     String        @default("14:00")
-  bookingMessage   String?
-  workingDays      String        @default("1,2,3,4,5,6")
+  slug               String?             @unique
+  bookingEnabled     Boolean             @default(false)
+  workStartTime      String              @default("08:00")
+  workEndTime        String              @default("18:00")
+  lunchStartTime     String              @default("12:00")
+  lunchEndTime       String              @default("14:00")
+  bookingMessage     String?
+  workingDays        String              @default("1,2,3,4,5,6")
   // ── Billing / abonnement ──────────────────────────────────────
-  plan             String        @default("trial")     // "trial" | "starter" | "pro"
-  billingCycle     String?                              // "monthly" | "annual" | null pendant l'essai
-  trialEndsAt      DateTime?                            // fixé à la création : now + 7 jours
-  planStatus       String        @default("trialing")  // "trialing" | "active" | "expired"
+  plan               CabinetPlan         @default(trial)
+  billingCycle       BillingCycle? // null pendant l'essai
+  trialEndsAt        DateTime? // fixé à la création : now + 7 jours
+  planStatus         CabinetPlanStatus   @default(trialing)
   // ─────────────────────────────────────────────────────────────
-  owner            User?         @relation("CabinetOwner", fields: [ownerId], references: [id])
-  users            User[]        @relation("CabinetUsers")
-  praticiens       Praticien[]
-  patients         Patient[]
-  seanceTypes      SeanceType[]
-  subscription     Subscription?
-  site             CabinetSite?
+  owner              User?               @relation("CabinetOwner", fields: [ownerId], references: [id])
+  users              User[]              @relation("CabinetUsers")
+  praticiens         Praticien[]
+  patients           Patient[]
+  seanceTypes        SeanceType[]
+  subscription       Subscription?
+  site               CabinetSite?
   demandesAbonnement DemandeAbonnement[]
-  createdAt        DateTime      @default(now())
+  createdAt          DateTime            @default(now())
 }
 
 // Demande d'abonnement par virement (confirmation manuelle par l'admin).
 model DemandeAbonnement {
-  id           String    @id @default(cuid())
+  id           String        @id @default(cuid())
   cabinetId    String
-  cabinet      Cabinet   @relation(fields: [cabinetId], references: [id])
-  plan         String                            // "starter" | "pro"
-  billingCycle String                            // "monthly" | "annual"
-  montant      Float                             // calculé : 299 / 2990 / 499 / 4990
-  statut       String    @default("en_attente")  // "en_attente" | "confirmee" | "rejetee"
-  createdAt    DateTime  @default(now())
-  confirmedAt  DateTime?                          // rempli à la confirmation
+  cabinet      Cabinet       @relation(fields: [cabinetId], references: [id])
+  plan         CabinetPlan // "starter" | "pro" (jamais "trial")
+  billingCycle BillingCycle // "monthly" | "annual"
+  montant      Float // calculé : 299 / 2990 / 499 / 4990
+  statut       DemandeStatut @default(en_attente)
+  createdAt    DateTime      @default(now())
+  confirmedAt  DateTime? // rempli à la confirmation
 
   @@index([cabinetId, statut, createdAt])
 }
@@ -147,82 +208,82 @@ model DemandeAbonnement {
 // ─── Domain models ───────────────────────────────────────────────────────────
 
 model SeanceType {
-  id           String       @id @default(cuid())
-  nom          String
-  description  String?
-  dureeDefaut  Int          @default(45)
-  tarifDefaut  Float        @default(300)
-  couleur      String       @default("#2563EB")
-  actif        Boolean      @default(true)
-  isDefault    Boolean      @default(false)
-  cabinetId    String
-  cabinet      Cabinet      @relation(fields: [cabinetId], references: [id])
-  praticienId  String?
-  praticien    Praticien?   @relation(fields: [praticienId], references: [id])
-  seances      Seance[]
-  rendezVous   RendezVous[]
-  createdAt    DateTime     @default(now())
+  id          String       @id @default(cuid())
+  nom         String
+  description String?
+  dureeDefaut Int          @default(45)
+  tarifDefaut Float        @default(300)
+  couleur     String       @default("#2563EB")
+  actif       Boolean      @default(true)
+  isDefault   Boolean      @default(false)
+  cabinetId   String
+  cabinet     Cabinet      @relation(fields: [cabinetId], references: [id])
+  praticienId String?
+  praticien   Praticien?   @relation(fields: [praticienId], references: [id])
+  seances     Seance[]
+  rendezVous  RendezVous[]
+  createdAt   DateTime     @default(now())
 }
 
 model Praticien {
-  id           String       @id @default(cuid())
-  nom          String
-  prenom       String
-  specialite   String?
-  telephone    String?
-  email        String?
-  couleur      String       @default("#2563EB")
-  actif        Boolean      @default(true)
-  cabinetId    String
-  cabinet      Cabinet      @relation(fields: [cabinetId], references: [id])
-  user         User?
-  rendezVous   RendezVous[]
-  seances      Seance[]
-  seanceTypes  SeanceType[]
-  createdAt    DateTime     @default(now())
+  id          String       @id @default(cuid())
+  nom         String
+  prenom      String
+  specialite  String?
+  telephone   String?
+  email       String?
+  couleur     String       @default("#2563EB")
+  actif       Boolean      @default(true)
+  cabinetId   String
+  cabinet     Cabinet      @relation(fields: [cabinetId], references: [id])
+  user        User?
+  rendezVous  RendezVous[]
+  seances     Seance[]
+  seanceTypes SeanceType[]
+  createdAt   DateTime     @default(now())
 
   @@index([cabinetId, actif])
 }
 
 model Patient {
-  id                   String        @id @default(cuid())
-  nom                  String
-  prenom               String
-  dateNaissance        DateTime?
-  sexe                 String?
-  telephone            String?
-  email                String?
-  adresse              String?
-  ville                String?
-  cin                  String?
-  pathologie           String?
-  antecedents          String?
-  allergies            String?
-  medicaments          String?
-  medecinReferent      String?
-  medecinTelephone     String?
-  mutuelle             String?
-  numeroPolice         String?
-  tarifSeance          Float?
-  modePaiement         String?
-  nbSeancesPrescrites  Int?
-  frequence            String?
-  praticienAssigneId   String?
-  typesSeances         String?
-  objectifsTraitement  String?
-  dateDebutSouhaite    DateTime?
-  actif                Boolean       @default(true)
-  publicToken          String?       @unique
-  cabinetId            String
-  cabinet              Cabinet       @relation(fields: [cabinetId], references: [id])
-  rendezVous           RendezVous[]
-  seances              Seance[]
-  factures             Facture[]
-  feedbacks            Feedback[]
-  whatsappLogs         WhatsAppLog[]
-  documents            Document[]
-  exerciseProgrammes   ExerciceProgram[]
-  createdAt            DateTime      @default(now())
+  id                  String            @id @default(cuid())
+  nom                 String
+  prenom              String
+  dateNaissance       DateTime?
+  sexe                String?
+  telephone           String?
+  email               String?
+  adresse             String?
+  ville               String?
+  cin                 String?
+  pathologie          String?
+  antecedents         String?
+  allergies           String?
+  medicaments         String?
+  medecinReferent     String?
+  medecinTelephone    String?
+  mutuelle            String?
+  numeroPolice        String?
+  tarifSeance         Float?
+  modePaiement        String?
+  nbSeancesPrescrites Int?
+  frequence           String?
+  praticienAssigneId  String?
+  typesSeances        String?
+  objectifsTraitement String?
+  dateDebutSouhaite   DateTime?
+  actif               Boolean           @default(true)
+  publicToken         String?           @unique
+  cabinetId           String
+  cabinet             Cabinet           @relation(fields: [cabinetId], references: [id])
+  rendezVous          RendezVous[]
+  seances             Seance[]
+  factures            Facture[]
+  feedbacks           Feedback[]
+  whatsappLogs        WhatsAppLog[]
+  documents           Document[]
+  exerciseProgrammes  ExerciceProgram[]
+  createdAt           DateTime          @default(now())
 
   @@index([cabinetId, nom, prenom])
 }
@@ -250,8 +311,8 @@ model RendezVous {
   typeSeance   String
   salle        String?
   notes        String?
-  statut       String      @default("confirme")
-  source       String      @default("cabinet")  // "cabinet" | "online" | "phone"
+  statut       RdvStatut   @default(confirme)
+  source       String      @default("cabinet") // "cabinet" | "online" | "phone"
   patientNotes String?
   confirmedAt  DateTime?
   cabinetId    String
@@ -267,67 +328,67 @@ model RendezVous {
 }
 
 model Seance {
-  id                String      @id @default(cuid())
-  date              DateTime
-  duree             Int
-  typeSeance        String
-  notes             String?
-  statut            String      @default("realisee")
-  scorePatient      Int?
-  notesInternes     String?
-  feedbackEnvoye    Boolean     @default(false)
-  dateFeedback      DateTime?
-  douleurScore      Int?
-  mobiliteScore     Int?
-  forceScore        Int?
-  notesProgression  String?
-  seanceEndTime     DateTime?
-  feedbackStatus    String?
-  feedbackToken     String?   @unique
-  feedbackReadyAt   DateTime?
-  cabinetId         String
-  patientId         String
-  praticienId       String
-  seanceTypeId      String?
-  patient           Patient     @relation(fields: [patientId], references: [id])
-  praticien         Praticien   @relation(fields: [praticienId], references: [id])
-  seanceType        SeanceType? @relation(fields: [seanceTypeId], references: [id])
-  facture           Facture?
-  createdAt         DateTime    @default(now())
+  id               String       @id @default(cuid())
+  date             DateTime
+  duree            Int
+  typeSeance       String
+  notes            String?
+  statut           SeanceStatut @default(realisee)
+  scorePatient     Int?
+  notesInternes    String?
+  feedbackEnvoye   Boolean      @default(false)
+  dateFeedback     DateTime?
+  douleurScore     Int?
+  mobiliteScore    Int?
+  forceScore       Int?
+  notesProgression String?
+  seanceEndTime    DateTime?
+  feedbackStatus   String?
+  feedbackToken    String?      @unique
+  feedbackReadyAt  DateTime?
+  cabinetId        String
+  patientId        String
+  praticienId      String
+  seanceTypeId     String?
+  patient          Patient      @relation(fields: [patientId], references: [id])
+  praticien        Praticien    @relation(fields: [praticienId], references: [id])
+  seanceType       SeanceType?  @relation(fields: [seanceTypeId], references: [id])
+  facture          Facture?
+  createdAt        DateTime     @default(now())
 
   @@index([cabinetId, date])
   @@index([cabinetId, statut])
 }
 
 model Facture {
-  id           String     @id @default(cuid())
-  montant      Float                      // = montant total à facturer
-  montantPaye  Float      @default(0)     // cumul des paiements
-  statut       String     @default("en_attente") // paye | en_attente | partielle | en_retard
-  dateEmise    DateTime   @default(now())
+  id           String        @id @default(cuid())
+  montant      Float // = montant total à facturer
+  montantPaye  Float         @default(0) // cumul des paiements
+  statut       FactureStatut @default(en_attente)
+  dateEmise    DateTime      @default(now())
   datePaiement DateTime?
   cabinetId    String
   patientId    String
-  seanceId     String?    @unique
+  seanceId     String?       @unique
   paiements    Paiement[]
-  patient      Patient    @relation(fields: [patientId], references: [id])
-  seance       Seance?    @relation(fields: [seanceId], references: [id])
-  createdAt    DateTime   @default(now())
+  patient      Patient       @relation(fields: [patientId], references: [id])
+  seance       Seance?       @relation(fields: [seanceId], references: [id])
+  createdAt    DateTime      @default(now())
 
   @@index([cabinetId, statut])
   @@index([cabinetId, createdAt])
 }
 
 model Paiement {
-  id           String   @id @default(cuid())
+  id           String       @id @default(cuid())
   factureId    String
-  facture      Facture  @relation(fields: [factureId], references: [id], onDelete: Cascade)
+  facture      Facture      @relation(fields: [factureId], references: [id], onDelete: Cascade)
   montant      Float
-  modePaiement String   // especes | virement | cheque | carte
-  datePaiement DateTime @default(now())
+  modePaiement ModePaiement
+  datePaiement DateTime     @default(now())
   notes        String?
   cabinetId    String
-  createdAt    DateTime @default(now())
+  createdAt    DateTime     @default(now())
 
   @@index([cabinetId, datePaiement])
 }
@@ -359,16 +420,16 @@ model WhatsAppLog {
 }
 
 model Document {
-  id          String   @id @default(cuid())
-  nom         String
-  type        String   @default("autre")
-  url         String
-  size        Int?
-  patientId   String
-  patient     Patient  @relation(fields: [patientId], references: [id])
-  cabinetId   String
-  uploadedBy  String?
-  createdAt   DateTime @default(now())
+  id         String   @id @default(cuid())
+  nom        String
+  type       String   @default("autre")
+  url        String
+  size       Int?
+  patientId  String
+  patient    Patient  @relation(fields: [patientId], references: [id])
+  cabinetId  String
+  uploadedBy String?
+  createdAt  DateTime @default(now())
 
   @@index([cabinetId, patientId])
 }
@@ -376,13 +437,13 @@ model Document {
 // ─── Global system config (one row, key = "global") ──────────────────────────
 
 model SystemConfig {
-  id             String @id @default("global")
-  whatsappNumber String @default("")
-  rib            String @default("")
-  banque         String @default("")
-  titulaire      String @default("")
-  prixMensuel    Float  @default(299)
-  prixAnnuel     Float  @default(2499)
+  id             String   @id @default("global")
+  whatsappNumber String   @default("")
+  rib            String   @default("")
+  banque         String   @default("")
+  titulaire      String   @default("")
+  prixMensuel    Float    @default(299)
+  prixAnnuel     Float    @default(2499)
   updatedAt      DateTime @updatedAt
 }
 

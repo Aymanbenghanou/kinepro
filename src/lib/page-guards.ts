@@ -1,5 +1,6 @@
 import 'server-only'
 import { redirect } from 'next/navigation'
+import { UserRole } from '@prisma/client'
 import { auth } from '@/auth'
 import { hasPermission, type PermissionKey } from '@/lib/permissions'
 
@@ -15,5 +16,5 @@ export async function guardPermission(key: PermissionKey) {
 export async function guardOwner() {
   const session = await auth()
   const role = session?.user?.role
-  if (role !== 'CABINET_OWNER' && role !== 'SUPER_ADMIN') redirect('/dashboard')
+  if (role !== UserRole.CABINET_OWNER && role !== UserRole.SUPER_ADMIN) redirect('/dashboard')
 }

@@ -1,4 +1,5 @@
 // État d'abonnement d'un cabinet — logique pure, réutilisable côté serveur.
+import { CabinetPlan, CabinetPlanStatus } from '@prisma/client'
 
 /**
  * GARDE-FOU DE DÉPLOIEMENT.
@@ -21,11 +22,11 @@ export interface CabinetPlanInfo {
 /** Calcule l'état d'abonnement d'un cabinet. */
 export function getPlanState(c: CabinetPlanInfo): PlanState {
   // Abonnement payant actif
-  if ((c.plan === 'starter' || c.plan === 'pro') && c.planStatus === 'active') {
+  if ((c.plan === CabinetPlan.starter || c.plan === CabinetPlan.pro) && c.planStatus === CabinetPlanStatus.active) {
     return 'active'
   }
 
-  if (c.plan === 'trial') {
+  if (c.plan === CabinetPlan.trial) {
     // Garde-fou : cabinets antérieurs au lancement de la facturation → jamais murés.
     if (new Date(c.createdAt) < EXISTING_CABINETS_CUTOFF) return 'active'
 
@@ -50,7 +51,7 @@ export function hasProAccess(c: CabinetPlanInfo): boolean {
   if (new Date(c.createdAt) < EXISTING_CABINETS_CUTOFF) return true
   const state = getPlanState(c)
   if (state === 'trialing') return true
-  return c.plan === 'pro' && c.planStatus === 'active'
+  return c.plan === CabinetPlan.pro && c.planStatus === CabinetPlanStatus.active
 }
 
 /** Jours entiers restants avant la fin de l'essai (min 0). */
