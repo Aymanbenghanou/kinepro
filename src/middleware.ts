@@ -1,14 +1,11 @@
-import NextAuth from 'next-auth'
-import { NextResponse, userAgent } from 'next/server'
-import { authConfig } from './auth.config'
+import { NextResponse, type NextRequest, userAgent } from 'next/server'
+import { getToken } from 'next-auth/jwt'
 
-const { auth } = NextAuth(authConfig)
-
-// NOTE: pas d'import depuis '@prisma/client' ici. Le middleware tourne sur Edge
-// Runtime et un seul import @prisma/client gonfle le bundle de >1 MB (limite
-// Vercel Hobby = 1 MB). On compare le rôle (string dans le JWT) à la valeur
-// littérale. AGENTS.md §8 demande l'enum partout — exception assumée ici pour
-// rester sous la limite Edge. Source de vérité = enum Prisma au niveau DB.
+// NOTE Edge Runtime — pas d'import depuis '@prisma/client' ni de NextAuth(authConfig).
+// Instancier NextAuth dans le middleware embarque ~1 MB de machinerie (providers
+// OAuth, JWE, etc.) → rejet Vercel Hobby. On lit le JWT directement avec getToken,
+// qui est tree-shakable et ne tire que le décodeur JWT. Source de vérité du rôle =
+// enum Prisma au niveau DB ; la comparaison string ici est runtime-identique.
 const SUPER_ADMIN_ROLE = 'SUPER_ADMIN'
 
 /** Desktop paths that have a /m/* mobile counterpart. */
@@ -21,8 +18,7 @@ const MOBILE_REDIRECTS: Record<string, string> = {
   '/whatsapp':    '/m/whatsapp',
 }
 
-export default auth(function middleware(req) {
-  const session = req.auth
+export default async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
   const ua = userAgent(req)
   const isMobile = ua.device.type === 'mobile' || ua.device.type === 'tablet'
@@ -36,33 +32,41 @@ export default auth(function middleware(req) {
     return NextResponse.next()
   }
 
+  // Decode JWT cookie directement — pas d'instance NextAuth (cf. note en tête).
+  // getToken essaie AUTH_SECRET puis NEXTAUTH_SECRET en fallback.
+  const token = await getToken({
+    req,
+    secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
+  })
+  const role = token?.role as string | undefined
+
   // Auth-page routes — no auth needed, but redirect logged-in users away
   const authPaths = ['/login', '/register']
   if (authPaths.some(p => pathname.startsWith(p))) {
-    if (session) {
-      let dest: string
-      if (session.user.role === SUPER_ADMIN_ROLE) dest = '/super-admin'
-      else dest = isMobile ? '/m/dashboard' : '/dashboard'
+    if (token) {
+      const dest = role === SUPER_ADMIN_ROLE
+        ? '/super-admin'
+        : (isMobile ? '/m/dashboard' : '/dashboard')
       return NextResponse.redirect(new URL(dest, req.url))
     }
     return NextResponse.next()
   }
 
   // All other routes require auth
-  if (!session) {
+  if (!token) {
     const loginUrl = new URL('/login', req.url)
     loginUrl.searchParams.set('callbackUrl', pathname)
     return NextResponse.redirect(loginUrl)
   }
 
   // Super admin guard
-  if (pathname.startsWith('/super-admin') && session.user.role !== SUPER_ADMIN_ROLE) {
+  if (pathname.startsWith('/super-admin') && role !== SUPER_ADMIN_ROLE) {
     return NextResponse.redirect(new URL(isMobile ? '/m/dashboard' : '/dashboard', req.url))
   }
 
   // ── Mobile / desktop route routing ──────────────────────────────────────
   // Mobile users on a desktop route → bounce them to the /m/* equivalent.
-  if (isMobile && session.user.role !== SUPER_ADMIN_ROLE) {
+  if (isMobile && role !== SUPER_ADMIN_ROLE) {
     if (MOBILE_REDIRECTS[pathname]) {
       return NextResponse.redirect(new URL(MOBILE_REDIRECTS[pathname], req.url))
     }
@@ -81,7 +85,7 @@ export default auth(function middleware(req) {
   const requestHeaders = new Headers(req.headers)
   requestHeaders.set('x-pathname', pathname)
   return NextResponse.next({ request: { headers: requestHeaders } })
-})
+}
 
 export const config = {
   matcher: [
