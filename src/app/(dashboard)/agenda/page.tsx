@@ -87,6 +87,28 @@ function RappelBtn({ rdv }: { rdv: any }) {
   )
 }
 
+// Pastille verte au coin de la carte pour signaler un RDV passé en "realise".
+// Posée en absolute → le conteneur DraggableRdv / DragOverlay a position: relative.
+function RealiseBadge() {
+  return (
+    <span
+      title="Séance réalisée"
+      style={{
+        position: 'absolute', top: 4, right: 4,
+        width: 14, height: 14, borderRadius: '50%',
+        background: '#16A34A',
+        color: 'white',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 9, fontWeight: 900, lineHeight: 1,
+        boxShadow: '0 0 0 2px white',
+        pointerEvents: 'none',
+      }}
+    >
+      ✓
+    </span>
+  )
+}
+
 // Contenu interne d'une carte RDV — réutilisé dans la carte de la grille
 // ET dans le DragOverlay (le visuel coloré est porté par le conteneur parent).
 function RdvCardBody({ rdv }: { rdv: any }) {
@@ -104,7 +126,8 @@ function RdvCardBody({ rdv }: { rdv: any }) {
 
   return (
     <>
-      <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}>
+      {rdv.statut === 'realise' && <RealiseBadge />}
+      <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3, paddingRight: rdv.statut === 'realise' ? 14 : 0 }}>
         {rdv.source === 'online' && <span style={{ fontSize: 9 }}>🌐</span>}
         {rdv.patient?.prenom} {rdv.patient?.nom}
       </div>
@@ -143,21 +166,31 @@ function DroppableCell({ date, hour, onClick, children }: {
 
 // Carte RDV = élément draggable. La source en grille se contente de s'estomper
 // (opacity 0.4) — on n'applique PAS le transform de useDraggable ici, c'est le
-// DragOverlay qui suit le curseur.
-function DraggableRdv({ rdv, color, children }: {
-  rdv: any; color: string; children?: React.ReactNode
+// DragOverlay qui suit le curseur. Le clic (sans drag, distance < 8px) propage
+// onCardClick si fourni par le parent (popover OWNER/SECRETAIRE/SUPER_ADMIN).
+function DraggableRdv({ rdv, color, onCardClick, children }: {
+  rdv: any
+  color: string
+  onCardClick?: (rdv: any) => void
+  children?: React.ReactNode
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: rdv.id, data: { rdv },
   })
   return (
     <div ref={setNodeRef} {...listeners} {...attributes}
-      onClick={e => e.stopPropagation()}
+      onClick={e => {
+        // Empêche l'ouverture du modal de création de la cellule droppable.
+        e.stopPropagation()
+        if (onCardClick) onCardClick(rdv)
+      }}
       style={{
+        position: 'relative',
         background: color, color: 'white', borderRadius: 6, padding: '4px 6px',
         fontSize: 11, marginBottom: 2,
         borderLeft: rdv.source === 'online' ? '3px solid #14B8A6' : undefined,
-        cursor: 'grab', opacity: isDragging ? 0.4 : 1, touchAction: 'none',
+        cursor: onCardClick ? 'pointer' : 'grab',
+        opacity: isDragging ? 0.4 : 1, touchAction: 'none',
       }}>
       {children}
     </div>
@@ -171,6 +204,10 @@ export default function AgendaPage() {
   const sessionPraticienId  = session?.user?.praticienId
   const isPraticienScoped   = sessionRole === 'PRATICIEN' && !!sessionPraticienId
 
+  // OWNER / SECRETAIRE / SUPER_ADMIN peuvent ouvrir le popover de gestion +
+  // supprimer un RDV. PRATICIEN n'a pas d'accès au popover dans cette vue.
+  const canManageRdv = sessionRole === 'CABINET_OWNER' || sessionRole === 'SECRETAIRE' || sessionRole === 'SUPER_ADMIN'
+
   const [currentDate, setCurrentDate] = useState(new Date())
   const [rdvList, setRdvList]         = useState<any[]>([])
   const [patients, setPatients]       = useState<any[]>([])
@@ -180,6 +217,49 @@ export default function AgendaPage() {
   const [loading, setLoading]         = useState(false)
   const [confirmationRdv, setConfirmationRdv] = useState<any>(null)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+
+  // Popover de gestion d'un RDV (clic sur une carte).
+  const [popoverRdv, setPopoverRdv]         = useState<any>(null)
+  const [confirmDelete, setConfirmDelete]   = useState(false)
+  const [deleting, setDeleting]             = useState(false)
+  const [popoverError, setPopoverError]     = useState<string | null>(null)
+
+  function openPopover(rdv: any) {
+    setPopoverRdv(rdv)
+    setConfirmDelete(false)
+    setPopoverError(null)
+  }
+  function closePopover() {
+    setPopoverRdv(null)
+    setConfirmDelete(false)
+    setPopoverError(null)
+    setDeleting(false)
+  }
+
+  async function handleDeleteRdv() {
+    if (!popoverRdv) return
+    setDeleting(true)
+    setPopoverError(null)
+    try {
+      const res = await fetch(`/api/rendez-vous/${popoverRdv.id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        setPopoverError(err?.error === 'not_your_rdv'
+          ? 'Vous n\'êtes pas autorisé à supprimer ce RDV.'
+          : err?.error || `Erreur ${res.status}`)
+        setDeleting(false)
+        return
+      }
+      // Optimiste : retire localement avant le refetch pour un UX instantané.
+      setRdvList(list => list.filter(r => r.id !== popoverRdv.id))
+      closePopover()
+      setToast({ message: 'RDV supprimé', type: 'success' })
+      fetchRdv()
+    } catch {
+      setPopoverError('Erreur réseau')
+      setDeleting(false)
+    }
+  }
   const [form, setForm] = useState({
     patientId: '', praticienId: '', typeSeance: '',
     date: '', heure: '09:00', duree: '45', salle: 'Salle 1', notes: ''
@@ -403,7 +483,12 @@ export default function AgendaPage() {
                       {rdvs.map(rdv => {
                         const color = rdv.source === 'online' ? '#0D9488' : (couleurMap[rdv.typeSeance] || '#2563EB')
                         return (
-                          <DraggableRdv key={rdv.id} rdv={rdv} color={color}>
+                          <DraggableRdv
+                            key={rdv.id}
+                            rdv={rdv}
+                            color={color}
+                            onCardClick={canManageRdv ? openPopover : undefined}
+                          >
                             <RdvCardBody rdv={rdv} />
                           </DraggableRdv>
                         )
@@ -419,6 +504,7 @@ export default function AgendaPage() {
           <DragOverlay>
             {activeRdv ? (
               <div style={{
+                position: 'relative',
                 background: activeRdv.source === 'online' ? '#0D9488' : (couleurMap[activeRdv.typeSeance] || '#2563EB'),
                 color: 'white', borderRadius: 6, padding: '4px 6px', fontSize: 11, width: 150,
                 borderLeft: activeRdv.source === 'online' ? '3px solid #14B8A6' : undefined,
@@ -602,6 +688,182 @@ export default function AgendaPage() {
           </div>
         </div>
       )}
+
+      {/* ── Popover gestion RDV (OWNER / SECRETAIRE / SUPER_ADMIN) ─────────── */}
+      {popoverRdv && (() => {
+        const r = popoverRdv
+        const statutLabels: Record<string, { label: string; bg: string; color: string }> = {
+          confirme:   { label: 'Confirmé',   bg: '#DBEAFE', color: '#1D4ED8' },
+          en_attente: { label: 'En attente', bg: '#FEF3C7', color: '#92400E' },
+          annule:     { label: 'Annulé',     bg: '#FEE2E2', color: '#B91C1C' },
+          realise:    { label: 'Réalisé',    bg: '#DCFCE7', color: '#15803D' },
+        }
+        const st = statutLabels[r.statut as string] || { label: r.statut, bg: '#F1F5F9', color: '#64748B' }
+        const dateObj = new Date(r.date)
+        const dateStr = dateObj.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+        const heureStr = dateObj.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+        const prenom  = r.praticien?.prenom?.trim() ?? ''
+        const initial = r.praticien?.nom?.trim()?.[0]?.toUpperCase() ?? ''
+        const praticienLabel = prenom && initial ? `${prenom} ${initial}.` : (prenom || '—')
+
+        return (
+          <div
+            onClick={closePopover}
+            style={{
+              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              zIndex: 200, padding: 16,
+            }}
+          >
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{
+                background: 'white', borderRadius: 14, width: '100%', maxWidth: 440,
+                boxShadow: '0 24px 80px rgba(0,0,0,0.22)',
+                display: 'flex', flexDirection: 'column', maxHeight: '90vh',
+              }}
+            >
+              <div style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '16px 20px', borderBottom: '1px solid #E2E8F0',
+              }}>
+                <h3 style={{ fontSize: 16, fontWeight: 800, color: '#0F172A', margin: 0 }}>
+                  Rendez-vous
+                </h3>
+                <button
+                  onClick={closePopover}
+                  type="button"
+                  aria-label="Fermer"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B', display: 'flex' }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div style={{ padding: '16px 20px', overflowY: 'auto', flex: 1 }}>
+                {popoverError && (
+                  <div style={{
+                    background: '#FEF2F2', border: '1px solid #FECACA',
+                    color: '#B91C1C', padding: '10px 14px', borderRadius: 8,
+                    fontSize: 13, marginBottom: 14,
+                  }}>
+                    {popoverError}
+                  </div>
+                )}
+
+                {/* Bloc infos */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13 }}>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.4 }}>Patient</div>
+                    <div style={{ color: '#0F172A', fontWeight: 600 }}>
+                      {r.patient?.prenom} {r.patient?.nom || '—'}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.4 }}>Praticien</div>
+                    <div style={{ color: '#0F172A' }}>{praticienLabel}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.4 }}>Date & heure</div>
+                    <div style={{ color: '#0F172A' }}>{dateStr} · {heureStr}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.4 }}>Séance</div>
+                    <div style={{ color: '#0F172A' }}>{r.typeSeance} · {r.duree} min</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.4 }}>Statut</div>
+                    <span style={{
+                      display: 'inline-block', marginTop: 2,
+                      background: st.bg, color: st.color,
+                      padding: '3px 10px', borderRadius: 999,
+                      fontSize: 12, fontWeight: 700,
+                    }}>
+                      {st.label}
+                    </span>
+                  </div>
+                  {r.patientNotes && (
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.4 }}>Notes patient</div>
+                      <div style={{ color: '#374151', background: '#F8FAFC', padding: '8px 10px', borderRadius: 8, marginTop: 2, fontSize: 12 }}>
+                        {r.patientNotes}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Footer — boutons */}
+              <div style={{
+                padding: '14px 20px', borderTop: '1px solid #E2E8F0',
+                background: '#FAFBFC', borderBottomLeftRadius: 14, borderBottomRightRadius: 14,
+              }}>
+                {confirmDelete ? (
+                  <div>
+                    <p style={{ margin: '0 0 12px', fontSize: 13, color: '#374151', lineHeight: 1.5 }}>
+                      Supprimer ce rendez-vous ?<br />
+                      <span style={{ fontSize: 12, color: '#64748B' }}>
+                        Si une séance planifiée est liée, elle sera également supprimée. Une séance déjà réalisée (avec notes médicales) sera conservée.
+                      </span>
+                    </p>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDelete(false)}
+                        disabled={deleting}
+                        style={{
+                          flex: 1, padding: '10px', border: '1px solid #E2E8F0', borderRadius: 8,
+                          background: 'white', cursor: deleting ? 'not-allowed' : 'pointer',
+                          fontWeight: 500, color: '#64748B', fontSize: 13,
+                        }}
+                      >
+                        Annuler
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleDeleteRdv}
+                        disabled={deleting}
+                        style={{
+                          flex: 2, padding: '10px', border: 'none', borderRadius: 8,
+                          background: deleting ? '#FCA5A5' : '#DC2626', color: 'white',
+                          cursor: deleting ? 'not-allowed' : 'pointer',
+                          fontWeight: 700, fontSize: 13,
+                        }}
+                      >
+                        {deleting ? 'Suppression…' : 'Confirmer la suppression'}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      type="button"
+                      onClick={closePopover}
+                      style={{
+                        flex: 1, padding: '10px', border: '1px solid #E2E8F0', borderRadius: 8,
+                        background: 'white', cursor: 'pointer', fontWeight: 500, color: '#64748B', fontSize: 13,
+                      }}
+                    >
+                      Fermer
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setConfirmDelete(true); setPopoverError(null) }}
+                      style={{
+                        flex: 1, padding: '10px', border: 'none', borderRadius: 8,
+                        background: '#DC2626', color: 'white', cursor: 'pointer',
+                        fontWeight: 700, fontSize: 13,
+                      }}
+                    >
+                      Supprimer le RDV
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }
