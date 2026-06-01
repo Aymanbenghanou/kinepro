@@ -297,7 +297,9 @@ export default function AgendaPage() {
   useEffect(() => {
     fetchRdv()
     fetch('/api/patients').then(r => r.json()).then(d => setPatients(Array.isArray(d) ? d : []))
-    fetch('/api/praticiens').then(r => r.json()).then(d => setPraticiens(Array.isArray(d) ? d : []))
+    // ?actif=true → uniquement les Praticien actifs, pas les SECRETAIRE
+    // (cf. /api/praticiens route, branche actifOnly).
+    fetch('/api/praticiens?actif=true').then(r => r.json()).then(d => setPraticiens(Array.isArray(d) ? d : []))
     fetch('/api/seance-types').then(r => r.json()).then(d => {
       const types = Array.isArray(d) ? d : TYPES_SEANCE_FALLBACK.map(n => ({ nom: n, dureeDefaut: 45, couleur: '#2563EB' }))
       setSeanceTypes(types)
