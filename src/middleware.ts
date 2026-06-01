@@ -33,10 +33,24 @@ export default async function middleware(req: NextRequest) {
   }
 
   // Decode JWT cookie directement — pas d'instance NextAuth (cf. note en tête).
-  // getToken essaie AUTH_SECRET puis NEXTAUTH_SECRET en fallback.
+  //
+  // CRITIQUE : NextAuth v5 préfixe le cookie de session par "__Secure-" en HTTPS
+  // (prod Vercel) et dérive le salt HKDF du nom du cookie. Sans secureCookie:true
+  // en prod, getToken cherche "authjs.session-token" (qui n'existe pas) ET
+  // utilise le mauvais salt (donc même en lisant le bon cookie le décryptage
+  // raterait). En local dev (HTTP), le défaut sans préfixe est correct.
+  //
+  // Détection HTTPS robuste sur Vercel : NEXTAUTH_URL/AUTH_URL commencent par
+  // https, ou la var VERCEL est positionnée (toujours en prod/preview).
+  const isSecure =
+    process.env.NEXTAUTH_URL?.startsWith('https://') === true ||
+    process.env.AUTH_URL?.startsWith('https://') === true ||
+    process.env.VERCEL === '1'
+
   const token = await getToken({
     req,
     secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
+    secureCookie: isSecure,
   })
   const role = token?.role as string | undefined
 
