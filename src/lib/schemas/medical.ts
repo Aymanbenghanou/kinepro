@@ -85,9 +85,22 @@ export const createSeanceSchema = z.object({
   praticienId: z.string().min(1),
 })
 
+// Échelles cliniques : entier 0..10. Réutilisé par updateSeance + terminerSeance.
+const score0to10 = z.number().int().min(0).max(10)
+
+// PATCH /api/seances/[id]/terminer — passe une séance "planifiee" en "realisee"
+// avec saisie optionnelle des notes médicales. observations → notesInternes
+// côté handler (la séance n'a pas de champ "observations" dédié).
+export const terminerSeanceSchema = z.object({
+  douleurScore:     score0to10.optional().nullable(),
+  mobiliteScore:    score0to10.optional().nullable(),
+  forceScore:       score0to10.optional().nullable(),
+  notesProgression: z.string().max(5000).optional().nullable(),
+  observations:     z.string().max(5000).optional().nullable(),
+})
+
 // PATCH /api/seances/[id] — uniquement les champs cliniques + statut + notes.
 // Scores : 0..10 (échelle douleur/mobilité/force) ; scorePatient idem.
-const score0to10 = z.number().int().min(0).max(10)
 export const updateSeanceSchema = z.object({
   statut:           z.nativeEnum(SeanceStatut).optional(),
   scorePatient:     score0to10.optional().nullable(),

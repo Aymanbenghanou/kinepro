@@ -5,6 +5,7 @@ import { requirePermission } from '@/lib/permissions-server'
 import { assertNotWalled } from '@/lib/plan-server'
 import { validateBody } from '@/lib/validate'
 import { createRdvSchema } from '@/lib/schemas/medical'
+import { RdvStatut, SeanceStatut } from '@prisma/client'
 
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : 'Erreur inconnue'
@@ -85,23 +86,45 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'praticienId requis' }, { status: 400 })
     }
 
-    const rdv = await prisma.rendezVous.create({
-      data: {
-        cabinetId,
-        date:        new Date(body.date),
-        duree:       body.duree || 45,
-        typeSeance:  body.typeSeance,
-        salle:       body.salle      || null,
-        notes:       body.notes      || null,
-        statut:      body.statut     || 'confirme',
-        patientId:   body.patientId,
-        praticienId: praticienIdFinal,
-      },
-      include: {
-        patient:   { select: { id: true, nom: true, prenom: true, telephone: true } },
-        praticien: { select: { id: true, nom: true, prenom: true, couleur: true } },
-      },
+    // Transaction : créer le RDV + générer la séance planifiée liée. Atomique :
+    // si la création de la séance échoue, le RDV est rollback.
+    const rdvDate = new Date(body.date)
+    const rdvDuree = body.duree || 45
+    const rdv = await prisma.$transaction(async (tx) => {
+      const created = await tx.rendezVous.create({
+        data: {
+          cabinetId,
+          date:        rdvDate,
+          duree:       rdvDuree,
+          typeSeance:  body.typeSeance,
+          salle:       body.salle      || null,
+          notes:       body.notes      || null,
+          statut:      body.statut     || RdvStatut.confirme,
+          patientId:   body.patientId,
+          praticienId: praticienIdFinal,
+        },
+        include: {
+          patient:   { select: { id: true, nom: true, prenom: true, telephone: true } },
+          praticien: { select: { id: true, nom: true, prenom: true, couleur: true } },
+        },
+      })
+
+      await tx.seance.create({
+        data: {
+          cabinetId,
+          patientId:    created.patientId,
+          praticienId:  created.praticienId,
+          typeSeance:   created.typeSeance,
+          duree:        rdvDuree,
+          date:         rdvDate,
+          statut:       SeanceStatut.planifiee,
+          rendezVousId: created.id,
+        },
+      })
+
+      return created
     })
+
     return NextResponse.json(rdv, { status: 201 })
   } catch (error) {
     console.error('[POST /api/rendez-vous]', error)

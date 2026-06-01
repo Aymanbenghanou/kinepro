@@ -322,6 +322,7 @@ model RendezVous {
   patient      Patient     @relation(fields: [patientId], references: [id])
   praticien    Praticien   @relation(fields: [praticienId], references: [id])
   seanceType   SeanceType? @relation(fields: [seanceTypeId], references: [id])
+  seance       Seance?
   createdAt    DateTime    @default(now())
 
   @@index([cabinetId, date])
@@ -350,9 +351,11 @@ model Seance {
   patientId        String
   praticienId      String
   seanceTypeId     String?
+  rendezVousId     String?      @unique
   patient          Patient      @relation(fields: [patientId], references: [id])
   praticien        Praticien    @relation(fields: [praticienId], references: [id])
   seanceType       SeanceType?  @relation(fields: [seanceTypeId], references: [id])
+  rendezVous       RendezVous?  @relation(fields: [rendezVousId], references: [id], onDelete: SetNull)
   facture          Facture?
   createdAt        DateTime     @default(now())
 

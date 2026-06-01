@@ -2,19 +2,22 @@
 
 import { useState, useEffect } from 'react'
 import Topbar from '@/components/layout/Topbar'
+import Toast from '@/components/ui/Toast'
 import { formatDate, formatTime } from '@/lib/utils'
 import { Plus, X } from 'lucide-react'
 import FeedbackModal from '@/components/whatsapp/FeedbackWidget'
 import { scoreColor, scoreBadge } from '@/lib/whatsapp'
+import { useCan } from '@/lib/use-permissions'
 
 // Fallback if API fails
 const TYPES_FALLBACK = ['Rééducation fonctionnelle', 'Massage thérapeutique', 'Électrothérapie', 'Balnéothérapie']
 
 function StatutBadge({ statut }: { statut: string }) {
   const map: Record<string, { label: string; bg: string; color: string }> = {
-    realisee: { label: 'Réalisée', bg: '#DCFCE7', color: '#16A34A' },
-    annulee:  { label: 'Annulée',  bg: '#FEE2E2', color: '#DC2626' },
-    no_show:  { label: 'Absent',   bg: '#FEF3C7', color: '#D97706' },
+    planifiee: { label: 'Planifiée', bg: '#DBEAFE', color: '#1D4ED8' },
+    realisee:  { label: 'Réalisée',  bg: '#DCFCE7', color: '#16A34A' },
+    annulee:   { label: 'Annulée',   bg: '#FEE2E2', color: '#DC2626' },
+    no_show:   { label: 'Absent',    bg: '#FEF3C7', color: '#D97706' },
   }
   const s = map[statut] || { label: statut, bg: '#F1F5F9', color: '#64748B' }
   return (
@@ -72,6 +75,9 @@ export default function SeancesPage() {
   const [filterPatient, setFilterPatient]   = useState('')
   const [filterPraticien, setFilterPraticien] = useState('')
   const [filterStatut, setFilterStatut]     = useState('')
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
+  const can = useCan()
+  const canTerminer = can('dossierMedical')
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
     patientId: '', praticienId: '', typeSeance: '',
@@ -187,14 +193,30 @@ export default function SeancesPage() {
     try {
       const res = await fetch(`/api/seances/${selectedSeance.id}/terminer`, {
         method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          douleurScore:     progScores.douleur,
+          mobiliteScore:    progScores.mobilite,
+          forceScore:       progScores.force,
+          notesProgression: progScores.notes || null,
+        }),
       })
       if (res.ok) {
         const updated = await res.json()
         setSelectedSeance((prev: any) => ({ ...prev, ...updated }))
         setTerminateDone(true)
+        setToast({ message: 'Séance terminée ✓', type: 'success' })
         fetchData()
+      } else {
+        const err = await res.json().catch(() => ({}))
+        setToast({
+          message: err?.message || err?.error || 'Impossible de terminer la séance',
+          type: 'error',
+        })
       }
-    } catch {}
+    } catch {
+      setToast({ message: 'Erreur réseau', type: 'error' })
+    }
     setTerminating(false)
   }
 
@@ -245,6 +267,7 @@ export default function SeancesPage() {
             <select value={filterStatut} onChange={e => setFilterStatut(e.target.value)}
               style={{ padding: '9px 12px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13, background: 'white', color: '#374151' }}>
               <option value="">Tous les statuts</option>
+              <option value="planifiee">Planifiée</option>
               <option value="realisee">Réalisée</option>
               <option value="annulee">Annulée</option>
               <option value="no_show">Absent</option>
@@ -330,8 +353,10 @@ export default function SeancesPage() {
                 <StatutBadge statut={selectedSeance.statut} />
               </div>
 
-              {/* Terminer la séance */}
-              {!selectedSeance.feedbackStatus && selectedSeance.statut !== 'annulee' && (
+              {/* Terminer la séance — UNIQUEMENT pour les séances planifiées et
+                  si l'utilisateur a la permission dossierMedical. Saisie des notes
+                  médicales avant le passage en realisee. */}
+              {selectedSeance.statut === 'planifiee' && canTerminer && (
                 <div style={{ marginTop: 4 }}>
                   {terminateDone ? (
                     <div style={{
@@ -342,31 +367,54 @@ export default function SeancesPage() {
                       <span style={{ fontSize: 18 }}>✅</span>
                       <div>
                         <p style={{ margin: 0, fontWeight: 600, color: '#16A34A', fontSize: 13 }}>Séance terminée !</p>
-                        <p style={{ margin: 0, color: '#166534', fontSize: 12 }}>Le feedback sera prêt dans 20 minutes.</p>
+                        <p style={{ margin: 0, color: '#166534', fontSize: 12 }}>Le RDV lié est passé en « réalisé ».</p>
                       </div>
                     </div>
                   ) : (
-                    <button
-                      onClick={terminerSeance}
-                      disabled={terminating}
-                      style={{
-                        width: '100%',
-                        padding: '11px',
-                        background: terminating ? '#86EFAC' : '#16A34A',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: 10,
-                        cursor: terminating ? 'not-allowed' : 'pointer',
-                        fontWeight: 700,
-                        fontSize: 14,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 8,
-                      }}
-                    >
-                      {terminating ? '⏳ Traitement...' : '✓ Terminer la séance'}
-                    </button>
+                    <div style={{ padding: 14, background: '#EFF6FF', borderRadius: 10, borderLeft: '3px solid #2563EB' }}>
+                      <div style={{ fontSize: 12, color: '#1D4ED8', marginBottom: 12, fontWeight: 700 }}>
+                        🏁 TERMINER LA SÉANCE
+                      </div>
+                      {(['douleur', 'mobilite', 'force'] as const).map(key => {
+                        const labels: Record<string, string> = { douleur: '🔴 Douleur', mobilite: '🔵 Mobilité', force: '🟢 Force' }
+                        const colors: Record<string, string> = { douleur: '#DC2626', mobilite: '#2563EB', force: '#16A34A' }
+                        return (
+                          <div key={key} style={{ marginBottom: 12 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                              <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>{labels[key]}</span>
+                              <span style={{ fontSize: 14, fontWeight: 800, color: colors[key] }}>
+                                {progScores[key]}<span style={{ fontSize: 10, color: '#94A3B8' }}>/10</span>
+                              </span>
+                            </div>
+                            <input type="range" min={0} max={10} value={progScores[key]}
+                              onChange={e => setProgScores(s => ({ ...s, [key]: Number(e.target.value) }))}
+                              style={{ width: '100%', accentColor: colors[key] }}
+                            />
+                          </div>
+                        )
+                      })}
+                      <textarea
+                        value={progScores.notes}
+                        onChange={e => setProgScores(s => ({ ...s, notes: e.target.value }))}
+                        placeholder="Progression / observations…"
+                        rows={3}
+                        style={{ width: '100%', padding: '8px 10px', border: '1px solid #BFDBFE', borderRadius: 8, fontSize: 13, resize: 'vertical', marginBottom: 10, boxSizing: 'border-box' }}
+                      />
+                      <button
+                        onClick={terminerSeance}
+                        disabled={terminating}
+                        style={{
+                          width: '100%', padding: '11px',
+                          background: terminating ? '#93C5FD' : '#2563EB',
+                          color: 'white', border: 'none', borderRadius: 10,
+                          cursor: terminating ? 'not-allowed' : 'pointer',
+                          fontWeight: 700, fontSize: 14,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                        }}
+                      >
+                        {terminating ? '⏳ Enregistrement…' : '✓ Enregistrer la séance'}
+                      </button>
+                    </div>
                   )}
                 </div>
               )}
@@ -581,6 +629,8 @@ export default function SeancesPage() {
           onSaved={() => { setFeedbackTarget(null); fetchData() }}
         />
       )}
+
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   )
 }
