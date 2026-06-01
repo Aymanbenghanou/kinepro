@@ -8,6 +8,7 @@ import { Plus, X } from 'lucide-react'
 import FeedbackModal from '@/components/whatsapp/FeedbackWidget'
 import { scoreColor, scoreBadge } from '@/lib/whatsapp'
 import { useCan } from '@/lib/use-permissions'
+import { SeanceStatut } from '@prisma/client'
 
 // Fallback if API fails
 const TYPES_FALLBACK = ['Rééducation fonctionnelle', 'Massage thérapeutique', 'Électrothérapie', 'Balnéothérapie']
@@ -28,7 +29,7 @@ function StatutBadge({ statut }: { statut: string }) {
 }
 
 function FeedbackBadge({ seance, onClick }: { seance: any; onClick: () => void }) {
-  if (seance.statut !== 'realisee') return null
+  if (seance.statut !== SeanceStatut.realisee) return null
 
   if (seance.scorePatient === null || seance.scorePatient === undefined) {
     return (
@@ -79,9 +80,13 @@ export default function SeancesPage() {
   const can = useCan()
   const canTerminer = can('dossierMedical')
   const [saving, setSaving] = useState(false)
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<{
+    patientId: string; praticienId: string; typeSeance: string;
+    date: string; heure: string; duree: string; notes: string;
+    statut: SeanceStatut;
+  }>({
     patientId: '', praticienId: '', typeSeance: '',
-    date: '', heure: '09:00', duree: '45', notes: '', statut: 'realisee',
+    date: '', heure: '09:00', duree: '45', notes: '', statut: SeanceStatut.realisee,
   })
 
   async function fetchData() {
@@ -121,7 +126,7 @@ export default function SeancesPage() {
   }
 
   const pendingCount = seances.filter(
-    s => s.statut === 'realisee' && (s.scorePatient === null || s.scorePatient === undefined)
+    s => s.statut === SeanceStatut.realisee && (s.scorePatient === null || s.scorePatient === undefined)
   ).length
 
   async function handleSubmit(e: React.FormEvent) {
@@ -143,7 +148,7 @@ export default function SeancesPage() {
       })
       setShowModal(false)
       const firstType = seanceTypes[0]
-      setForm({ patientId: '', praticienId: '', typeSeance: firstType?.nom || '', date: '', heure: '09:00', duree: String(firstType?.dureeDefaut || 45), notes: '', statut: 'realisee' })
+      setForm({ patientId: '', praticienId: '', typeSeance: firstType?.nom || '', date: '', heure: '09:00', duree: String(firstType?.dureeDefaut || 45), notes: '', statut: SeanceStatut.realisee })
       fetchData()
     } catch {}
     setSaving(false)
@@ -267,10 +272,10 @@ export default function SeancesPage() {
             <select value={filterStatut} onChange={e => setFilterStatut(e.target.value)}
               style={{ padding: '9px 12px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13, background: 'white', color: '#374151' }}>
               <option value="">Tous les statuts</option>
-              <option value="planifiee">Planifiée</option>
-              <option value="realisee">Réalisée</option>
-              <option value="annulee">Annulée</option>
-              <option value="no_show">Absent</option>
+              <option value={SeanceStatut.planifiee}>Planifiée</option>
+              <option value={SeanceStatut.realisee}>Réalisée</option>
+              <option value={SeanceStatut.annulee}>Annulée</option>
+              <option value={SeanceStatut.no_show}>Absent</option>
             </select>
           </div>
           <button onClick={() => setShowModal(true)}
@@ -356,7 +361,7 @@ export default function SeancesPage() {
               {/* Terminer la séance — UNIQUEMENT pour les séances planifiées et
                   si l'utilisateur a la permission dossierMedical. Saisie des notes
                   médicales avant le passage en realisee. */}
-              {selectedSeance.statut === 'planifiee' && canTerminer && (
+              {selectedSeance.statut === SeanceStatut.planifiee && canTerminer && (
                 <div style={{ marginTop: 4 }}>
                   {terminateDone ? (
                     <div style={{
@@ -448,7 +453,7 @@ export default function SeancesPage() {
               )}
 
               {/* Feedback section in detail modal */}
-              {selectedSeance.statut === 'realisee' && (
+              {selectedSeance.statut === SeanceStatut.realisee && (
                 <div style={{ marginTop: 8, padding: 14, background: '#F8FAFC', borderRadius: 10, borderLeft: '3px solid #E2E8F0' }}>
                   <div style={{ fontSize: 12, color: '#64748B', marginBottom: 8, fontWeight: 600 }}>FEEDBACK PATIENT</div>
                   {selectedSeance.scorePatient !== null && selectedSeance.scorePatient !== undefined ? (
@@ -487,7 +492,7 @@ export default function SeancesPage() {
               )}
 
               {/* Progression scores */}
-              {selectedSeance.statut === 'realisee' && (
+              {selectedSeance.statut === SeanceStatut.realisee && (
                 <div style={{ marginTop: 8, padding: 14, background: '#F0FDF4', borderRadius: 10, borderLeft: '3px solid #16A34A' }}>
                   <div style={{ fontSize: 12, color: '#166534', marginBottom: 12, fontWeight: 700 }}>📈 SCORES DE PROGRESSION</div>
                   {(['douleur', 'mobilite', 'force'] as const).map(key => {
@@ -587,11 +592,11 @@ export default function SeancesPage() {
                 </div>
                 <div>
                   <label style={{ fontSize: 13, fontWeight: 500, color: '#374151', display: 'block', marginBottom: 6 }}>Statut</label>
-                  <select value={form.statut} onChange={e => setForm(f => ({...f, statut: e.target.value}))}
+                  <select value={form.statut} onChange={e => setForm(f => ({...f, statut: e.target.value as SeanceStatut}))}
                     style={{ width: '100%', padding: '10px 12px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 14, background: 'white' }}>
-                    <option value="realisee">Réalisée</option>
-                    <option value="annulee">Annulée</option>
-                    <option value="no_show">Absent</option>
+                    <option value={SeanceStatut.realisee}>Réalisée</option>
+                    <option value={SeanceStatut.annulee}>Annulée</option>
+                    <option value={SeanceStatut.no_show}>Absent</option>
                   </select>
                 </div>
               </div>
