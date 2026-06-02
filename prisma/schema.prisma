@@ -176,8 +176,11 @@ model Cabinet {
   // ── Billing / abonnement ──────────────────────────────────────
   plan               CabinetPlan         @default(trial)
   billingCycle       BillingCycle? // null pendant l'essai
-  trialEndsAt        DateTime? // fixé à la création : now + 7 jours
+  trialEndsAt        DateTime? // essai : 7j (legacy register) ou 15j (création super-admin)
+  planEndsAt         DateTime? // date d'expiration d'un plan payant (starter/pro), fixée par le super-admin
   planStatus         CabinetPlanStatus   @default(trialing)
+  suspensionReason   String? // raison manuelle quand planStatus = 'suspended'
+  suspendedAt        DateTime? // horodatage de la suspension par le super-admin
   // ─────────────────────────────────────────────────────────────
   owner              User?               @relation("CabinetOwner", fields: [ownerId], references: [id])
   users              User[]              @relation("CabinetUsers")

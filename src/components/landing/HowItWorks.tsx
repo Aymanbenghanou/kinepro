@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { getContactCtaUrl } from '@/lib/contact-cta'
 
 function useReveal(delay = 0) {
   const ref = useRef<HTMLDivElement>(null)
@@ -104,7 +105,7 @@ export default function HowItWorks() {
 
             {/* CTA */}
             <div style={{ marginTop: 40 }}>
-              <a href="/register" style={{
+              <a href={getContactCtaUrl()} target="_blank" rel="noopener noreferrer" style={{
                 display: 'inline-flex', alignItems: 'center', gap: 10,
                 padding: '14px 28px', borderRadius: 12, fontSize: 15, fontWeight: 700,
                 background: '#2563EB', color: 'white', textDecoration: 'none',
@@ -114,7 +115,7 @@ export default function HowItWorks() {
                 onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.transform = 'translateY(-2px)'; el.style.boxShadow = '0 8px 32px rgba(37,99,235,0.4)' }}
                 onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.transform = 'translateY(0)'; el.style.boxShadow = '0 4px 24px rgba(37,99,235,0.3)' }}
               >
-                Commencer maintenant — c'est gratuit <span>→</span>
+                Demander une démo <span>→</span>
               </a>
             </div>
           </div>

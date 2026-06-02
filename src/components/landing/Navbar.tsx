@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { getContactCtaUrl } from '@/lib/contact-cta'
 
 const links = [
   { label: 'Fonctionnalités', href: '#features' },
@@ -107,15 +108,15 @@ export default function Navbar() {
             }}>
               Se connecter
             </Link>
-            <Link href="/register" style={{
+            <a href={getContactCtaUrl()} target="_blank" rel="noopener noreferrer" style={{
               padding: '9px 20px', borderRadius: 9, fontSize: 14, fontWeight: 700, textDecoration: 'none',
               background: scrolled ? '#2563EB' : 'white',
               color: scrolled ? 'white' : '#1E3A5F',
               boxShadow: '0 2px 12px rgba(37,99,235,0.25)',
               transition: 'all 0.2s',
             }}>
-              Essai gratuit 7 jours
-            </Link>
+              Demander une démo
+            </a>
           </div>
 
           {/* Mobile hamburger */}
@@ -237,8 +238,10 @@ export default function Navbar() {
             >
               Se connecter
             </Link>
-            <Link
-              href="/register"
+            <a
+              href={getContactCtaUrl()}
+              target="_blank"
+              rel="noopener noreferrer"
               onClick={() => setMenuOpen(false)}
               style={{
                 display: 'block', textAlign: 'center',
@@ -250,8 +253,8 @@ export default function Navbar() {
                 lineHeight: '22px',
               }}
             >
-              🚀 Commencer gratuitement — 7 jours offerts
-            </Link>
+              💬 Demander une démo
+            </a>
           </div>
         </div>
 

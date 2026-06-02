@@ -14,9 +14,9 @@ export default async function MobileLayout({ children }: { children: React.React
   const session = await auth()
   if (!session?.user) redirect('/login')
 
-  // Même mur que le desktop : essai expiré → /choisir-plan (exemptés / essai / actif passent).
+  // Même mur que le desktop : essai expiré → /abonnement (page passive avec contact).
   const { state } = await requireCabinetPlan()
-  if (state === 'trial_expired') redirect('/choisir-plan')
+  if (state === 'trial_expired') redirect('/abonnement')
 
   return (
     <div style={{

@@ -198,9 +198,9 @@ function UploadZone({ patientId, onUploaded }: { patientId: string; onUploaded: 
       <div style={{ marginBottom: 24, border: '2px dashed #E2E8F0', borderRadius: 12, padding: 28, textAlign: 'center', background: '#F8FAFC' }}>
         <div style={{ fontSize: 24, marginBottom: 8 }}>🔒</div>
         <div style={{ fontSize: 15, fontWeight: 700, color: '#374151', marginBottom: 4 }}>Upload de documents — Disponible en Pro</div>
-        <div style={{ fontSize: 13, color: '#94A3B8', marginBottom: 14 }}>Passez au plan Pro pour téléverser des documents patients.</div>
-        <Link href="/choisir-plan" style={{ display: 'inline-block', background: '#2563EB', color: 'white', padding: '8px 16px', borderRadius: 8, fontWeight: 700, fontSize: 13, textDecoration: 'none' }}>
-          Voir les plans
+        <div style={{ fontSize: 13, color: '#94A3B8', marginBottom: 14 }}>Contactez-nous pour passer au plan Pro.</div>
+        <Link href="/abonnement" style={{ display: 'inline-block', background: '#2563EB', color: 'white', padding: '8px 16px', borderRadius: 8, fontWeight: 700, fontSize: 13, textDecoration: 'none' }}>
+          Mon abonnement
         </Link>
       </div>
     )

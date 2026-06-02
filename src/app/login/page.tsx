@@ -206,8 +206,8 @@ function LoginForm() {
 
           <p style={{ fontSize: 13, color: '#64748B', textAlign: 'center', margin: '24px 0 0' }}>
             Pas encore de compte ?{' '}
-            <Link href="/register" style={{ color: '#2563EB', fontWeight: 600, textDecoration: 'none' }}>
-              Créer un cabinet
+            <Link href="/" style={{ color: '#2563EB', fontWeight: 600, textDecoration: 'none' }}>
+              Demander une démo
             </Link>
           </p>
         </div>

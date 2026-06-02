@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { getContactCtaUrl } from '@/lib/contact-cta'
 
 function DashboardMockup() {
   return (
@@ -155,7 +156,7 @@ export default function HeroSection() {
 
           {/* CTAs — always horizontal, wrap gracefully */}
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 28 }}>
-            <a href="/register" style={{
+            <a href={getContactCtaUrl()} target="_blank" rel="noopener noreferrer" style={{
               display: 'inline-flex', alignItems: 'center', gap: 8,
               padding: '13px 24px', borderRadius: 12, fontSize: 15, fontWeight: 700,
               background: 'white', color: '#1E3A5F', textDecoration: 'none',
@@ -166,7 +167,7 @@ export default function HeroSection() {
               onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.transform = 'translateY(-2px)'; el.style.boxShadow = '0 8px 32px rgba(255,255,255,0.35)' }}
               onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.transform = 'translateY(0)'; el.style.boxShadow = '0 4px 24px rgba(255,255,255,0.25)' }}
             >
-              Commencer gratuitement →
+              Demander une démo →
             </a>
             <a href="#features" onClick={e => { e.preventDefault(); document.querySelector('#features')?.scrollIntoView({ behavior: 'smooth' }) }}
               style={{

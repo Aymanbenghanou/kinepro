@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import { getContactCtaUrl } from '@/lib/contact-cta'
 
 function useReveal() {
   const ref = useRef<HTMLDivElement>(null)
@@ -34,8 +35,8 @@ export default function CtaSection() {
         }}
       >
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.12)', borderRadius: 999, padding: '6px 16px', marginBottom: 24, border: '1px solid rgba(255,255,255,0.2)' }}>
-          <span style={{ fontSize: 14 }}>🚀</span>
-          <span style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.9)', letterSpacing: 0.5 }}>Essai gratuit · Sans carte bancaire</span>
+          <span style={{ fontSize: 14 }}>💬</span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.9)', letterSpacing: 0.5 }}>Démo personnalisée · Sur rendez-vous</span>
         </div>
 
         <h2 style={{ fontSize: 'clamp(30px, 5vw, 50px)', fontWeight: 900, color: 'white', lineHeight: 1.15, margin: '0 0 20px', letterSpacing: '-0.5px' }}>
@@ -43,12 +44,14 @@ export default function CtaSection() {
         </h2>
 
         <p style={{ fontSize: 17, color: 'rgba(255,255,255,0.75)', lineHeight: 1.7, margin: '0 0 40px', maxWidth: 500, marginLeft: 'auto', marginRight: 'auto' }}>
-          Rejoignez les kinésithérapeutes marocains qui gèrent leur cabinet avec KinéPro. 7 jours gratuits, aucune carte requise.
+          Rejoignez les kinésithérapeutes marocains qui gèrent leur cabinet avec KinéPro. Contactez-nous pour une démonstration personnalisée et un accompagnement à la mise en route.
         </p>
 
         <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
-          <Link
-            href="/register"
+          <a
+            href={getContactCtaUrl()}
+            target="_blank"
+            rel="noopener noreferrer"
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 10,
               padding: '16px 36px', borderRadius: 12, fontSize: 16, fontWeight: 800,
@@ -59,8 +62,8 @@ export default function CtaSection() {
             onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.transform = 'translateY(-2px)'; el.style.boxShadow = '0 12px 40px rgba(0,0,0,0.3)' }}
             onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.transform = 'translateY(0)'; el.style.boxShadow = '0 8px 32px rgba(0,0,0,0.2)' }}
           >
-            Commencer gratuitement <span style={{ fontSize: 18 }}>→</span>
-          </Link>
+            Demander une démo <span style={{ fontSize: 18 }}>→</span>
+          </a>
 
           <Link
             href="#pricing"
@@ -79,7 +82,7 @@ export default function CtaSection() {
         </div>
 
         <p style={{ marginTop: 28, fontSize: 13, color: 'rgba(255,255,255,0.5)' }}>
-          ✓ 7 jours gratuits &nbsp;·&nbsp; ✓ Annulation facile &nbsp;·&nbsp; ✓ Support FR/عربي
+          ✓ Accompagnement personnalisé &nbsp;·&nbsp; ✓ Mise en route assistée &nbsp;·&nbsp; ✓ Support FR/عربي
         </p>
       </div>
     </section>

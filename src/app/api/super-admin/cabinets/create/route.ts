@@ -1,0 +1,112 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
+import bcrypt from 'bcryptjs'
+import { CabinetPlan, CabinetPlanStatus, UserRole } from '@prisma/client'
+import { DEFAULT_SEANCE_TYPES } from '@/lib/default-seance-types'
+import { assertSuperAdmin } from '@/lib/super-admin-guard'
+import { validateBody } from '@/lib/validate'
+import { createCabinetByAdminSchema } from '@/lib/schemas/admin-cabinet'
+
+function errMsg(e: unknown) {
+  return e instanceof Error ? e.message : 'Erreur inconnue'
+}
+
+/**
+ * POST /api/super-admin/cabinets/create
+ * Création high-touch d'un cabinet par le super-admin (gardée par assertSuperAdmin).
+ * Réplique la logique de /api/auth/register (cabinet + user owner + subscription
+ * + seance-types par défaut) mais :
+ *   - défaut d'essai = 15 jours (vs 7 sur l'ancien flux self-service)
+ *   - plan starter/pro : planEndsAt fixé par le super-admin, planStatus='active'
+ */
+export async function POST(request: NextRequest) {
+  const sa = await assertSuperAdmin(); if (sa) return sa
+
+  const v = await validateBody(request, createCabinetByAdminSchema)
+  if ('error' in v) return v.error
+  const { cabinet: cab, owner, plan, trialDays, planEndsAt: planEndsAtStr } = v.data
+
+  try {
+    const exists = await prisma.user.findUnique({ where: { email: owner.email } })
+    if (exists) {
+      return NextResponse.json({ error: 'Cet email est déjà utilisé' }, { status: 409 })
+    }
+
+    const hashedPassword = await bcrypt.hash(owner.password, 12)
+
+    // Calculs plan / dates
+    let cabinetPlanStatus: CabinetPlanStatus
+    let trialEndsAt: Date | null = null
+    let planEndsAt: Date | null = null
+    if (plan === CabinetPlan.trial) {
+      cabinetPlanStatus = CabinetPlanStatus.trialing
+      trialEndsAt = new Date(Date.now() + (trialDays ?? 15) * 24 * 60 * 60 * 1000)
+    } else {
+      cabinetPlanStatus = CabinetPlanStatus.active
+      planEndsAt = new Date(planEndsAtStr!)
+      if (isNaN(planEndsAt.getTime())) {
+        return NextResponse.json({ error: 'planEndsAt invalide' }, { status: 400 })
+      }
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      const newCabinet = await tx.cabinet.create({
+        data: {
+          nom:          cab.nom.trim(),
+          ville:        cab.ville?.trim() || null,
+          telephone:    cab.telephone?.trim() || null,
+          email:        cab.email?.trim() || null,
+          plan,
+          planStatus:   cabinetPlanStatus,
+          trialEndsAt,
+          planEndsAt,
+          billingCycle: null,
+        },
+      })
+
+      // Subscription : modèle vestigial (cf. AGENTS.md §7), conservé pour cohérence
+      // avec /api/auth/register. trialEndsAt est NOT NULL → on duplique planEndsAt
+      // pour les plans payants afin de satisfaire la contrainte.
+      await tx.subscription.create({
+        data: {
+          cabinetId:        newCabinet.id,
+          plan:             plan === CabinetPlan.trial ? 'TRIAL' : 'ACTIVE',
+          trialEndsAt:      trialEndsAt ?? planEndsAt!,
+          currentPeriodEnd: planEndsAt ?? undefined,
+        },
+      })
+
+      const newUser = await tx.user.create({
+        data: {
+          email:     owner.email.trim(),
+          password:  hashedPassword,
+          role:      UserRole.CABINET_OWNER,
+          nom:       owner.nom.trim(),
+          prenom:    owner.prenom.trim(),
+          cabinetId: newCabinet.id,
+        },
+      })
+
+      await tx.cabinet.update({
+        where: { id: newCabinet.id },
+        data:  { ownerId: newUser.id },
+      })
+
+      await tx.seanceType.createMany({
+        data: DEFAULT_SEANCE_TYPES.map(t => ({
+          ...t,
+          cabinetId: newCabinet.id,
+          isDefault: true,
+          actif:     true,
+        })),
+      })
+
+      return { cabinetId: newCabinet.id, userId: newUser.id }
+    })
+
+    return NextResponse.json({ success: true, ...result }, { status: 201 })
+  } catch (error) {
+    console.error('[POST /api/super-admin/cabinets/create]', error)
+    return NextResponse.json({ error: errMsg(error) }, { status: 500 })
+  }
+}

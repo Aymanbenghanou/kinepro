@@ -312,7 +312,7 @@ export default function ExerciseProgramModal({ patient, cabinet, onClose, onSent
               </button>
             ) : pro === false ? (
               /* Verrou Pro (UX) : génération IA réservée au plan Pro. */
-              <Link href="/choisir-plan" style={{ ...btnPrimary, textDecoration: 'none' }}>
+              <Link href="/abonnement" style={{ ...btnPrimary, textDecoration: 'none' }}>
                 🔒 Disponible en Pro
               </Link>
             ) : (

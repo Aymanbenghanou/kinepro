@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import { getContactCtaUrl } from '@/lib/contact-cta'
 
 function useReveal(delay = 0) {
   const ref = useRef<HTMLDivElement>(null)
@@ -112,7 +113,7 @@ function PriceCard({ plan, cycle, index }: { plan: typeof plans[0]; cycle: Cycle
         ))}
       </ul>
 
-      <Link href="/register" style={{
+      <a href={getContactCtaUrl()} target="_blank" rel="noopener noreferrer" style={{
         display: 'block', textAlign: 'center',
         padding: '13px 20px', borderRadius: 10,
         fontSize: 14, fontWeight: 700, textDecoration: 'none',
@@ -124,8 +125,8 @@ function PriceCard({ plan, cycle, index }: { plan: typeof plans[0]; cycle: Cycle
         onMouseEnter={e => { (e.currentTarget as HTMLElement).style.opacity = '0.88' }}
         onMouseLeave={e => { (e.currentTarget as HTMLElement).style.opacity = '1' }}
       >
-        Commencer l&apos;essai gratuit
-      </Link>
+        Demander une démo
+      </a>
     </div>
   )
 }
