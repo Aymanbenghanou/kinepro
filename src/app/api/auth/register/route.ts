@@ -5,6 +5,7 @@ import { DEFAULT_SEANCE_TYPES } from '@/lib/default-seance-types'
 import { authLimiter, checkRateLimit } from '@/lib/rate-limit'
 import { validateBody } from '@/lib/validate'
 import { registerSchema } from '@/lib/schemas/auth'
+import { DEFAULT_TRIAL_DAYS } from '@/lib/plan'
 
 function errMsg(e: unknown) {
   return e instanceof Error ? e.message : 'Erreur inconnue'
@@ -23,7 +24,7 @@ export async function POST(request: NextRequest) {
     }
 
     const hashedPassword = await bcrypt.hash(admin.password, 12)
-    const trialEndsAt    = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+    const trialEndsAt    = new Date(Date.now() + DEFAULT_TRIAL_DAYS * 24 * 60 * 60 * 1000)
 
     // Create cabinet + subscription + user + default session types in a single transaction
     const result = await prisma.$transaction(async (tx) => {

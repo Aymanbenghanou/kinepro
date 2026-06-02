@@ -6,6 +6,7 @@ import { DEFAULT_SEANCE_TYPES } from '@/lib/default-seance-types'
 import { assertSuperAdmin } from '@/lib/super-admin-guard'
 import { validateBody } from '@/lib/validate'
 import { createCabinetByAdminSchema } from '@/lib/schemas/admin-cabinet'
+import { DEFAULT_TRIAL_DAYS } from '@/lib/plan'
 
 function errMsg(e: unknown) {
   return e instanceof Error ? e.message : 'Erreur inconnue'
@@ -40,7 +41,7 @@ export async function POST(request: NextRequest) {
     let planEndsAt: Date | null = null
     if (plan === CabinetPlan.trial) {
       cabinetPlanStatus = CabinetPlanStatus.trialing
-      trialEndsAt = new Date(Date.now() + (trialDays ?? 15) * 24 * 60 * 60 * 1000)
+      trialEndsAt = new Date(Date.now() + (trialDays ?? DEFAULT_TRIAL_DAYS) * 24 * 60 * 60 * 1000)
     } else {
       cabinetPlanStatus = CabinetPlanStatus.active
       planEndsAt = new Date(planEndsAtStr!)

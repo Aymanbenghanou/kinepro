@@ -10,6 +10,13 @@ import { CabinetPlan, CabinetPlanStatus } from '@prisma/client'
  */
 export const EXISTING_CABINETS_CUTOFF = new Date('2026-05-26T00:00:00Z')
 
+/**
+ * Durée d'essai par défaut (en jours) pour TOUT nouveau cabinet — flux super-admin
+ * (`/api/super-admin/cabinets/create`) **et** flux legacy (`/api/auth/register`).
+ * Source de vérité unique pour éviter la divergence des deux endpoints.
+ */
+export const DEFAULT_TRIAL_DAYS = 15
+
 export type PlanState = 'trialing' | 'trial_expired' | 'active'
 
 export interface CabinetPlanInfo {

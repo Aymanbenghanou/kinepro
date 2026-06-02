@@ -1,7 +1,13 @@
 import { redirect } from 'next/navigation'
+import { headers } from 'next/headers'
 import { auth } from '@/auth'
 import { requireCabinetPlan } from '@/lib/plan-server'
+import { CabinetPlanStatus } from '@prisma/client'
 import MobileBottomNav from '@/components/mobile/MobileBottomNav'
+
+// Routes mobiles accessibles même « muré » (suspendu ou essai expiré) :
+// la page d'abonnement passive et l'éventuel /m/compte.
+const MOBILE_WALL_EXEMPT_PREFIXES = ['/m/abonnement', '/m/compte']
 
 /**
  * Mobile route-group layout (/m/*).
@@ -14,9 +20,15 @@ export default async function MobileLayout({ children }: { children: React.React
   const session = await auth()
   if (!session?.user) redirect('/login')
 
-  // Même mur que le desktop : essai expiré → /abonnement (page passive avec contact).
-  const { state } = await requireCabinetPlan()
-  if (state === 'trial_expired') redirect('/abonnement')
+  // Même mur que le desktop, en restant dans le contexte mobile (/m/abonnement)
+  // pour éviter la boucle UA-detection. Exempte /m/abonnement et /m/compte.
+  const pathname = (await headers()).get('x-pathname') ?? ''
+  const exempt = MOBILE_WALL_EXEMPT_PREFIXES.some(p => pathname.startsWith(p))
+  if (!exempt) {
+    const { cabinet, state } = await requireCabinetPlan()
+    if (cabinet?.planStatus === CabinetPlanStatus.suspended) redirect('/m/abonnement')
+    if (state === 'trial_expired') redirect('/m/abonnement')
+  }
 
   return (
     <div style={{

@@ -30,12 +30,21 @@ export async function requireCabinetPlan(): Promise<CabinetPlanResult> {
 }
 
 /**
- * Mur d'essai côté API. Renvoie une réponse 402 si l'essai est expiré, sinon null
- * (les cabinets exemptés / en essai / actifs passent). À appeler en tête des
- * handlers de mutation : `const w = await assertNotWalled(); if (w) return w`.
+ * Mur côté API. Renvoie une réponse 402 si :
+ *  - le cabinet a été SUSPENDU par le super-admin (planStatus='suspended') —
+ *    bloque toujours, AUCUNE exemption EXISTING_CABINETS_CUTOFF (la suspension
+ *    est une action explicite et doit être respectée même pour les cabinets
+ *    historiques) ;
+ *  - OU l'essai est expiré (avec l'exemption EXISTING_CABINETS_CUTOFF gérée
+ *    dans getPlanState).
+ * Sinon null (cabinets exemptés / en essai / actifs passent).
+ * Pattern d'appel : `const w = await assertNotWalled(); if (w) return w`.
  */
 export async function assertNotWalled(): Promise<NextResponse | null> {
-  const { state } = await requireCabinetPlan()
+  const { cabinet, state } = await requireCabinetPlan()
+  if (cabinet?.planStatus === 'suspended') {
+    return NextResponse.json({ error: 'subscription_suspended' }, { status: 402 })
+  }
   if (state === 'trial_expired') {
     return NextResponse.json({ error: 'trial_expired' }, { status: 402 })
   }
