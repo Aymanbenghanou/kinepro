@@ -3,9 +3,15 @@ import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import { requirePermission } from '@/lib/permissions-server'
 import { assertNotWalled } from '@/lib/plan-server'
+import { removeObject } from '@/lib/supabase'
 
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : 'Erreur inconnue'
+}
+
+// Les anciens documents Cloudinary stockent une URL http ; les nouveaux un chemin Supabase.
+function isLegacyUrl(url: string): boolean {
+  return /^https?:\/\//i.test(url)
 }
 
 export async function DELETE(
@@ -24,6 +30,16 @@ export async function DELETE(
 
     const doc = await prisma.document.findFirst({ where: { id: docId, cabinetId } })
     if (!doc) return NextResponse.json({ error: 'Document non trouvé' }, { status: 404 })
+
+    // Supprime d'abord le fichier du Storage (sauf legacy Cloudinary).
+    // Un échec de suppression Storage ne doit pas bloquer la suppression en base.
+    if (doc.url && !isLegacyUrl(doc.url)) {
+      try {
+        await removeObject(doc.url)
+      } catch (e) {
+        console.error('[DELETE document] suppression Storage échouée', e)
+      }
+    }
 
     await prisma.document.delete({ where: { id: docId } })
     return NextResponse.json({ success: true })

@@ -3,13 +3,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Upload, Trash2, Eye, Download, FileText, X } from 'lucide-react'
 import Link from 'next/link'
+import { uploadPatientFile } from '@/lib/upload-client'
 import { useProAccess } from '@/lib/use-plan'
 import { useCan } from '@/lib/use-permissions'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ?? 'djouneyaq'
-const UPLOAD_PRESET = 'kinepro_docs'
 const MAX_SIZE_MB = 10
 
 const DOC_TYPES = [
@@ -159,33 +158,20 @@ function UploadZone({ patientId, onUploaded }: { patientId: string; onUploaded: 
     setProgress(10)
 
     try {
-      const fd = new FormData()
-      fd.append('file', selectedFile)
-      fd.append('upload_preset', UPLOAD_PRESET)
-      fd.append('folder', 'kinepro/documents')
-
-      setProgress(30)
-      const cRes = await fetch(
-        `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`,
-        { method: 'POST', body: fd }
-      )
-      setProgress(70)
-
-      if (!cRes.ok) {
-        const err = await cRes.json()
-        throw new Error(err.error?.message ?? 'Erreur Cloudinary')
-      }
-      const cData = await cRes.json()
-
+      // 1-3. Compression intelligente + ticket signé + upload direct vers Supabase Storage.
+      setProgress(35)
+      const { path, size } = await uploadPatientFile(patientId, selectedFile, docType)
       setProgress(85)
+
+      // 4. Enregistre les métadonnées (le chemin de stockage, pas une URL publique).
       const dbRes = await fetch(`/api/patients/${patientId}/documents`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           nom:  docName.trim() || selectedFile.name,
           type: docType,
-          url:  cData.secure_url,
-          size: cData.bytes,
+          url:  path,
+          size,
         }),
       })
       if (!dbRes.ok) throw new Error('Erreur lors de la sauvegarde')

@@ -113,6 +113,25 @@ export const updateSeanceSchema = z.object({
   notesProgression: z.string().max(5000).optional().nullable(),
 })
 
+// ─── Documents patients (Supabase Storage) ──────────────────────────────────
+
+const DOC_TYPES = ['ordonnance', 'radio', 'compte_rendu', 'autre'] as const
+
+// POST /api/patients/[id]/documents/upload-url — demande un ticket d'upload signé.
+export const documentUploadUrlSchema = z.object({
+  filename:    z.string().min(1).max(255),
+  contentType: z.string().min(1).max(150),
+})
+
+// POST /api/patients/[id]/documents — enregistre les métadonnées après upload.
+// `url` contient le CHEMIN de stockage Supabase (ou une URL http legacy Cloudinary).
+export const createDocumentSchema = z.object({
+  nom:  z.string().min(1).max(255),
+  type: z.enum(DOC_TYPES).optional(),
+  url:  z.string().min(1).max(1000),
+  size: z.union([z.number(), z.string()]).optional().nullable(),
+})
+
 // ─── IA programme d'exercices ───────────────────────────────────────────────
 
 // POST /api/ai/generate-exercise-program — borne la taille des textes libres

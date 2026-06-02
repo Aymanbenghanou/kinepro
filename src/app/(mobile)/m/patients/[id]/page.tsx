@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef, use as usePromise } 
 import Link from 'next/link'
 import MobileTopbar from '@/components/mobile/MobileTopbar'
 import { QrCode, Download } from 'lucide-react'
+import { uploadPatientFile } from '@/lib/upload-client'
 
 const AVATAR_COLORS = [
   { bg: '#DBEAFE', text: '#1D4ED8' },
@@ -18,8 +19,6 @@ const avatarColor = (n: string) => AVATAR_COLORS[(n?.charCodeAt(0) ?? 0) % AVATA
 const TABS = ['Infos', 'Séances', 'Factures', 'Progrès', 'Docs', 'QR'] as const
 type TabId = typeof TABS[number]
 
-const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME ?? 'djouneyaq'
-const UPLOAD_PRESET = 'kinepro_docs'
 const MAX_SIZE_MB = 10
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://kinepro-omega.vercel.app'
 
@@ -142,18 +141,13 @@ export default function MobilePatientDetailPage({ params }: { params: Promise<{ 
     if (!ok.includes(file.type)) { setUploadError('PDF/JPG/PNG uniquement'); return }
     setUploading(true)
     try {
-      const fd = new FormData()
-      fd.append('file', file)
-      fd.append('upload_preset', UPLOAD_PRESET)
-      fd.append('folder', 'kinepro/documents')
-      const c = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/auto/upload`, { method: 'POST', body: fd })
-      const cd = await c.json()
-      if (!c.ok) throw new Error(cd.error?.message || 'Erreur Cloudinary')
+      // Compression + ticket signé + upload direct vers Supabase Storage.
+      const { path, size } = await uploadPatientFile(id, file, 'autre')
       const db = await fetch(`/api/patients/${id}/documents`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           nom: file.name.replace(/\.[^/.]+$/, ''),
-          type: 'autre', url: cd.secure_url, size: cd.bytes,
+          type: 'autre', url: path, size,
         }),
       })
       if (!db.ok) throw new Error('Échec sauvegarde')
