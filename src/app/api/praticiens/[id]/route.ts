@@ -41,6 +41,16 @@ export async function PATCH(
     if ('error' in v) return v.error
     const body = v.data
 
+    // INTERDIT : un OWNER ne peut pas se désactiver lui-même (cabinet sans
+    // praticien actif → création de patient impossible).
+    if (
+      body.actif === false &&
+      session.user.praticienId &&
+      session.user.praticienId === id
+    ) {
+      return NextResponse.json({ error: 'cannot_self_disable' }, { status: 403 })
+    }
+
     // INTERDIT : changer le rôle d'un membre existant.
     if (body.role) {
       const targetRole = body.role
@@ -140,6 +150,11 @@ export async function DELETE(
     }
     const { cabinetId } = session.user
     const { id } = await params
+
+    // INTERDIT : un OWNER ne peut pas se supprimer lui-même.
+    if (session.user.praticienId && session.user.praticienId === id) {
+      return NextResponse.json({ error: 'cannot_self_delete' }, { status: 403 })
+    }
 
     const praticien = await prisma.praticien.findFirst({
       where: { id, cabinetId },

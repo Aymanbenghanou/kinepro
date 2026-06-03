@@ -7,6 +7,7 @@ import { assertSuperAdmin } from '@/lib/super-admin-guard'
 import { validateBody } from '@/lib/validate'
 import { createCabinetByAdminSchema } from '@/lib/schemas/admin-cabinet'
 import { DEFAULT_TRIAL_DAYS } from '@/lib/plan'
+import { deterministicPraticienColor } from '@/lib/colors'
 
 function errMsg(e: unknown) {
   return e instanceof Error ? e.message : 'Erreur inconnue'
@@ -75,9 +76,27 @@ export async function POST(request: NextRequest) {
         },
       })
 
+      // Tout CABINET_OWNER est aussi praticien dans son cabinet : on crée
+      // automatiquement le record Praticien lié, sinon il n'apparaît dans
+      // aucun dropdown (création patient, RDV, etc.).
+      const newPraticien = await tx.praticien.create({
+        data: {
+          cabinetId: newCabinet.id,
+          nom:       owner.nom.trim(),
+          prenom:    owner.prenom.trim(),
+          couleur:   deterministicPraticienColor(newUser.id),
+          actif:     true,
+        },
+      })
+
+      const linkedUser = await tx.user.update({
+        where: { id: newUser.id },
+        data:  { praticienId: newPraticien.id },
+      })
+
       await tx.cabinet.update({
         where: { id: newCabinet.id },
-        data:  { ownerId: newUser.id },
+        data:  { ownerId: linkedUser.id },
       })
 
       await tx.seanceType.createMany({
@@ -89,7 +108,7 @@ export async function POST(request: NextRequest) {
         })),
       })
 
-      return { cabinetId: newCabinet.id, userId: newUser.id }
+      return { cabinetId: newCabinet.id, userId: newUser.id, praticienId: newPraticien.id }
     })
 
     return NextResponse.json({ success: true, ...result }, { status: 201 })

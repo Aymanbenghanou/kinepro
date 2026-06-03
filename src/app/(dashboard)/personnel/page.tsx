@@ -1,17 +1,17 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useSession } from 'next-auth/react'
 import Topbar from '@/components/layout/Topbar'
 import Toast from '@/components/ui/Toast'
-import { Plus, X, Phone, Mail, Edit2, UserCheck, UserX, Eye, EyeOff, RefreshCw, Shuffle, Lock } from 'lucide-react'
+import { Plus, X, Phone, Mail, Edit2, UserCheck, UserX, Eye, EyeOff, RefreshCw, Shuffle, Lock, Crown } from 'lucide-react'
 import { PRESETS, PERMISSION_KEYS, type PermissionKey } from '@/lib/permissions'
+import { PRATICIEN_COULEURS } from '@/lib/colors'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const COULEURS = [
-  '#2563EB', '#16A34A', '#F59E0B', '#EC4899',
-  '#8B5CF6', '#06B6D4', '#EF4444', '#F97316',
-]
+// Palette mutable (le picker mute parfois en dev). Source de vérité : src/lib/colors.ts.
+const COULEURS: readonly string[] = PRATICIEN_COULEURS
 
 // Liste des spécialités pour Praticien uniquement (plus de 'Secrétaire' ici).
 const SPECIALITES = [
@@ -130,6 +130,11 @@ export default function PersonnelPage() {
   const [accesForm, setAccesForm]   = useState({ email: '', password: '' })
   const [accesShowPw, setAccesShowPw] = useState(false)
   const [accesSaving, setAccesSaving] = useState(false)
+
+  // Identité du current user pour la self-protection (cf. /api/praticiens/[id]
+  // qui bloque cannot_self_disable / cannot_self_delete côté serveur).
+  const { data: sessionData } = useSession()
+  const myPraticienId = (sessionData?.user as any)?.praticienId as string | undefined
 
   const showToast = (message: string, type: 'success' | 'error') =>
     setToast({ message, type })
@@ -452,6 +457,7 @@ export default function PersonnelPage() {
             {members.map((m, i) => {
               const hasAccess = m.hasAcces && m.isActive
               const isPraticien = m.role === 'PRATICIEN'
+              const isOwn = isPraticien && !!myPraticienId && m.id === myPraticienId
               return (
                 <div
                   key={m.id}
@@ -480,8 +486,19 @@ export default function PersonnelPage() {
 
                   {/* Nom complet */}
                   <div>
-                    <div style={{ fontWeight: 600, color: '#0F172A', fontSize: 14 }}>
-                      {m.prenom} {m.nom}
+                    <div style={{ fontWeight: 600, color: '#0F172A', fontSize: 14, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span>{m.prenom} {m.nom}</span>
+                      {isOwn && (
+                        <span title="Vous êtes propriétaire du cabinet — non supprimable, non désactivable" style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 4,
+                          background: '#FEF3C7', color: '#92400E',
+                          border: '1px solid #FDE68A',
+                          padding: '2px 8px', borderRadius: 999,
+                          fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4,
+                        }}>
+                          <Crown size={10} /> Propriétaire
+                        </span>
+                      )}
                     </div>
                     {m.email && (
                       <div style={{ fontSize: 12, color: '#94A3B8', marginTop: 1, display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -583,8 +600,10 @@ export default function PersonnelPage() {
                       </button>
                     )}
 
-                    {/* Deactivate / Reactivate — Praticien uniquement */}
-                    {isPraticien && (
+                    {/* Deactivate / Reactivate — Praticien uniquement.
+                        Masqué pour l'owner sur sa propre ligne (cf. /api/praticiens/[id]
+                        qui renvoie 403 cannot_self_disable / cannot_self_delete). */}
+                    {isPraticien && !isOwn && (
                       <button
                         onClick={() => toggleActif(m)}
                         title={m.actif ? 'Désactiver' : 'Réactiver'}
