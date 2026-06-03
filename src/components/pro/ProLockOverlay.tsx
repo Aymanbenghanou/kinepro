@@ -2,7 +2,8 @@
 
 import { Lock, MessageCircle } from 'lucide-react'
 import Link from 'next/link'
-import { getContactCtaUrl } from '@/lib/contact-cta'
+import { buildContactCtaUrl } from '@/lib/contact-cta'
+import { useAppConfig } from '@/components/providers/AppConfigProvider'
 
 /**
  * Overlay qui couvre son parent (parent DOIT être `position: relative`).
@@ -19,7 +20,8 @@ import { getContactCtaUrl } from '@/lib/contact-cta'
  * par l'overlay : `pointerEvents: 'auto'` sur tout l'overlay.
  */
 export default function ProLockOverlay({ feature }: { feature: string }) {
-  const contactUrl = getContactCtaUrl()
+  const { supportWhatsapp } = useAppConfig()
+  const contactUrl = buildContactCtaUrl(supportWhatsapp)
   return (
     <div
       aria-label={`Verrou Pro — ${feature}`}

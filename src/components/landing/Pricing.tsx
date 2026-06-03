@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { getContactCtaUrl } from '@/lib/contact-cta'
+import { buildContactCtaUrl } from '@/lib/contact-cta'
+import { useAppConfig } from '@/components/providers/AppConfigProvider'
 
 function useReveal(delay = 0) {
   const ref = useRef<HTMLDivElement>(null)
@@ -52,6 +53,7 @@ function fmt(n: number) {
 
 function PriceCard({ plan, cycle, index }: { plan: typeof plans[0]; cycle: Cycle; index: number }) {
   const { ref, visible } = useReveal(index * 100)
+  const { supportWhatsapp } = useAppConfig()
   const reco = plan.recommended
   const priceLabel = cycle === 'monthly'
     ? `${fmt(plan.monthly)} DH / mois`
@@ -113,7 +115,7 @@ function PriceCard({ plan, cycle, index }: { plan: typeof plans[0]; cycle: Cycle
         ))}
       </ul>
 
-      <a href={getContactCtaUrl()} target="_blank" rel="noopener noreferrer" style={{
+      <a href={buildContactCtaUrl(supportWhatsapp)} target="_blank" rel="noopener noreferrer" style={{
         display: 'block', textAlign: 'center',
         padding: '13px 20px', borderRadius: 10,
         fontSize: 14, fontWeight: 700, textDecoration: 'none',

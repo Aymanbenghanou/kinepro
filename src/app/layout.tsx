@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { SessionProvider } from 'next-auth/react'
 import { auth } from '@/auth'
+import { getAppConfig } from '@/lib/app-config'
+import { AppConfigProvider } from '@/components/providers/AppConfigProvider'
 import ServiceWorkerRegistration from '@/components/pwa/ServiceWorkerRegistration'
 
 export const metadata: Metadata = {
@@ -23,7 +25,7 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  const session = await auth()
+  const [session, appConfig] = await Promise.all([auth(), getAppConfig()])
   return (
     <html lang="fr">
       <head>
@@ -35,8 +37,10 @@ export default async function RootLayout({
       </head>
       <body>
         <SessionProvider session={session}>
-          <ServiceWorkerRegistration />
-          {children}
+          <AppConfigProvider value={{ supportWhatsapp: appConfig.supportWhatsapp }}>
+            <ServiceWorkerRegistration />
+            {children}
+          </AppConfigProvider>
         </SessionProvider>
       </body>
     </html>

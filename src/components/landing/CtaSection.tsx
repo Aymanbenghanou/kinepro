@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { getContactCtaUrl } from '@/lib/contact-cta'
+import { buildContactCtaUrl } from '@/lib/contact-cta'
+import { useAppConfig } from '@/components/providers/AppConfigProvider'
 
 function useReveal() {
   const ref = useRef<HTMLDivElement>(null)
@@ -17,6 +18,7 @@ function useReveal() {
 
 export default function CtaSection() {
   const { ref, visible } = useReveal()
+  const { supportWhatsapp } = useAppConfig()
   return (
     <section style={{ padding: '96px 24px', background: 'linear-gradient(135deg, #1E3A5F 0%, #2563EB 60%, #7C3AED 100%)', position: 'relative', overflow: 'hidden' }}>
       {/* Background decorations */}
@@ -49,7 +51,7 @@ export default function CtaSection() {
 
         <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
           <a
-            href={getContactCtaUrl()}
+            href={buildContactCtaUrl(supportWhatsapp)}
             target="_blank"
             rel="noopener noreferrer"
             style={{

@@ -381,3 +381,11 @@ model BankAccount {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
+
+// ─── Config globale plateforme (single-row, id="singleton") ─────────────────
+
+model AppConfig {
+  id              String   @id @default("singleton")
+  supportWhatsapp String   @default("+212649911970") // E.164 — modifiable depuis /super-admin/parametres
+  updatedAt       DateTime @updatedAt
+}

@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { getContactCtaUrl } from '@/lib/contact-cta'
+import { buildContactCtaUrl } from '@/lib/contact-cta'
+import { useAppConfig } from '@/components/providers/AppConfigProvider'
 
 function useReveal(delay = 0) {
   const ref = useRef<HTMLDivElement>(null)
@@ -47,6 +48,7 @@ const PHOTO_URL = 'https://res.cloudinary.com/djouneyaq/image/upload/v1778974291
 
 export default function HowItWorks() {
   const { ref: headerRef, visible: headerVisible } = useReveal()
+  const { supportWhatsapp } = useAppConfig()
   const { ref: photoRef, visible: photoVisible }   = useReveal(200)
 
   return (
@@ -105,7 +107,7 @@ export default function HowItWorks() {
 
             {/* CTA */}
             <div style={{ marginTop: 40 }}>
-              <a href={getContactCtaUrl()} target="_blank" rel="noopener noreferrer" style={{
+              <a href={buildContactCtaUrl(supportWhatsapp)} target="_blank" rel="noopener noreferrer" style={{
                 display: 'inline-flex', alignItems: 'center', gap: 10,
                 padding: '14px 28px', borderRadius: 12, fontSize: 15, fontWeight: 700,
                 background: '#2563EB', color: 'white', textDecoration: 'none',

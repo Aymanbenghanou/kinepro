@@ -7,7 +7,8 @@ import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { CabinetPlanStatus } from '@prisma/client'
 import { getPlanState, getTrialDaysLeft } from '@/lib/plan'
-import { getContactCtaUrl } from '@/lib/contact-cta'
+import { buildContactCtaUrl } from '@/lib/contact-cta'
+import { getAppConfig } from '@/lib/app-config'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 
@@ -17,9 +18,8 @@ const WALL_EXEMPT_PREFIXES = ['/abonnement', '/compte']
 // Bandeau fin d'essai (cabinets "trialing" uniquement).
 // Bleu en temps normal, orange si ≤ 3 jours restants.
 // Pas de bouton "S'abonner" (modèle high-touch) — contact WhatsApp à la place.
-function TrialBanner({ daysLeft }: { daysLeft: number }) {
+function TrialBanner({ daysLeft, contactUrl }: { daysLeft: number; contactUrl: string }) {
   const urgent = daysLeft <= 3
-  const contactUrl = getContactCtaUrl()
   return (
     <div style={{
       background: urgent ? '#EA580C' : '#2563EB', color: 'white',
@@ -69,10 +69,12 @@ export default async function DashboardLayout({
     }
   }
 
+  const contactUrl = buildContactCtaUrl((await getAppConfig()).supportWhatsapp)
+
   return (
     <SidebarProvider>
       <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-        {trialDaysLeft !== null && <TrialBanner daysLeft={trialDaysLeft} />}
+        {trialDaysLeft !== null && <TrialBanner daysLeft={trialDaysLeft} contactUrl={contactUrl} />}
         <FeedbackNotificationBar />
         <div className="flex flex-1" style={{ position: 'relative' }}>
           <Sidebar />

@@ -1,6 +1,7 @@
 import { CabinetPlan, CabinetPlanStatus } from '@prisma/client'
 import { getPlanState, getTrialDaysLeft, type CabinetPlanInfo } from '@/lib/plan'
-import { getContactCtaUrl } from '@/lib/contact-cta'
+import { buildContactCtaUrl } from '@/lib/contact-cta'
+import { getAppConfig } from '@/lib/app-config'
 
 const PLAN_LABEL: Record<CabinetPlan, string> = {
   trial:   'Essai',
@@ -34,14 +35,14 @@ function frDate(d: Date | null): string {
  * @param cabinet  champs billing du Cabinet (null = pas de session/cabinet)
  * @param compact  true → padding/fonts réduits pour les pages /m/* mobile
  */
-export default function AbonnementView({
+export default async function AbonnementView({
   cabinet,
   compact = false,
 }: {
   cabinet: AbonnementViewCabinet | null
   compact?: boolean
 }) {
-  const contactUrl = getContactCtaUrl()
+  const contactUrl = buildContactCtaUrl((await getAppConfig()).supportWhatsapp)
   const status = cabinet?.planStatus
     ? (cabinet.planStatus as CabinetPlanStatus)
     : CabinetPlanStatus.trialing

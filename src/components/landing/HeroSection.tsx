@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { getContactCtaUrl } from '@/lib/contact-cta'
+import { buildContactCtaUrl } from '@/lib/contact-cta'
+import { useAppConfig } from '@/components/providers/AppConfigProvider'
 
 function DashboardMockup() {
   return (
@@ -112,6 +113,7 @@ function DashboardMockup() {
 }
 
 export default function HeroSection() {
+  const { supportWhatsapp } = useAppConfig()
   return (
     <section id="hero" style={{
       minHeight: '100vh',
@@ -156,7 +158,7 @@ export default function HeroSection() {
 
           {/* CTAs — always horizontal, wrap gracefully */}
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 28 }}>
-            <a href={getContactCtaUrl()} target="_blank" rel="noopener noreferrer" style={{
+            <a href={buildContactCtaUrl(supportWhatsapp)} target="_blank" rel="noopener noreferrer" style={{
               display: 'inline-flex', alignItems: 'center', gap: 8,
               padding: '13px 24px', borderRadius: 12, fontSize: 15, fontWeight: 700,
               background: 'white', color: '#1E3A5F', textDecoration: 'none',

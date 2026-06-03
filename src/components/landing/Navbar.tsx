@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { getContactCtaUrl } from '@/lib/contact-cta'
+import { buildContactCtaUrl } from '@/lib/contact-cta'
+import { useAppConfig } from '@/components/providers/AppConfigProvider'
 
 const links = [
   { label: 'Fonctionnalités', href: '#features' },
@@ -26,6 +27,7 @@ function SpineLogo() {
 export default function Navbar() {
   const [scrolled,  setScrolled]  = useState(false)
   const [menuOpen,  setMenuOpen]  = useState(false)
+  const { supportWhatsapp } = useAppConfig()
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20)
@@ -108,7 +110,7 @@ export default function Navbar() {
             }}>
               Se connecter
             </Link>
-            <a href={getContactCtaUrl()} target="_blank" rel="noopener noreferrer" style={{
+            <a href={buildContactCtaUrl(supportWhatsapp)} target="_blank" rel="noopener noreferrer" style={{
               padding: '9px 20px', borderRadius: 9, fontSize: 14, fontWeight: 700, textDecoration: 'none',
               background: scrolled ? '#2563EB' : 'white',
               color: scrolled ? 'white' : '#1E3A5F',
@@ -239,7 +241,7 @@ export default function Navbar() {
               Se connecter
             </Link>
             <a
-              href={getContactCtaUrl()}
+              href={buildContactCtaUrl(supportWhatsapp)}
               target="_blank"
               rel="noopener noreferrer"
               onClick={() => setMenuOpen(false)}
