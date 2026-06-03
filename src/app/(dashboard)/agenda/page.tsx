@@ -19,7 +19,6 @@ import {
 
 // Fallback colours until API types load
 const TYPES_SEANCE_FALLBACK = ['Rééducation fonctionnelle', 'Massage thérapeutique', 'Électrothérapie', 'Balnéothérapie']
-const SALLES = ['Salle 1', 'Salle 2', 'Salle 3']
 // Colour map is now built dynamically from API types (couleurMap in component state)
 
 function getWeekDates(startDate: Date) {
@@ -262,7 +261,7 @@ export default function AgendaPage() {
   }
   const [form, setForm] = useState({
     patientId: '', praticienId: '', typeSeance: '',
-    date: '', heure: '09:00', duree: '45', salle: 'Salle 1', notes: ''
+    date: '', heure: '09:00', duree: '45', notes: ''
   })
 
   // Pour un PRATICIEN, on pré-remplit form.praticienId avec son propre id.
@@ -382,7 +381,7 @@ export default function AgendaPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           date: dateTime, duree: parseInt(form.duree),
-          typeSeance: form.typeSeance, salle: form.salle,
+          typeSeance: form.typeSeance,
           notes: form.notes, patientId: form.patientId,
           praticienId: form.praticienId,
         }),
@@ -587,21 +586,12 @@ export default function AgendaPage() {
                     style={{ width: '100%', padding: '10px 12px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 14 }} />
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div>
-                  <label style={{ fontSize: 13, fontWeight: 500, color: '#374151', display: 'block', marginBottom: 6 }}>Durée (min)</label>
-                  <select value={form.duree} onChange={e => setForm(f => ({...f, duree: e.target.value}))}
-                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 14, background: 'white' }}>
-                    <option value="30">30 min</option><option value="45">45 min</option><option value="60">60 min</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={{ fontSize: 13, fontWeight: 500, color: '#374151', display: 'block', marginBottom: 6 }}>Salle</label>
-                  <select value={form.salle} onChange={e => setForm(f => ({...f, salle: e.target.value}))}
-                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 14, background: 'white' }}>
-                    {SALLES.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                </div>
+              <div>
+                <label style={{ fontSize: 13, fontWeight: 500, color: '#374151', display: 'block', marginBottom: 6 }}>Durée (min)</label>
+                <select value={form.duree} onChange={e => setForm(f => ({...f, duree: e.target.value}))}
+                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 14, background: 'white' }}>
+                  <option value="30">30 min</option><option value="45">45 min</option><option value="60">60 min</option>
+                </select>
               </div>
               <div>
                 <label style={{ fontSize: 13, fontWeight: 500, color: '#374151', display: 'block', marginBottom: 6 }}>Notes</label>

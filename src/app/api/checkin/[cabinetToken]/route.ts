@@ -50,7 +50,6 @@ export async function GET(
           date: true,
           duree: true,
           typeSeance: true,
-          salle: true,
           statut: true,
           praticien: { select: { prenom: true, nom: true } },
         },

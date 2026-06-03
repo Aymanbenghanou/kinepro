@@ -97,7 +97,6 @@ export async function POST(request: NextRequest) {
           date:        rdvDate,
           duree:       rdvDuree,
           typeSeance:  body.typeSeance,
-          salle:       body.salle      ?? null,
           notes:       body.notes      ?? null,
           statut:      body.statut     || RdvStatut.confirme,
           patientId:   body.patientId,

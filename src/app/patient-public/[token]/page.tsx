@@ -125,7 +125,6 @@ export default function PatientPublicPage() {
                   <RdvRow icon="🕐" label={formatTime(rdv.date)} />
                   <RdvRow icon="💆" label={rdv.typeSeance} />
                   <RdvRow icon="👨‍⚕️" label={`Dr. ${rdv.praticien?.prenom} ${rdv.praticien?.nom}`} />
-                  {rdv.salle && <RdvRow icon="📍" label={rdv.salle} />}
                 </div>
               </div>
             ))
@@ -152,7 +151,6 @@ export default function PatientPublicPage() {
                 <RdvRow icon="🕐" label={formatTime(data.nextRdv.date)} />
                 <RdvRow icon="💆" label={data.nextRdv.typeSeance} />
                 <RdvRow icon="👨‍⚕️" label={`Dr. ${data.nextRdv.praticien?.prenom} ${data.nextRdv.praticien?.nom}`} />
-                {data.nextRdv.salle && <RdvRow icon="📍" label={data.nextRdv.salle} />}
               </div>
             </div>
           ) : (

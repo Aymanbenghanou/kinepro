@@ -67,7 +67,6 @@ export const createRdvSchema = z.object({
   date:        z.string().min(1).max(50),     // ISO ou parsable par new Date()
   duree:       z.number().int().positive().max(600).optional(),
   typeSeance:  z.string().min(1).max(200),
-  salle:       z.string().max(100).optional().nullable(),
   notes:       z.string().max(2000).optional().nullable(),
   statut:      z.nativeEnum(RdvStatut).optional(),
   patientId:   z.string().min(1),

@@ -99,7 +99,6 @@ export async function PUT(
           date:        body.date        ? new Date(body.date) : undefined,
           duree:       body.duree,
           typeSeance:  body.typeSeance,
-          salle:       body.salle,
           notes:       body.notes,
           statut:      body.statut,
           patientId:   body.patientId,

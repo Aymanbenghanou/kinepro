@@ -238,7 +238,6 @@ model RendezVous {
   date         DateTime
   duree        Int         @default(45)
   typeSeance   String
-  salle        String?
   notes        String?
   statut       RdvStatut   @default(confirme)
   source       String      @default("cabinet") // "cabinet" | "online" | "phone"

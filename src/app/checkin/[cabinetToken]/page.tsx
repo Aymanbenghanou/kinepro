@@ -163,7 +163,6 @@ export default function CheckinPage() {
                   <InfoRow icon="🕐" label={formatTime(patientData.nextRdv.date)} bold />
                   <InfoRow icon="💆" label={patientData.nextRdv.typeSeance} />
                   <InfoRow icon="👨‍⚕️" label={`Dr. ${patientData.nextRdv.praticien?.prenom} ${patientData.nextRdv.praticien?.nom}`} />
-                  {patientData.nextRdv.salle && <InfoRow icon="📍" label={patientData.nextRdv.salle} />}
                 </div>
                 <button
                   onClick={handleConfirm}

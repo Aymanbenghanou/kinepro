@@ -144,7 +144,6 @@ async function main() {
   }
 
   const typesLabels = ['Rééducation fonctionnelle', 'Massage thérapeutique', 'Électrothérapie', 'Mobilisation articulaire', 'Renforcement musculaire']
-  const salles = ['Salle 1', 'Salle 2', 'Salle 3']
 
   // 30 RDVs for Cabinet 1
   for (let i = 0; i < 30; i++) {
@@ -158,7 +157,6 @@ async function main() {
         date:        rdvDate,
         duree:       [30, 45, 60][Math.floor(Math.random() * 3)],
         typeSeance:  typesLabels[Math.floor(Math.random() * typesLabels.length)],
-        salle:       salles[Math.floor(Math.random() * salles.length)],
         statut:      [RdvStatut.confirme, RdvStatut.confirme, RdvStatut.confirme, RdvStatut.en_attente][Math.floor(Math.random() * 4)],
         patientId:   patients1[Math.floor(Math.random() * patients1.length)].id,
         praticienId: praticiens1[Math.floor(Math.random() * praticiens1.length)].id,

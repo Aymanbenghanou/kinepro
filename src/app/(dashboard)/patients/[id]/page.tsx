@@ -78,7 +78,7 @@ function PlanifierModal({ patientId, onClose, onSuccess }: {
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
     date: '', heure: '09:00', praticienId: '', typeSeance: '',
-    salle: 'Salle 1', duree: '45', notes: '',
+    duree: '45', notes: '',
   })
 
   useEffect(() => {
@@ -104,7 +104,6 @@ function PlanifierModal({ patientId, onClose, onSuccess }: {
           date: `${form.date}T${form.heure}:00`,
           duree: parseInt(form.duree),
           typeSeance: form.typeSeance,
-          salle: form.salle,
           notes: form.notes,
           patientId,
           praticienId: form.praticienId,
@@ -153,17 +152,9 @@ function PlanifierModal({ patientId, onClose, onSuccess }: {
               <input type="time" value={form.heure} onChange={e => setForm(f => ({ ...f, heure: e.target.value }))} required style={inp} />
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <div>
-              <label style={lbl}>Salle</label>
-              <select value={form.salle} onChange={e => setForm(f => ({ ...f, salle: e.target.value }))} style={inp}>
-                {['Salle 1', 'Salle 2', 'Salle 3'].map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={lbl}>Durée (min)</label>
-              <input type="number" value={form.duree} onChange={e => setForm(f => ({ ...f, duree: e.target.value }))} style={inp} min="15" step="5" />
-            </div>
+          <div>
+            <label style={lbl}>Durée (min)</label>
+            <input type="number" value={form.duree} onChange={e => setForm(f => ({ ...f, duree: e.target.value }))} style={inp} min="15" step="5" />
           </div>
           <div>
             <label style={lbl}>Notes</label>

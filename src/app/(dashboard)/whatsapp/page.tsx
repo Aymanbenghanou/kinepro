@@ -258,7 +258,7 @@ export default function WhatsAppCenterPage() {
                             {rdv.patient?.prenom} {rdv.patient?.nom}
                           </div>
                           <div style={{ fontSize: 13, color: '#64748B', marginTop: 2 }}>
-                            {formatTime(rdv.date)} · {rdv.typeSeance} · {rdv.salle || 'Salle ?'} · Dr. {rdv.praticien?.nom}
+                            {formatTime(rdv.date)} · {rdv.typeSeance} · Dr. {rdv.praticien?.nom}
                           </div>
                           {rdv.patient?.telephone && (
                             <div style={{ fontSize: 12, color: '#94A3B8', marginTop: 2 }}>
