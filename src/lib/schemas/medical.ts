@@ -9,15 +9,24 @@ import { RdvStatut, SeanceStatut } from '@prisma/client'
 
 // ─── Patients ────────────────────────────────────────────────────────────────
 
+// Email optionnel-mais-strict : "" passe (form HTML standard) OR un vrai email.
+// "abc@" reste rejeté — la validation est préservée pour les valeurs non vides.
+const optionalEmail = z
+  .union([z.literal(''), z.string().email().max(200)])
+  .optional()
+  .nullable()
+
 // POST /api/patients — nom + prenom requis ; reste optionnel/nullable.
-// Les dates et nombres sont reçus en string (le handler parse).
+// Les dates et nombres sont reçus en string (le handler parse / normalise "" → null).
+// IMPORTANT : pas de .min(1) sur les optional — un <input> vide envoie "" et
+// doit être accepté. Le handler convertit "" en null côté Prisma.
 export const createPatientSchema = z.object({
   nom:                 z.string().min(1).max(100),
   prenom:              z.string().min(1).max(100),
-  dateNaissance:       z.string().min(1).max(50).optional().nullable(),
+  dateNaissance:       z.string().max(50).optional().nullable(),
   sexe:                z.string().max(20).optional().nullable(),
   telephone:           z.string().max(50).optional().nullable(),
-  email:               z.string().email().max(200).optional().nullable(),
+  email:               optionalEmail,
   adresse:             z.string().max(500).optional().nullable(),
   ville:               z.string().max(100).optional().nullable(),
   cin:                 z.string().max(50).optional().nullable(),
@@ -35,10 +44,10 @@ export const createPatientSchema = z.object({
   modePaiement:        z.string().max(50).optional().nullable(),
   nbSeancesPrescrites: z.union([z.number(), z.string()]).optional().nullable(),
   frequence:           z.string().max(100).optional().nullable(),
-  praticienAssigneId:  z.string().min(1).optional().nullable(),
+  praticienAssigneId:  z.string().max(100).optional().nullable(),
   typesSeances:        z.string().max(500).optional().nullable(),
   objectifsTraitement: z.string().max(2000).optional().nullable(),
-  dateDebutSouhaite:   z.string().min(1).max(50).optional().nullable(),
+  dateDebutSouhaite:   z.string().max(50).optional().nullable(),
 })
 
 // PUT /api/patients/[id] — partial du create, plus le flag actif.
