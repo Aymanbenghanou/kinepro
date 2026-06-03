@@ -28,22 +28,8 @@ async function main() {
   await prisma.subscription.deleteMany()
   await prisma.user.deleteMany()
   await prisma.cabinet.deleteMany()
-  await prisma.systemConfig.deleteMany()
 
   const now = new Date()
-
-  // ─── System config ────────────────────────────────────────────────────────────
-  await prisma.systemConfig.create({
-    data: {
-      id:             'global',
-      whatsappNumber: '212600000000',
-      rib:            '007 780 0001234567890 12',
-      banque:         'Attijariwafa Bank',
-      titulaire:      'KinéPro SARL',
-      prixMensuel:    299,
-      prixAnnuel:     2499,
-    },
-  })
 
   // ─── SUPER ADMIN (no cabinet) ─────────────────────────────────────────────────
   await prisma.user.create({

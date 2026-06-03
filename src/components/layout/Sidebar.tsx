@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useState, useEffect, useCallback } from 'react'
 import {
   LayoutDashboard, Calendar, Users, Clock, CreditCard,
-  UserCheck, BarChart3, Settings, Crown, X, QrCode, Globe,
+  UserCheck, BarChart3, Settings, Crown, X, QrCode,
 } from 'lucide-react'
 import ProfileDropdown from '@/components/ui/ProfileDropdown'
 import { useSidebar } from '@/lib/sidebar-context'
@@ -96,11 +96,6 @@ export default function Sidebar() {
   const isParametresActive = pathname.startsWith('/parametres')
   const isAbonnementActive = pathname.startsWith('/abonnement')
 
-  const [cabinetSlug, setCabinetSlug] = useState<string | null>(null)
-  useEffect(() => {
-    fetch('/api/cabinet').then(r => r.json()).then(d => { if (d.slug && d.bookingEnabled) setCabinetSlug(d.slug) }).catch(() => {})
-  }, [])
-
   return (
     <>
       {/* Backdrop — only visible on mobile when open */}
@@ -157,19 +152,6 @@ export default function Sidebar() {
                   <Icon size={18} />
                   {item.label}
                 </Link>
-                {/* Booking link shortcut next to Agenda */}
-                {item.href === '/agenda' && cabinetSlug && (
-                  <a
-                    href={`${process.env.NEXT_PUBLIC_APP_URL ?? 'https://kinepro-omega.vercel.app'}/booking/${cabinetSlug}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    title="Page de réservation en ligne"
-                    style={{ padding:'6px', borderRadius:8, color:'rgba(147,210,255,0.7)', display:'flex', alignItems:'center', flexShrink:0 }}
-                    className="hover:bg-blue-800 hover:text-white transition-colors"
-                  >
-                    <Globe size={14} />
-                  </a>
-                )}
               </div>
             )
           })}

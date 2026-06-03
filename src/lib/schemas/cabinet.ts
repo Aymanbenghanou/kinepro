@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 /**
- * Schemas zod pour les routes cabinet + super-admin demandes.
+ * Schemas zod pour les routes cabinet.
  * Adaptés EXACTEMENT aux champs lus par les handlers.
  */
 
@@ -16,14 +16,5 @@ export const updateCabinetSchema = z.object({
   googleMapsLink:   z.string().max(1000).optional().nullable(),
   whatsappNumber:   z.string().max(50).optional().nullable(),
   googleReviewLink: z.string().max(1000).optional().nullable(),
-  // Booking settings
-  slug:             z.string().max(200).optional().nullable(),
-  bookingEnabled:   z.boolean().optional(),
-  workStartTime:    z.string().regex(/^\d{2}:\d{2}$/, 'Format attendu HH:MM').optional(),
-  workEndTime:      z.string().regex(/^\d{2}:\d{2}$/, 'Format attendu HH:MM').optional(),
-  lunchStartTime:   z.string().regex(/^\d{2}:\d{2}$/, 'Format attendu HH:MM').optional(),
-  lunchEndTime:     z.string().regex(/^\d{2}:\d{2}$/, 'Format attendu HH:MM').optional(),
-  bookingMessage:   z.string().max(2000).optional().nullable(),
-  // Format CSV de jours, ex. "1,2,3,4,5,6". On laisse string libre côté zod.
-  workingDays:      z.string().max(50).optional(),
+  logoUrl:          z.string().max(1000).optional().nullable(),
 })

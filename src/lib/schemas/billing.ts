@@ -1,9 +1,9 @@
 import { z } from 'zod'
-import { FactureStatut, ModePaiement, CabinetPlan, BillingCycle } from '@prisma/client'
+import { FactureStatut, ModePaiement } from '@prisma/client'
 
 /**
- * Schemas zod pour les routes billing (/api/facturation/*, /api/factures,
- * /api/abonnement/*). Adaptés EXACTEMENT aux champs lus par les handlers.
+ * Schemas zod pour les routes billing (/api/facturation/*, /api/factures).
+ * Adaptés EXACTEMENT aux champs lus par les handlers.
  */
 
 // POST /api/facturation  ET  POST /api/factures
@@ -28,10 +28,4 @@ export const enregistrerPaiementSchema = z.object({
   // Accepte une string parsable en Date (ISO ou yyyy-mm-dd) ; le handler
   // gère le défaut "maintenant" quand absent.
   datePaiement: z.string().min(1).optional().nullable(),
-})
-
-// POST /api/abonnement/demande — plan restreint à starter|pro (pas 'trial').
-export const demandeAbonnementSchema = z.object({
-  plan:         z.enum([CabinetPlan.starter, CabinetPlan.pro]),
-  billingCycle: z.nativeEnum(BillingCycle),
 })

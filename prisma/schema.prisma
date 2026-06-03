@@ -64,12 +64,6 @@ enum BillingCycle {
   annual
 }
 
-enum DemandeStatut {
-  en_attente
-  confirmee
-  refusee
-}
-
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
 model User {
@@ -122,34 +116,6 @@ model Subscription {
 
 // ─── Cabinet ─────────────────────────────────────────────────────────────────
 
-model CabinetSite {
-  id              String        @id @default(cuid())
-  cabinetId       String        @unique
-  cabinet         Cabinet       @relation(fields: [cabinetId], references: [id])
-  templateId      String        @default("medical")
-  published       Boolean       @default(false)
-  primaryColor    String        @default("#2563EB")
-  secondaryColor  String        @default("#1E3A5F")
-  contentFr       Json?
-  contentAr       Json?
-  heroImageUrl    String?
-  googleMapsEmbed String?
-  testimonials    Testimonial[]
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-}
-
-model Testimonial {
-  id            String      @id @default(cuid())
-  cabinetSiteId String
-  cabinetSite   CabinetSite @relation(fields: [cabinetSiteId], references: [id], onDelete: Cascade)
-  patientName   String
-  textFr        String      @default("")
-  textAr        String      @default("")
-  rating        Int         @default(5)
-  createdAt     DateTime    @default(now())
-}
-
 model Cabinet {
   id                 String              @id @default(cuid())
   nom                String
@@ -161,22 +127,12 @@ model Cabinet {
   whatsappNumber     String?
   googleReviewLink   String?
   ownerId            String?             @unique
-  subdomain          String?             @unique
   logoUrl            String?
   publicToken        String?             @unique
-  // ── Online booking ────────────────────────────────────────────
-  slug               String?             @unique
-  bookingEnabled     Boolean             @default(false)
-  workStartTime      String              @default("08:00")
-  workEndTime        String              @default("18:00")
-  lunchStartTime     String              @default("12:00")
-  lunchEndTime       String              @default("14:00")
-  bookingMessage     String?
-  workingDays        String              @default("1,2,3,4,5,6")
   // ── Billing / abonnement ──────────────────────────────────────
   plan               CabinetPlan         @default(trial)
   billingCycle       BillingCycle? // null pendant l'essai
-  trialEndsAt        DateTime? // essai : 7j (legacy register) ou 15j (création super-admin)
+  trialEndsAt        DateTime? // essai : 15 jours (cf. DEFAULT_TRIAL_DAYS)
   planEndsAt         DateTime? // date d'expiration d'un plan payant (starter/pro), fixée par le super-admin
   planStatus         CabinetPlanStatus   @default(trialing)
   suspensionReason   String? // raison manuelle quand planStatus = 'suspended'
@@ -188,24 +144,7 @@ model Cabinet {
   patients           Patient[]
   seanceTypes        SeanceType[]
   subscription       Subscription?
-  site               CabinetSite?
-  demandesAbonnement DemandeAbonnement[]
   createdAt          DateTime            @default(now())
-}
-
-// Demande d'abonnement par virement (confirmation manuelle par l'admin).
-model DemandeAbonnement {
-  id           String        @id @default(cuid())
-  cabinetId    String
-  cabinet      Cabinet       @relation(fields: [cabinetId], references: [id])
-  plan         CabinetPlan // "starter" | "pro" (jamais "trial")
-  billingCycle BillingCycle // "monthly" | "annual"
-  montant      Float // calculé : 299 / 2990 / 499 / 4990
-  statut       DemandeStatut @default(en_attente)
-  createdAt    DateTime      @default(now())
-  confirmedAt  DateTime? // rempli à la confirmation
-
-  @@index([cabinetId, statut, createdAt])
 }
 
 // ─── Domain models ───────────────────────────────────────────────────────────
@@ -438,19 +377,6 @@ model Document {
   createdAt  DateTime @default(now())
 
   @@index([cabinetId, patientId])
-}
-
-// ─── Global system config (one row, key = "global") ──────────────────────────
-
-model SystemConfig {
-  id             String   @id @default("global")
-  whatsappNumber String   @default("")
-  rib            String   @default("")
-  banque         String   @default("")
-  titulaire      String   @default("")
-  prixMensuel    Float    @default(299)
-  prixAnnuel     Float    @default(2499)
-  updatedAt      DateTime @updatedAt
 }
 
 // ─── Bank accounts (multiple RIBs for receiving payments) ───────────────────
