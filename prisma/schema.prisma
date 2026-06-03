@@ -102,18 +102,6 @@ model PushSubscription {
   user      User     @relation(fields: [userId], references: [id])
 }
 
-model Subscription {
-  id               String    @id @default(cuid())
-  cabinetId        String    @unique
-  cabinet          Cabinet   @relation(fields: [cabinetId], references: [id])
-  plan             String    @default("TRIAL") // TRIAL | MONTHLY | ANNUAL | SUSPENDED
-  trialEndsAt      DateTime
-  currentPeriodEnd DateTime?
-  price            Float?
-  currency         String    @default("MAD")
-  createdAt        DateTime  @default(now())
-}
-
 // ─── Cabinet ─────────────────────────────────────────────────────────────────
 
 model Cabinet {
@@ -143,7 +131,6 @@ model Cabinet {
   praticiens         Praticien[]
   patients           Patient[]
   seanceTypes        SeanceType[]
-  subscription       Subscription?
   createdAt          DateTime            @default(now())
 }
 

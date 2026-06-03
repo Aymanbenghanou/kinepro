@@ -1,51 +1,68 @@
 import { prisma } from '@/lib/prisma'
+import { CabinetPlanStatus } from '@prisma/client'
+import type { CabinetPlan } from '@prisma/client'
 
 export const dynamic = 'force-dynamic'
 
 export default async function SuperAdminDashboard() {
   const now = new Date()
 
-  const [totalCabinets, activeCabinets, trialCabinets, expiredCabinets, totalUsers, recentCabinets] = await Promise.all([
+  // Source de vérité unique : Cabinet.planStatus (AGENTS.md §7).
+  // « Actifs » = planStatus=active. « En essai » = trialing + trialEndsAt futur.
+  // « Expirés/Suspendus » = suspended OU trial expiré.
+  const [
+    totalCabinets,
+    activeCabinets,
+    trialCabinets,
+    suspendedCabinets,
+    trialExpiredCabinets,
+    totalUsers,
+    recentCabinets,
+  ] = await Promise.all([
     prisma.cabinet.count(),
-    prisma.subscription.count({ where: { plan: 'ACTIVE' } }),
-    prisma.subscription.count({
-      where: { plan: 'TRIAL', trialEndsAt: { gte: now } },
+    prisma.cabinet.count({ where: { planStatus: CabinetPlanStatus.active } }),
+    prisma.cabinet.count({
+      where: { planStatus: CabinetPlanStatus.trialing, trialEndsAt: { gte: now } },
     }),
-    prisma.subscription.count({
-      where: {
-        OR: [
-          { plan: 'TRIAL', trialEndsAt: { lt: now } },
-          { plan: 'SUSPENDED' },
-        ],
-      },
+    prisma.cabinet.count({ where: { planStatus: CabinetPlanStatus.suspended } }),
+    prisma.cabinet.count({
+      where: { planStatus: CabinetPlanStatus.trialing, trialEndsAt: { lt: now } },
     }),
     prisma.user.count(),
     prisma.cabinet.findMany({
       orderBy: { createdAt: 'desc' },
       take: 8,
-      include: {
-        subscription: true,
+      select: {
+        id: true, nom: true, ville: true, createdAt: true,
+        plan: true, planStatus: true, trialEndsAt: true,
         _count: { select: { patients: true, users: true, praticiens: true } },
       },
     }),
   ])
 
   const stats = [
-    { label: 'Total cabinets', value: totalCabinets, icon: '🏥', color: '#2563EB' },
-    { label: 'Abonnés actifs', value: activeCabinets, icon: '✅', color: '#16A34A' },
-    { label: 'En période d\'essai', value: trialCabinets, icon: '⏳', color: '#D97706' },
-    { label: 'Expirés / Suspendus', value: expiredCabinets, icon: '⚠️', color: '#DC2626' },
-    { label: 'Utilisateurs total', value: totalUsers, icon: '👥', color: '#7C3AED' },
+    { label: 'Total cabinets',      value: totalCabinets,                            icon: '🏥', color: '#2563EB' },
+    { label: 'Abonnés actifs',      value: activeCabinets,                           icon: '✅', color: '#16A34A' },
+    { label: 'En période d\'essai', value: trialCabinets,                            icon: '⏳', color: '#D97706' },
+    { label: 'Expirés / Suspendus', value: trialExpiredCabinets + suspendedCabinets, icon: '⚠️', color: '#DC2626' },
+    { label: 'Utilisateurs total',  value: totalUsers,                               icon: '👥', color: '#7C3AED' },
   ]
 
-  function planBadge(sub: { plan: string; trialEndsAt: Date } | null) {
-    if (!sub) return <span style={{ fontSize: 11, background: '#F1F5F9', color: '#64748B', padding: '2px 8px', borderRadius: 99 }}>Aucun</span>
-    if (sub.plan === 'ACTIVE') return <span style={{ fontSize: 11, background: '#DCFCE7', color: '#166534', padding: '2px 8px', borderRadius: 99, fontWeight: 600 }}>Actif</span>
-    if (sub.plan === 'SUSPENDED') return <span style={{ fontSize: 11, background: '#FEE2E2', color: '#991B1B', padding: '2px 8px', borderRadius: 99, fontWeight: 600 }}>Suspendu</span>
-    const expired = sub.trialEndsAt < now
-    if (expired) return <span style={{ fontSize: 11, background: '#FEF3C7', color: '#92400E', padding: '2px 8px', borderRadius: 99, fontWeight: 600 }}>Essai expiré</span>
-    const days = Math.ceil((sub.trialEndsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-    return <span style={{ fontSize: 11, background: '#DBEAFE', color: '#1D4ED8', padding: '2px 8px', borderRadius: 99, fontWeight: 600 }}>Essai ({days}j)</span>
+  function planBadge(c: { plan: CabinetPlan; planStatus: CabinetPlanStatus; trialEndsAt: Date | null }) {
+    if (c.planStatus === CabinetPlanStatus.suspended)
+      return <span style={{ fontSize: 11, background: '#FEE2E2', color: '#991B1B', padding: '2px 8px', borderRadius: 99, fontWeight: 600 }}>Suspendu</span>
+    if (c.planStatus === CabinetPlanStatus.active)
+      return <span style={{ fontSize: 11, background: '#DCFCE7', color: '#166534', padding: '2px 8px', borderRadius: 99, fontWeight: 600 }}>Actif</span>
+    if (c.planStatus === CabinetPlanStatus.expired)
+      return <span style={{ fontSize: 11, background: '#FEF3C7', color: '#92400E', padding: '2px 8px', borderRadius: 99, fontWeight: 600 }}>Expiré</span>
+    // trialing
+    if (c.trialEndsAt && c.trialEndsAt < now)
+      return <span style={{ fontSize: 11, background: '#FEF3C7', color: '#92400E', padding: '2px 8px', borderRadius: 99, fontWeight: 600 }}>Essai expiré</span>
+    if (c.trialEndsAt) {
+      const days = Math.ceil((c.trialEndsAt.getTime() - now.getTime()) / 86_400_000)
+      return <span style={{ fontSize: 11, background: '#DBEAFE', color: '#1D4ED8', padding: '2px 8px', borderRadius: 99, fontWeight: 600 }}>Essai ({days}j)</span>
+    }
+    return <span style={{ fontSize: 11, background: '#F1F5F9', color: '#64748B', padding: '2px 8px', borderRadius: 99 }}>—</span>
   }
 
   return (
@@ -92,7 +109,7 @@ export default async function SuperAdminDashboard() {
                   </a>
                 </td>
                 <td style={{ padding: '12px 16px', color: '#374151' }}>{cab.ville || '—'}</td>
-                <td style={{ padding: '12px 16px' }}>{planBadge(cab.subscription)}</td>
+                <td style={{ padding: '12px 16px' }}>{planBadge(cab)}</td>
                 <td style={{ padding: '12px 16px', color: '#374151', textAlign: 'center' }}>{cab._count.patients}</td>
                 <td style={{ padding: '12px 16px', color: '#374151', textAlign: 'center' }}>{cab._count.users}</td>
                 <td style={{ padding: '12px 16px', color: '#64748B' }}>

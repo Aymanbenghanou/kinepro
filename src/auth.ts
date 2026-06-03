@@ -3,6 +3,7 @@ import Credentials from 'next-auth/providers/credentials'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 import { authConfig } from './auth.config'
+import { getPlanState, getTrialDaysLeft } from '@/lib/plan'
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -20,7 +21,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           where: { email: credentials.email as string },
           include: {
             cabinet: {
-              include: { subscription: true },
+              select: { plan: true, planStatus: true, trialEndsAt: true, createdAt: true },
             },
           },
         })
@@ -52,18 +53,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           data: { lastLoginAt: new Date() },
         })
 
-        // Determine subscription status
-        const sub = user.cabinet?.subscription
+        // Determine subscription status — source de vérité = Cabinet (AGENTS.md §7)
+        const cab = user.cabinet
         let trialDaysLeft: number | null = null
         let subscriptionStatus = 'ACTIVE'
 
-        if (sub) {
-          if (sub.plan === 'TRIAL') {
-            const msLeft = new Date(sub.trialEndsAt).getTime() - Date.now()
-            trialDaysLeft = Math.ceil(msLeft / 86_400_000)
-            subscriptionStatus = trialDaysLeft > 0 ? 'TRIAL' : 'EXPIRED'
-          } else if (sub.plan === 'SUSPENDED') {
+        if (cab) {
+          if (cab.planStatus === 'suspended') {
             subscriptionStatus = 'SUSPENDED'
+          } else {
+            const state = getPlanState(cab)
+            if (state === 'trialing') {
+              subscriptionStatus = 'TRIAL'
+              trialDaysLeft = getTrialDaysLeft(cab.trialEndsAt)
+            } else if (state === 'trial_expired') {
+              subscriptionStatus = 'EXPIRED'
+            }
           }
         }
 

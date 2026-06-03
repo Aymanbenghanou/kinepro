@@ -25,7 +25,6 @@ async function main() {
   await prisma.patient.deleteMany()
   await prisma.seanceType.deleteMany()
   await prisma.praticien.deleteMany()
-  await prisma.subscription.deleteMany()
   await prisma.user.deleteMany()
   await prisma.cabinet.deleteMany()
 
@@ -50,14 +49,6 @@ async function main() {
       ville:     'Casablanca',
       telephone: '0522-456-789',
       email:     'contact@cabinet-amrani.ma',
-    },
-  })
-
-  await prisma.subscription.create({
-    data: {
-      cabinetId:   cabinet1.id,
-      plan:        'TRIAL',
-      trialEndsAt: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), // 5 days remaining
     },
   })
 
@@ -226,14 +217,6 @@ async function main() {
       ville:     'Rabat',
       telephone: '0537-987-654',
       email:     'contact@cabinet-benali.ma',
-    },
-  })
-
-  await prisma.subscription.create({
-    data: {
-      cabinetId:   cabinet2.id,
-      plan:        'TRIAL',
-      trialEndsAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // expired 3 days ago
     },
   })
 

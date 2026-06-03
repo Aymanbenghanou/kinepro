@@ -1,28 +1,9 @@
 import { z } from 'zod'
 
 /**
- * Schemas zod pour les routes auth (/api/auth/*, /api/compte/*).
- * Adaptés EXACTEMENT aux champs réellement lus par les handlers — pas plus,
- * pas moins. Toute évolution du body doit aller dans les deux endroits.
+ * Schemas zod pour les routes /api/compte/*.
+ * Adaptés EXACTEMENT aux champs réellement lus par les handlers.
  */
-
-// POST /api/auth/register
-// Body imbriqué : { cabinet: {...}, admin: {...} }. Aligné sur ce que le
-// handler actuel exige (nom cabinet + email/password admin requis ; reste opt.).
-export const registerSchema = z.object({
-  cabinet: z.object({
-    nom:       z.string().min(1).max(200),
-    ville:     z.string().max(100).optional().nullable(),
-    telephone: z.string().max(50).optional().nullable(),
-    email:     z.string().email().max(200).optional().nullable(),
-  }),
-  admin: z.object({
-    email:    z.string().email().max(200),
-    password: z.string().min(8).max(200),
-    nom:      z.string().max(100).optional().nullable(),
-    prenom:   z.string().max(100).optional().nullable(),
-  }),
-})
 
 // POST /api/compte/password
 export const changePasswordSchema = z.object({

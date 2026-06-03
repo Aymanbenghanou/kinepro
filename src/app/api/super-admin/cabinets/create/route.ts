@@ -15,8 +15,7 @@ function errMsg(e: unknown) {
 /**
  * POST /api/super-admin/cabinets/create
  * Création high-touch d'un cabinet par le super-admin (gardée par assertSuperAdmin).
- * Réplique la logique de /api/auth/register (cabinet + user owner + subscription
- * + seance-types par défaut) mais :
+ * Crée cabinet + user owner + seance-types par défaut en transaction :
  *   - défaut d'essai = 15 jours (vs 7 sur l'ancien flux self-service)
  *   - plan starter/pro : planEndsAt fixé par le super-admin, planStatus='active'
  */
@@ -62,18 +61,6 @@ export async function POST(request: NextRequest) {
           trialEndsAt,
           planEndsAt,
           billingCycle: null,
-        },
-      })
-
-      // Subscription : modèle vestigial (cf. AGENTS.md §7), conservé pour cohérence
-      // avec /api/auth/register. trialEndsAt est NOT NULL → on duplique planEndsAt
-      // pour les plans payants afin de satisfaire la contrainte.
-      await tx.subscription.create({
-        data: {
-          cabinetId:        newCabinet.id,
-          plan:             plan === CabinetPlan.trial ? 'TRIAL' : 'ACTIVE',
-          trialEndsAt:      trialEndsAt ?? planEndsAt!,
-          currentPeriodEnd: planEndsAt ?? undefined,
         },
       })
 
