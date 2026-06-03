@@ -28,10 +28,10 @@ const navItems: NavItem[] = [
 ]
 
 const parametresSubItems = [
-  { label: 'Configuration',        href: '/parametres' },
-  { label: 'Cabinet',              href: '/parametres/cabinet' },
-  { label: 'Types de séances',     href: '/parametres/types-seances' },
-  { label: '🌐 Réservation en ligne', href: '/parametres/reservation' },
+  { label: 'Cabinet',          href: '/parametres/cabinet' },
+  { label: 'Types de séances', href: '/parametres/types-seances' },
+  { label: 'Salles',           href: '/parametres/salles' },
+  { label: 'Notifications',    href: '/parametres/notifications' },
 ]
 
 function WhatsAppIcon({ size = 18 }: { size?: number }) {
