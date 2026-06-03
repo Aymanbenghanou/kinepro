@@ -1,10 +1,10 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import Link from 'next/link'
 import { X, Sparkles, ArrowLeft, ArrowRight, RefreshCw, Send, Plus, Trash2, Pencil, Check } from 'lucide-react'
 import { useProAccess } from '@/lib/use-plan'
 import { useCan } from '@/lib/use-permissions'
+import ProLockOverlay from '@/components/pro/ProLockOverlay'
 import type { ProgrammeContenu, Exercice } from '@/lib/exercise-program'
 import { formatWhatsAppMessage, waUrl } from '@/lib/exercise-program'
 
@@ -232,9 +232,16 @@ export default function ExerciseProgramModal({ patient, cabinet, onClose, onSent
         </div>
 
         {/* Body */}
-        <div style={body}>
+        <div style={{ ...body, position: 'relative' }}>
           {error && (
             <div style={errorBox}>❌ {error}</div>
+          )}
+
+          {/* Overlay verrou Pro — couvre toute la zone body si cabinet Starter,
+              uniquement à l'étape config (les étapes review/sent post-génération
+              n'arrivent jamais pour un Starter puisque le backend bloque). */}
+          {pro === false && step === 'config' && (
+            <ProLockOverlay feature="Programmes d'exercices IA" />
           )}
 
           {step === 'config' && (
@@ -311,10 +318,9 @@ export default function ExerciseProgramModal({ patient, cabinet, onClose, onSent
                 🔒 Accès non autorisé
               </button>
             ) : pro === false ? (
-              /* Verrou Pro (UX) : génération IA réservée au plan Pro. */
-              <Link href="/abonnement" style={{ ...btnPrimary, textDecoration: 'none' }}>
-                🔒 Disponible en Pro
-              </Link>
+              /* Verrou Pro : la zone body affiche l'overlay avec la CTA WhatsApp ;
+                 on retire ici le bouton "Générer" pour éviter une action mutante. */
+              null
             ) : (
               <button onClick={() => generate(null)} disabled={!canGenerate || busy} style={{ ...btnPrimary, opacity: (!canGenerate || busy) ? 0.5 : 1, cursor: (!canGenerate || busy) ? 'not-allowed' : 'pointer' }}>
                 <Sparkles size={15} /> {isRTL ? 'إنشاء بالذكاء الاصطناعي' : 'Générer avec Claude AI'}

@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Upload, Trash2, Eye, Download, FileText, X } from 'lucide-react'
-import Link from 'next/link'
 import { uploadPatientFile } from '@/lib/upload-client'
 import { useProAccess } from '@/lib/use-plan'
 import { useCan } from '@/lib/use-permissions'
+import ProLockOverlay from '@/components/pro/ProLockOverlay'
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -125,7 +125,6 @@ function UploadZone({ patientId, onUploaded }: { patientId: string; onUploaded: 
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [showForm, setShowForm]  = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
-  const pro = useProAccess()   // verrou Pro (UX) — l'API verrouille réellement
   const can = useCan()
   const allowed = can('programmesEtDocs')
 
@@ -190,21 +189,9 @@ function UploadZone({ patientId, onUploaded }: { patientId: string; onUploaded: 
 
   // Permission insuffisante (rôle/permissions) : on cache la zone d'upload (lecture des
   // documents existants reste possible côté liste, en dehors de ce composant).
+  // Le verrou Pro (UX) est géré au niveau de DocumentsTab via ProLockOverlay — l'API
+  // verrouille réellement les mutations.
   if (!allowed) return null
-
-  // Verrou Pro (UX) : upload de documents réservé au plan Pro.
-  if (pro === false) {
-    return (
-      <div style={{ marginBottom: 24, border: '2px dashed #E2E8F0', borderRadius: 12, padding: 28, textAlign: 'center', background: '#F8FAFC' }}>
-        <div style={{ fontSize: 24, marginBottom: 8 }}>🔒</div>
-        <div style={{ fontSize: 15, fontWeight: 700, color: '#374151', marginBottom: 4 }}>Upload de documents — Disponible en Pro</div>
-        <div style={{ fontSize: 13, color: '#94A3B8', marginBottom: 14 }}>Contactez-nous pour passer au plan Pro.</div>
-        <Link href="/abonnement" style={{ display: 'inline-block', background: '#2563EB', color: 'white', padding: '8px 16px', borderRadius: 8, fontWeight: 700, fontSize: 13, textDecoration: 'none' }}>
-          Mon abonnement
-        </Link>
-      </div>
-    )
-  }
 
   return (
     <div style={{ marginBottom: 24 }}>
@@ -301,6 +288,7 @@ export default function DocumentsTab({ patientId }: { patientId: string }) {
   const [docs, setDocs]         = useState<any[]>([])
   const [loading, setLoading]   = useState(true)
   const [typeFilter, setTypeFilter] = useState('tous')
+  const pro = useProAccess()
 
   const fetchDocs = useCallback(async () => {
     setLoading(true)
@@ -325,7 +313,7 @@ export default function DocumentsTab({ patientId }: { patientId: string }) {
   const filtered = typeFilter === 'tous' ? docs : docs.filter(d => d.type === typeFilter)
 
   return (
-    <div>
+    <div style={{ position: 'relative' }}>
       {/* Upload zone */}
       <UploadZone patientId={patientId} onUploaded={fetchDocs} />
 
@@ -361,6 +349,9 @@ export default function DocumentsTab({ patientId }: { patientId: string }) {
           ))}
         </div>
       )}
+
+      {/* Overlay verrou Pro — preview floutée + blocage des interactions */}
+      {pro === false && <ProLockOverlay feature="Documents patients" />}
     </div>
   )
 }
