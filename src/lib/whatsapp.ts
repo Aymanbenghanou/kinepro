@@ -70,88 +70,6 @@ ${p.telCabinet ? `Besoin de reporter ? Appelez-nous : ${p.telCabinet}` : `Besoin
 À demain ! \u{1F4AA}`
 }
 
-// ─── 3. Post-séance Score 8-10 (Excellent) — includes Google Maps ────────────
-export function msgFeedbackExcellent(p: {
-  prenom: string
-  numSeance: number
-  totalSeances: number | null
-  typeSeance: string
-  googleMapsLink: string
-  nomCabinet?: string | null
-}): string {
-  const seanceLabel = p.totalSeances
-    ? `Séance ${p.numSeance}/${p.totalSeances}`
-    : `Séance ${p.numSeance}`
-  const cab = cabinetLabel(p.nomCabinet)
-  return `Bonjour ${p.prenom} \u{1F60A}
-
-Merci pour votre séance d'aujourd'hui chez *${cab}* ! \u{1F4AA}
-
-*${seanceLabel} — ${p.typeSeance}*
-
-Continuez les exercices à la maison, ils font toute la différence ! \u{1F4AA}
-
----
-\u{2B50} *Un petit avis Google nous aiderait énormément :*
-\u{1F449} ${p.googleMapsLink}
-Merci infiniment, ça prend 30 secondes ! \u{1F64F}
-
-À très bientôt,
-*${cab}*`
-}
-
-// ─── 3. Post-séance Score 5-7 (Moyen) — NO Google link ──────────────────────
-export function msgFeedbackMoyen(p: {
-  prenom: string
-  messagePersonnalise?: string
-  prochainRdv?: string
-  telCabinet?: string | null
-  nomCabinet?: string | null
-}): string {
-  const msg = p.messagePersonnalise?.trim()
-    ? p.messagePersonnalise.trim()
-    : `Chaque séance nous rapproche de votre objectif. Le corps prend du temps pour s'adapter, mais nous sommes là pour vous accompagner.`
-  const cab = cabinetLabel(p.nomCabinet)
-  return `Bonjour ${p.prenom} \u{1F44B}
-
-Merci d'être venu(e) aujourd'hui chez *${cab}*.
-
-Cette séance était un peu difficile — c'est tout à fait normal dans votre parcours \u{1F64F}
-
-${msg}
-
-Votre prochain RDV : *${p.prochainRdv || 'à planifier'}*
-
-N'hésitez pas à nous appeler si vous avez des questions.
-À bientôt \u{1F4AA}
-*${cab}*${p.telCabinet ? ` — ${p.telCabinet}` : ''}`
-}
-
-// ─── 3. Post-séance Score 1-4 (Difficile) — empathie + promesse ─────────────
-export function msgFeedbackDifficile(p: {
-  prenom: string
-  messagePersonnalise: string
-  prochainRdv?: string
-  telCabinet?: string | null
-  nomCabinet?: string | null
-}): string {
-  return `Bonjour ${p.prenom} \u{1F44B}
-
-Merci pour votre courage aujourd'hui — nous savons que cette séance était difficile \u{1F64F}
-
-${p.messagePersonnalise}
-
-Votre bien-être est notre priorité absolue. Lors de votre prochaine séance nous allons :
-• Adapter l'intensité à votre ressenti
-• Prendre plus de temps sur les zones sensibles
-• Réévaluer votre programme si nécessaire
-
-Votre prochain RDV : *${p.prochainRdv || 'à planifier'}*
-${p.telCabinet ? `\nAppelez-nous à tout moment : *${p.telCabinet}*\n` : ''}
-Vous êtes entre de bonnes mains \u{1F499}
-*${cabinetLabel(p.nomCabinet)}*`
-}
-
 // ─── 4. Programme d'exercices ─────────────────────────────────────────────────
 export function msgExercices(p: {
   prenom: string
@@ -188,24 +106,6 @@ ${p.feedbackUrl}
 
 Merci pour votre confiance \u{1F499}
 *${cab}*`
-}
-
-// ─── 6. Demande d'avis Google Maps (score 8-10) ───────────────────────────────
-export function msgAvisGoogle(p: {
-  prenom: string
-  googleMapsLink: string
-  nomCabinet?: string | null
-}): string {
-  return `Bonjour ${p.prenom} \u{1F60A}
-
-Nous espérons que votre séance s'est bien passée !
-
-Un petit avis Google nous aiderait énormément \u{1F64F}\u{2B50}
-
-\u{1F449} ${p.googleMapsLink}
-
-Merci infiniment ! \u{1F31F}
-*${cabinetLabel(p.nomCabinet)}*`
 }
 
 // ─── Score helpers ────────────────────────────────────────────────────────────

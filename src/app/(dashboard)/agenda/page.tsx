@@ -10,13 +10,7 @@ import {
 import Topbar from '@/components/layout/Topbar'
 import Toast from '@/components/ui/Toast'
 import { formatTime } from '@/lib/utils'
-import { Plus, ChevronLeft, ChevronRight, X, Check } from 'lucide-react'
-import WhatsAppButton from '@/components/whatsapp/WhatsAppButton'
-import {
-  msgConfirmationRDV, msgRappelRDV,
-  buildWhatsAppUrl, formatPhoneForWhatsApp,
-} from '@/lib/whatsapp'
-import { useCabinet } from '@/lib/use-cabinet-nom'
+import { Plus, ChevronLeft, ChevronRight, X } from 'lucide-react'
 
 // Fallback colours until API types load
 const TYPES_SEANCE_FALLBACK = ['Rééducation fonctionnelle', 'Massage thérapeutique', 'Électrothérapie', 'Balnéothérapie']
@@ -38,56 +32,6 @@ function getWeekDates(startDate: Date) {
 
 const JOURS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
 const HEURES = Array.from({ length: 12 }, (_, i) => i + 8)
-
-function RappelBtn({ rdv, nomCabinet, telCabinet }: { rdv: any; nomCabinet: string | null; telCabinet: string | null }) {
-  const [sent, setSent] = useState(false)
-  if (!rdv.patient?.telephone) return null
-
-  async function handleRappel(e: React.MouseEvent) {
-    e.stopPropagation()
-    const date = new Date(rdv.date)
-    const heure = `${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`
-    const dateStr = date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
-    const msg = msgRappelRDV({
-      prenom: rdv.patient.prenom,
-      date: dateStr,
-      heure,
-      praticien: rdv.praticien ? `${rdv.praticien.prenom} ${rdv.praticien.nom}` : '',
-      typeSeance: rdv.typeSeance,
-      nomCabinet,
-      telCabinet,
-    })
-    try {
-      await fetch('/api/whatsapp/log', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'rappel_rdv',
-          patientId: rdv.patient.id,
-          patientNom: `${rdv.patient.prenom} ${rdv.patient.nom}`,
-          telephone: rdv.patient.telephone,
-          message: msg,
-        }),
-      })
-    } catch {}
-    setSent(true)
-    setTimeout(() => setSent(false), 3000)
-    window.open(buildWhatsAppUrl(rdv.patient.telephone, msg), '_blank')
-  }
-
-  return (
-    <button onClick={handleRappel}
-      style={{
-        marginTop: 3, width: '100%',
-        background: sent ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.22)',
-        color: 'white', border: '1px solid rgba(255,255,255,0.4)',
-        borderRadius: 4, padding: '2px 4px', fontSize: 10, fontWeight: 600,
-        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3,
-      }}>
-      {sent ? '✓ Ouvert' : '📱 Rappel'}
-    </button>
-  )
-}
 
 // Pastille verte au coin de la carte pour signaler un RDV passé en "realise".
 // Posée en absolute → le conteneur DraggableRdv / DragOverlay a position: relative.
@@ -113,7 +57,7 @@ function RealiseBadge() {
 
 // Contenu interne d'une carte RDV — réutilisé dans la carte de la grille
 // ET dans le DragOverlay (le visuel coloré est porté par le conteneur parent).
-function RdvCardBody({ rdv, nomCabinet, telCabinet }: { rdv: any; nomCabinet: string | null; telCabinet: string | null }) {
+function RdvCardBody({ rdv }: { rdv: any }) {
   // OWNER / SECRETAIRE / SUPER_ADMIN voient tous les RDV du cabinet → on leur
   // montre quel praticien assure chaque RDV. Un PRATICIEN ne voit que les siens,
   // donc cette info est inutile pour lui.
@@ -141,7 +85,6 @@ function RdvCardBody({ rdv, nomCabinet, telCabinet }: { rdv: any; nomCabinet: st
           {rdv.patientNotes.slice(0, 30)}{rdv.patientNotes.length > 30 ? '…' : ''}
         </div>
       )}
-      <RappelBtn rdv={rdv} nomCabinet={nomCabinet} telCabinet={telCabinet} />
     </>
   )
 }
@@ -210,9 +153,6 @@ export default function AgendaPage() {
   // supprimer un RDV. PRATICIEN n'a pas d'accès au popover dans cette vue.
   const canManageRdv = sessionRole === 'CABINET_OWNER' || sessionRole === 'SECRETAIRE' || sessionRole === 'SUPER_ADMIN'
 
-  // Cabinet (tenant) pour personnaliser les templates WhatsApp (nom + tel).
-  const { nom: nomCabinet, telephone: telCabinet } = useCabinet()
-
   const [currentDate, setCurrentDate] = useState(new Date())
   const [rdvList, setRdvList]         = useState<any[]>([])
   const [patients, setPatients]       = useState<any[]>([])
@@ -220,7 +160,6 @@ export default function AgendaPage() {
   const [seanceTypes, setSeanceTypes] = useState<any[]>([])
   const [showModal, setShowModal]     = useState(false)
   const [loading, setLoading]         = useState(false)
-  const [confirmationRdv, setConfirmationRdv] = useState<any>(null)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
   // Popover de gestion d'un RDV (clic sur une carte).
@@ -394,12 +333,9 @@ export default function AgendaPage() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Erreur serveur')
-      const patient = patients.find(p => p.id === form.patientId)
-      const praticien = praticiens.find(p => p.id === form.praticienId)
       setShowModal(false)
       fetchRdv()
-      // Show WhatsApp confirmation panel
-      setConfirmationRdv({ rdv: data, patient, praticien })
+      setToast({ message: 'RDV créé', type: 'success' })
     } catch (err) {
       setToast({ message: err instanceof Error ? err.message : 'Erreur serveur', type: 'error' })
     }
@@ -496,7 +432,7 @@ export default function AgendaPage() {
                             color={color}
                             onCardClick={canManageRdv ? openPopover : undefined}
                           >
-                            <RdvCardBody rdv={rdv} nomCabinet={nomCabinet} telCabinet={telCabinet} />
+                            <RdvCardBody rdv={rdv} />
                           </DraggableRdv>
                         )
                       })}
@@ -517,7 +453,7 @@ export default function AgendaPage() {
                 borderLeft: activeRdv.source === 'online' ? '3px solid #14B8A6' : undefined,
                 cursor: 'grabbing', boxShadow: '0 8px 20px rgba(0,0,0,0.25)',
               }}>
-                <RdvCardBody rdv={activeRdv} nomCabinet={nomCabinet} telCabinet={telCabinet} />
+                <RdvCardBody rdv={activeRdv} />
               </div>
             ) : null}
           </DragOverlay>
@@ -615,77 +551,6 @@ export default function AgendaPage() {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* ── WhatsApp Confirmation Panel ── */}
-      {confirmationRdv && (
-        <div className="modal-overlay" style={{ zIndex: 200 }}>
-          <div className="modal-sheet" style={{ padding: 32, width: 440 }}>
-            {/* Success icon */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: 24 }}>
-              <div style={{ width: 60, height: 60, borderRadius: '50%', background: '#DCFCE7', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
-                <Check size={28} color="#16A34A" />
-              </div>
-              <h2 style={{ fontSize: 18, fontWeight: 700, color: '#0F172A', margin: '0 0 4px' }}>RDV créé avec succès !</h2>
-              <p style={{ fontSize: 14, color: '#64748B', margin: 0, textAlign: 'center' }}>
-                {confirmationRdv.patient?.prenom} {confirmationRdv.patient?.nom} —{' '}
-                {new Date(confirmationRdv.rdv?.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
-              </p>
-            </div>
-
-            {/* WhatsApp actions */}
-            {confirmationRdv.patient?.telephone ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
-                <p style={{ fontSize: 13, fontWeight: 600, color: '#374151', margin: '0 0 6px' }}>
-                  📱 Envoyer via WhatsApp :
-                </p>
-                <WhatsAppButton
-                  phone={confirmationRdv.patient.telephone}
-                  message={msgConfirmationRDV({
-                    prenom: confirmationRdv.patient.prenom,
-                    date: new Date(confirmationRdv.rdv?.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }),
-                    heure: formatTime(confirmationRdv.rdv?.date),
-                    typeSeance: confirmationRdv.rdv?.typeSeance,
-                    praticien: `${confirmationRdv.praticien?.prenom} ${confirmationRdv.praticien?.nom}`,
-                    duree: confirmationRdv.rdv?.duree || 45,
-                    nomCabinet,
-                  })}
-                  type="confirmation_rdv"
-                  patientId={confirmationRdv.patient.id}
-                  patientNom={`${confirmationRdv.patient.prenom} ${confirmationRdv.patient.nom}`}
-                  label="Envoyer confirmation WhatsApp"
-                />
-                <WhatsAppButton
-                  phone={confirmationRdv.patient.telephone}
-                  message={msgRappelRDV({
-                    prenom: confirmationRdv.patient.prenom,
-                    date: new Date(confirmationRdv.rdv?.date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }),
-                    heure: formatTime(confirmationRdv.rdv?.date),
-                    praticien: `${confirmationRdv.praticien?.prenom} ${confirmationRdv.praticien?.nom}`,
-                    typeSeance: confirmationRdv.rdv?.typeSeance,
-                    nomCabinet,
-                    telCabinet,
-                  })}
-                  type="rappel_rdv"
-                  patientId={confirmationRdv.patient.id}
-                  patientNom={`${confirmationRdv.patient.prenom} ${confirmationRdv.patient.nom}`}
-                  label="Envoyer rappel WhatsApp"
-                />
-              </div>
-            ) : (
-              <div style={{ background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 10, padding: 12, marginBottom: 20 }}>
-                <p style={{ fontSize: 13, color: '#92400E', margin: 0 }}>
-                  ⚠️ Aucun numéro de téléphone enregistré pour ce patient.
-                </p>
-              </div>
-            )}
-
-            <button onClick={() => setConfirmationRdv(null)}
-              style={{ width: '100%', padding: '11px', border: '1px solid #E2E8F0', borderRadius: 10, background: 'white', cursor: 'pointer', fontWeight: 500, color: '#374151', fontSize: 14 }}>
-              Fermer
-            </button>
           </div>
         </div>
       )}

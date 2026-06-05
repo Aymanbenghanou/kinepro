@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import Topbar from '@/components/layout/Topbar'
 import Toast from '@/components/ui/Toast'
 import { formatDate, formatTime } from '@/lib/utils'
 import { Plus, X } from 'lucide-react'
-import FeedbackModal from '@/components/whatsapp/FeedbackWidget'
 import { scoreColor, scoreBadge } from '@/lib/whatsapp'
 import { useCan } from '@/lib/use-permissions'
 import { SeanceStatut } from '@prisma/client'
@@ -28,21 +28,20 @@ function StatutBadge({ statut }: { statut: string }) {
   )
 }
 
-function FeedbackBadge({ seance, onClick }: { seance: any; onClick: () => void }) {
+function FeedbackBadge({ seance }: { seance: any }) {
   if (seance.statut !== SeanceStatut.realisee) return null
 
   if (seance.scorePatient === null || seance.scorePatient === undefined) {
     return (
-      <button
-        onClick={e => { e.stopPropagation(); onClick() }}
+      <span
         style={{
           background: '#FEF3C7', color: '#B45309', border: '1px solid #FCD34D',
           padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600,
-          cursor: 'pointer', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 4,
+          whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 4,
         }}
       >
-        ⚡ Feedback en attente
-      </button>
+        ⏳ En attente du patient
+      </span>
     )
   }
 
@@ -67,7 +66,6 @@ export default function SeancesPage() {
   const [loading, setLoading]     = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [selectedSeance, setSelectedSeance] = useState<any>(null)
-  const [feedbackTarget, setFeedbackTarget] = useState<{ seance: any; patient: any } | null>(null)
   const [progScores, setProgScores] = useState({ douleur: 5, mobilite: 5, force: 5, notes: '' })
   const [savingScores, setSavingScores] = useState(false)
   const [scoresSaved, setScoresSaved] = useState(false)
@@ -156,10 +154,6 @@ export default function SeancesPage() {
       fetchData()
     } catch {}
     setSaving(false)
-  }
-
-  function openFeedback(s: any) {
-    setFeedbackTarget({ seance: s, patient: s.patient })
   }
 
   // Pre-fill progression scores when a seance is selected
@@ -353,7 +347,7 @@ export default function SeancesPage() {
                   <td style={{ padding: '14px 16px', fontSize: 13, color: '#374151' }}>Dr. {s.praticien?.nom}</td>
                   <td style={{ padding: '14px 16px' }}><StatutBadge statut={s.statut} /></td>
                   <td style={{ padding: '14px 16px' }}>
-                    <FeedbackBadge seance={s} onClick={() => openFeedback(s)} />
+                    <FeedbackBadge seance={s} />
                   </td>
                   <td style={{ padding: '14px 16px', fontSize: 13, color: '#2563EB' }}>Détail →</td>
                 </tr>
@@ -514,18 +508,10 @@ export default function SeancesPage() {
                     <span>🔔</span>
                     <span style={{ fontSize: 13, color: '#5B21B6', fontWeight: 600 }}>Feedback prêt à envoyer !</span>
                   </div>
-                  {selectedSeance.patient?.telephone && selectedSeance.feedbackToken && (
-                    <a
-                      href={`https://wa.me/${selectedSeance.patient.telephone.replace(/\D/g, '')}?text=${encodeURIComponent(
-                        `Bonjour ${selectedSeance.patient.prenom} 👋\n\nDonnez votre avis sur votre séance :\n${process.env.NEXT_PUBLIC_APP_URL ?? 'https://kinepro-omega.vercel.app'}/feedback/${selectedSeance.feedbackToken}`
-                      )}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ background: '#25D366', color: 'white', padding: '5px 12px', borderRadius: 6, fontSize: 12, fontWeight: 700, textDecoration: 'none' }}
-                    >
-                      📲 Envoyer WA
-                    </a>
-                  )}
+                  <Link href="/whatsapp?tab=ready"
+                    style={{ background: '#7C3AED', color: 'white', padding: '5px 12px', borderRadius: 6, fontSize: 12, fontWeight: 700, textDecoration: 'none' }}>
+                    Ouvrir WhatsApp Center →
+                  </Link>
                 </div>
               )}
 
@@ -548,10 +534,9 @@ export default function SeancesPage() {
                       )}
                     </div>
                   ) : (
-                    <button onClick={() => { setSelectedSeance(null); openFeedback(selectedSeance) }}
-                      style={{ background: '#F59E0B', color: 'white', border: 'none', borderRadius: 8, padding: '8px 16px', cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>
-                      ⚡ Enregistrer le feedback
-                    </button>
+                    <div style={{ fontSize: 13, color: '#64748B', fontStyle: 'italic' }}>
+                      En attente — le patient saisira son score via le lien WhatsApp envoyé depuis le WhatsApp Center.
+                    </div>
                   )}
                   {selectedSeance.notesInternes && (
                     <div style={{ marginTop: 10, fontSize: 13, color: '#374151', lineHeight: 1.5 }}>
@@ -714,21 +699,6 @@ export default function SeancesPage() {
             </form>
           </div>
         </div>
-      )}
-
-      {/* FeedbackModal */}
-      {feedbackTarget && (
-        <FeedbackModal
-          seance={feedbackTarget.seance}
-          patient={feedbackTarget.patient}
-          praticienNom={
-            feedbackTarget.seance.praticien
-              ? `${feedbackTarget.seance.praticien.prenom} ${feedbackTarget.seance.praticien.nom}`
-              : undefined
-          }
-          onClose={() => setFeedbackTarget(null)}
-          onSaved={() => { setFeedbackTarget(null); fetchData() }}
-        />
       )}
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}

@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import Topbar from '@/components/layout/Topbar'
 import { formatDate, formatTime } from '@/lib/utils'
 import WhatsAppButton from '@/components/whatsapp/WhatsAppButton'
-import FeedbackModal from '@/components/whatsapp/FeedbackWidget'
 import {
   msgConfirmationRDV, msgRappelRDV, msgFeedbackAuto,
   buildWhatsAppUrl, scoreColor, scoreBadge, scoreCategory,
@@ -57,8 +56,6 @@ export default function WhatsAppCenterPage() {
   const [rdvs, setRdvs] = useState<any[]>([])
   const [feedbacks, setFeedbacks] = useState<any[]>([])
   const [readySeances, setReadySeances] = useState<any[]>([])
-  const [feedbackTarget, setFeedbackTarget] = useState<{ seance: any; patient: any } | null>(null)
-
   async function fetchAll() {
     setLoading(true)
     try {
@@ -86,12 +83,8 @@ export default function WhatsAppCenterPage() {
   const today = new Date()
   const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1)
 
-  // Tab 1: "À envoyer" — today's RDVs + today's réalisées séances without feedback
+  // Tab 1: "À envoyer" — today's RDVs (confirmations seulement)
   const rdvsAujourdhui = rdvs.filter(r => isSameDay(new Date(r.date), today))
-  const seancesAttente = seances.filter(s =>
-    s.statut === 'realisee' &&
-    (s.scorePatient === null || s.scorePatient === undefined)
-  )
 
   // Tab 2: "Rappels demain" — tomorrow's RDVs
   const rdvsDemain = rdvs.filter(r => isSameDay(new Date(r.date), tomorrow))
@@ -110,7 +103,7 @@ export default function WhatsAppCenterPage() {
   const pendingSeances = seances.filter(s => s.feedbackStatus === 'pending')
 
   const tabs: { id: Tab; label: string; badge?: number; highlight?: boolean }[] = [
-    { id: 'envoyer',    label: '📤 À envoyer aujourd\'hui', badge: rdvsAujourdhui.length + seancesAttente.length },
+    { id: 'envoyer',    label: '📤 À envoyer aujourd\'hui', badge: rdvsAujourdhui.length },
     { id: 'rappels',    label: '🔔 Rappels demain',         badge: rdvsDemain.length },
     { id: 'ready',      label: '⭐ Feedback prêt',          badge: readySeances.length, highlight: readySeances.length > 0 },
     { id: 'historique', label: '📊 Historique',             badge: feedbacks.length },
@@ -208,37 +201,6 @@ export default function WhatsAppCenterPage() {
                   )}
                 </section>
 
-                {/* Completed séances without feedback */}
-                <section>
-                  <h2 style={{ fontSize: 15, fontWeight: 700, color: '#0F172A', marginBottom: 12 }}>
-                    ⚡ Séances sans feedback — En attente
-                  </h2>
-                  {seancesAttente.length === 0 ? (
-                    <div style={{ padding: 20, background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: 10, color: '#16A34A', fontSize: 14, textAlign: 'center', fontWeight: 500 }}>
-                      ✓ Tous les feedbacks ont été enregistrés !
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                      {seancesAttente.map((s: any) => (
-                        <div key={s.id} style={{ background: 'white', border: '1px solid #FCD34D', borderRadius: 10, padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                          <div>
-                            <div style={{ fontWeight: 600, color: '#0F172A', fontSize: 14 }}>
-                              {s.patient?.prenom} {s.patient?.nom}
-                            </div>
-                            <div style={{ fontSize: 13, color: '#64748B', marginTop: 2 }}>
-                              {formatDate(s.date)} à {formatTime(s.date)} · {s.typeSeance}
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => setFeedbackTarget({ seance: s, patient: s.patient })}
-                            style={{ background: '#F59E0B', color: 'white', border: 'none', borderRadius: 8, padding: '7px 14px', cursor: 'pointer', fontWeight: 600, fontSize: 12, whiteSpace: 'nowrap' }}>
-                            ⚡ Feedback
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </section>
               </div>
             )}
 
@@ -476,11 +438,6 @@ export default function WhatsAppCenterPage() {
                                 </div>
                               )}
                             </div>
-                            <button
-                              onClick={() => setFeedbackTarget({ seance: s, patient: s.patient })}
-                              style={{ background: '#DC2626', color: 'white', border: 'none', borderRadius: 8, padding: '7px 14px', cursor: 'pointer', fontWeight: 600, fontSize: 12, whiteSpace: 'nowrap' }}>
-                              ⚡ Suivi
-                            </button>
                           </div>
                         )
                       })}
@@ -534,20 +491,6 @@ export default function WhatsAppCenterPage() {
         )}
       </div>
 
-      {/* FeedbackModal */}
-      {feedbackTarget && (
-        <FeedbackModal
-          seance={feedbackTarget.seance}
-          patient={feedbackTarget.patient}
-          praticienNom={
-            feedbackTarget.seance.praticien
-              ? `${feedbackTarget.seance.praticien.prenom} ${feedbackTarget.seance.praticien.nom}`
-              : undefined
-          }
-          onClose={() => setFeedbackTarget(null)}
-          onSaved={() => { setFeedbackTarget(null); fetchAll() }}
-        />
-      )}
     </div>
   )
 }
