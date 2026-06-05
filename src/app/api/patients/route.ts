@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
     const patients = await prisma.patient.findMany({
       where: {
         cabinetId,
+        deletedAt: null, // exclut les patients anonymisés
         AND: [
           search ? {
             OR: [

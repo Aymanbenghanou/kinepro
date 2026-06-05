@@ -23,7 +23,7 @@ export default async function MobileDashboardPage() {
 
   const [rdvToday, activePatients, revenusMonth, unpaidFactures, rdvDuJour, patientsRecents] = await Promise.all([
     prisma.rendezVous.count({ where: { cabinetId, date: { gte: todayStart, lte: todayEnd } } }),
-    prisma.patient.count({ where: { cabinetId, actif: true } }),
+    prisma.patient.count({ where: { cabinetId, actif: true, deletedAt: null } }),
     prisma.facture.aggregate({
       where: { cabinetId, statut: 'paye', dateEmise: { gte: monthStart, lte: monthEnd } },
       _sum: { montant: true },
@@ -38,7 +38,7 @@ export default async function MobileDashboardPage() {
       orderBy: { date: 'asc' }, take: 5,
     }),
     prisma.patient.findMany({
-      where: { cabinetId }, orderBy: { createdAt: 'desc' }, take: 5,
+      where: { cabinetId, deletedAt: null }, orderBy: { createdAt: 'desc' }, take: 5,
       select: { id: true, nom: true, prenom: true, pathologie: true, actif: true },
     }),
   ])

@@ -74,7 +74,7 @@ export default async function DashboardPage() {
     prisma.rendezVous.count({
       where: { cabinetId, date: { gte: todayStart, lte: todayEnd } },
     }),
-    prisma.patient.count({ where: { cabinetId, actif: true } }),
+    prisma.patient.count({ where: { cabinetId, actif: true, deletedAt: null } }),
     prisma.facture.aggregate({
       where: { cabinetId, statut: 'paye', dateEmise: { gte: monthStart, lte: monthEnd } },
       _sum: { montant: true },
@@ -93,7 +93,7 @@ export default async function DashboardPage() {
       take: 10,
     }),
     prisma.patient.findMany({
-      where: { cabinetId },
+      where: { cabinetId, deletedAt: null },
       orderBy: { createdAt: 'desc' },
       take: 5,
       include: { seances: { select: { id: true }, where: { statut: 'realisee' } } },

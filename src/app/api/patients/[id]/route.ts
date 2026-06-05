@@ -25,7 +25,7 @@ export async function GET(
     const { id } = await params
 
     const patient = await prisma.patient.findFirst({
-      where: { id, cabinetId },
+      where: { id, cabinetId, deletedAt: null },
       include: {
         seances: {
           include: { praticien: true },
@@ -66,8 +66,8 @@ export async function PUT(
     const { cabinetId } = session.user
     const { id } = await params
 
-    // Verify ownership
-    const existing = await prisma.patient.findFirst({ where: { id, cabinetId } })
+    // Verify ownership + non-anonymisé (un PUT sur un patient anonymisé renvoie 404).
+    const existing = await prisma.patient.findFirst({ where: { id, cabinetId, deletedAt: null } })
     if (!existing) return NextResponse.json({ error: 'Patient non trouvé' }, { status: 404 })
 
     const v = await validateBody(request, updatePatientSchema)
@@ -124,14 +124,19 @@ export async function PUT(
 /**
  * DELETE /api/patients/[id]
  *
- * Garde-fou métier : BLOQUÉ s'il existe au moins une facture payée. La perte
- * d'historique comptable n'est jamais accidentelle — il faut d'abord annuler
- * les factures payées (ou contacter le support).
+ * PATTERN ANONYMISATION (pas hard delete) :
+ *   - Garde-fou métier : BLOQUÉ s'il existe au moins une facture PAYÉE.
+ *   - HARD DELETE : RendezVous, Document (+ Storage), ExerciceProgram,
+ *     WhatsAppLog, Feedback (données opérationnelles non audit-critiques).
+ *   - CONSERVÉS via lien vers Patient anonymisé : Seance (notes médicales,
+ *     scores), Facture (audit comptable), Paiement (audit comptable).
+ *   - PII EFFACÉES sur la row Patient elle-même : nom='Patient supprimé',
+ *     prenom='', tous les autres champs identifiants → null, publicToken →
+ *     null (rend les liens publics inaccessibles), deletedAt=now().
  *
- * Cascade manuelle (le schéma n'a onDelete:Cascade que sur ExerciceProgram) :
- *   Paiement → Facture → Document → Seance → RendezVous → Feedback →
- *   WhatsAppLog → Patient (ExerciceProgram cascadé auto).
- * Après commit DB, suppression best-effort des fichiers Supabase Storage.
+ * Une fois anonymisé, le filtre `deletedAt: null` sur les GET et la liste
+ * empêche d'y arriver depuis l'UI. Les routes publiques (patient-public,
+ * scan) retournent 404 naturellement (publicToken vidé).
  */
 export async function DELETE(
   request: NextRequest,
@@ -147,10 +152,14 @@ export async function DELETE(
     const { cabinetId } = session.user
     const { id } = await params
 
-    const existing = await prisma.patient.findFirst({ where: { id, cabinetId }, select: { id: true } })
+    // Filtre deletedAt: null → un patient déjà anonymisé renvoie 404.
+    const existing = await prisma.patient.findFirst({
+      where: { id, cabinetId, deletedAt: null },
+      select: { id: true },
+    })
     if (!existing) return NextResponse.json({ error: 'Patient non trouvé' }, { status: 404 })
 
-    // Garde-fou : factures payées ⇒ refus
+    // Garde-fou : factures payées ⇒ refus (inchangé du commit précédent).
     const facturesPayees = await prisma.facture.count({
       where: { patientId: id, cabinetId, statut: FactureStatut.paye },
     })
@@ -161,28 +170,53 @@ export async function DELETE(
       )
     }
 
-    // Récup des paths Storage AVANT delete (sera perdu sinon)
+    // Récup des paths Storage AVANT delete des Document rows.
     const docs = await prisma.document.findMany({
       where: { patientId: id, cabinetId },
       select: { url: true },
     })
 
-    // Cascade topologique (Paiement → Facture est cascade auto FK, mais on
-    // est explicite pour cohérence avec les autres tables NO ACTION).
+    // Transaction : hard delete des enfants non-audit + anonymisation Patient.
+    // Seance / Facture / Paiement restent intacts → pointeront vers la row
+    // Patient anonymisée (nom='Patient supprimé').
     await prisma.$transaction(async (tx) => {
-      await tx.paiement.deleteMany({ where: { facture: { patientId: id, cabinetId } } })
-      await tx.facture.deleteMany({ where: { patientId: id, cabinetId } })
-      await tx.document.deleteMany({ where: { patientId: id, cabinetId } })
-      await tx.seance.deleteMany({ where: { patientId: id, cabinetId } })
       await tx.rendezVous.deleteMany({ where: { patientId: id, cabinetId } })
-      await tx.feedback.deleteMany({ where: { patientId: id } })
+      await tx.document.deleteMany({ where: { patientId: id, cabinetId } })
+      await tx.exerciceProgram.deleteMany({ where: { patientId: id, cabinetId } })
       await tx.whatsAppLog.deleteMany({ where: { patientId: id, cabinetId } })
-      // ExerciceProgram : Cascade auto via FK onDelete: Cascade
-      await tx.patient.delete({ where: { id } })
+      await tx.feedback.deleteMany({ where: { patientId: id } })
+
+      await tx.patient.update({
+        where: { id },
+        data: {
+          // NOT NULL → placeholder neutre (cf. AGENTS.md §1 option B retenue)
+          nom:    'Patient supprimé',
+          prenom: '',
+          // PII nullables → null
+          dateNaissance:    null,
+          sexe:             null,
+          telephone:        null,
+          email:            null,
+          adresse:          null,
+          ville:            null,
+          cin:              null,
+          pathologie:       null,
+          antecedents:      null,
+          allergies:        null,
+          medicaments:      null,
+          medecinReferent:  null,
+          medecinTelephone: null,
+          mutuelle:         null,
+          numeroPolice:     null,
+          objectifsTraitement: null,
+          publicToken:      null, // void les liens publics (/patient-public, /scan)
+          // Flag anonymisation
+          deletedAt:        new Date(),
+        },
+      })
     })
 
-    // Storage cleanup best-effort (post-commit) — la DB reste cohérente même
-    // si Supabase échoue. Fichiers orphelins récupérables manuellement.
+    // Storage cleanup best-effort (post-commit).
     let storage: { deleted: number; errors: string[] } = { deleted: 0, errors: [] }
     const paths = docs.map(d => d.url).filter(Boolean)
     if (paths.length > 0) {
@@ -197,7 +231,7 @@ export async function DELETE(
       }
     }
 
-    return NextResponse.json({ deleted: true, patientId: id, storage })
+    return NextResponse.json({ anonymized: true, patientId: id, storage })
   } catch (error) {
     console.error('[DELETE /api/patients/[id]]', error)
     return NextResponse.json({ error: errMsg(error) }, { status: 500 })

@@ -33,10 +33,11 @@ export async function GET() {
         },
         select: { date: true, statut: true },
       }),
-      prisma.patient.count({ where: { cabinetId, actif: true } }),
+      prisma.patient.count({ where: { cabinetId, actif: true, deletedAt: null } }),
       prisma.patient.count({
         where: {
           cabinetId,
+          deletedAt: null,
           createdAt: { gte: new Date(now.getFullYear(), now.getMonth(), 1) },
         },
       }),

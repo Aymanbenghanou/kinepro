@@ -97,19 +97,30 @@ export default function DeletePatientModal({ patientId, patientName, onClose }: 
 
         {preview && preview.canDelete && (
           <>
-            <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 10, padding: 14, marginBottom: 16 }}>
-              <p style={{ fontSize: 12, fontWeight: 700, color: '#92400E', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: 0.3 }}>
+            <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 10, padding: 14, marginBottom: 12 }}>
+              <p style={{ fontSize: 12, fontWeight: 700, color: '#991B1B', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: 0.3 }}>
                 Données supprimées définitivement
               </p>
-              <ul style={{ margin: 0, padding: '0 0 0 18px', fontSize: 13, color: '#78350F', lineHeight: 1.7 }}>
-                {preview.counts.rdv               > 0 && <li>{preview.counts.rdv} rendez-vous</li>}
-                {preview.counts.seances           > 0 && <li>{preview.counts.seances} séance{preview.counts.seances > 1 ? 's' : ''}</li>}
+              <ul style={{ margin: 0, padding: '0 0 0 18px', fontSize: 13, color: '#7F1D1D', lineHeight: 1.7 }}>
+                {preview.counts.rdv          > 0 && <li>{preview.counts.rdv} rendez-vous</li>}
+                {preview.counts.documents    > 0 && <li>{preview.counts.documents} document{preview.counts.documents > 1 ? 's' : ''} (fichiers supprimés du stockage)</li>}
+                {preview.counts.programmes   > 0 && <li>{preview.counts.programmes} programme{preview.counts.programmes > 1 ? 's' : ''} d'exercices</li>}
+                {preview.counts.feedbacks    > 0 && <li>{preview.counts.feedbacks} feedback{preview.counts.feedbacks > 1 ? 's' : ''}</li>}
+                {preview.counts.whatsappLogs > 0 && <li>{preview.counts.whatsappLogs} log{preview.counts.whatsappLogs > 1 ? 's' : ''} WhatsApp</li>}
+                <li><strong>Identité du patient (nom, prénom, contact, antécédents…)</strong></li>
+              </ul>
+            </div>
+
+            <div style={{ background: '#EFF6FF', border: '1px solid #BFDBFE', borderRadius: 10, padding: 14, marginBottom: 16 }}>
+              <p style={{ fontSize: 12, fontWeight: 700, color: '#1D4ED8', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: 0.3 }}>
+                Conservées de manière anonyme
+              </p>
+              <p style={{ fontSize: 13, color: '#1E3A8A', margin: '0 0 8px', lineHeight: 1.5 }}>
+                Les notes médicales des séances et les factures liées seront conservées de manière anonyme pour la traçabilité légale et comptable.
+              </p>
+              <ul style={{ margin: 0, padding: '0 0 0 18px', fontSize: 13, color: '#1E3A8A', lineHeight: 1.7 }}>
+                {preview.counts.seances           > 0 && <li>{preview.counts.seances} séance{preview.counts.seances > 1 ? 's' : ''} (notes médicales)</li>}
                 {preview.counts.facturesNonPayees > 0 && <li>{preview.counts.facturesNonPayees} facture{preview.counts.facturesNonPayees > 1 ? 's' : ''} non payée{preview.counts.facturesNonPayees > 1 ? 's' : ''}</li>}
-                {preview.counts.documents         > 0 && <li>{preview.counts.documents} document{preview.counts.documents > 1 ? 's' : ''} (fichiers supprimés du stockage)</li>}
-                {preview.counts.programmes        > 0 && <li>{preview.counts.programmes} programme{preview.counts.programmes > 1 ? 's' : ''} d'exercices</li>}
-                {preview.counts.feedbacks         > 0 && <li>{preview.counts.feedbacks} feedback{preview.counts.feedbacks > 1 ? 's' : ''}</li>}
-                {preview.counts.whatsappLogs      > 0 && <li>{preview.counts.whatsappLogs} log{preview.counts.whatsappLogs > 1 ? 's' : ''} WhatsApp</li>}
-                <li><strong>Le dossier patient lui-même</strong></li>
               </ul>
             </div>
 
@@ -119,7 +130,7 @@ export default function DeletePatientModal({ patientId, patientName, onClose }: 
                 disabled={deleting}
                 style={{ marginTop: 2, accentColor: '#DC2626' }}
               />
-              <span>Je comprends que cette action est <strong>irréversible</strong> et que toutes ces données seront supprimées définitivement.</span>
+              <span>Je comprends que cette action est <strong>irréversible</strong> : le patient ne sera plus identifiable, ses données opérationnelles seront supprimées et son historique médico-comptable sera conservé sous forme anonyme.</span>
             </label>
           </>
         )}

@@ -203,6 +203,9 @@ model Patient {
   dateDebutSouhaite   DateTime?
   actif               Boolean           @default(true)
   publicToken         String?           @unique
+  // Anonymisation RGPD/conformité : null = patient actif, timestamp = patient
+  // anonymisé (PII effacées, Seance/Facture/Paiement conservés pour audit).
+  deletedAt           DateTime?
   cabinetId           String
   cabinet             Cabinet           @relation(fields: [cabinetId], references: [id])
   rendezVous          RendezVous[]

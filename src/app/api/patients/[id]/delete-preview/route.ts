@@ -23,7 +23,7 @@ export async function GET(
   const { cabinetId } = session.user
   const { id } = await params
 
-  const exists = await prisma.patient.findFirst({ where: { id, cabinetId }, select: { id: true } })
+  const exists = await prisma.patient.findFirst({ where: { id, cabinetId, deletedAt: null }, select: { id: true } })
   if (!exists) return NextResponse.json({ error: 'Patient non trouvé' }, { status: 404 })
 
   const [rdv, seances, facturesNonPayees, facturesPayees, documents, programmes, feedbacks, whatsappLogs] = await Promise.all([

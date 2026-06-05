@@ -109,10 +109,10 @@ export async function GET(req: NextRequest) {
       }),
 
       prisma.patient.findMany({
-        where: { cabinetId, createdAt: { gte: from, lte: to } },
+        where: { cabinetId, deletedAt: null, createdAt: { gte: from, lte: to } },
         select: { id: true, createdAt: true, pathologie: true },
       }),
-      prisma.patient.count({ where: { cabinetId, createdAt: { gte: prevFrom, lte: prevTo } } }),
+      prisma.patient.count({ where: { cabinetId, deletedAt: null, createdAt: { gte: prevFrom, lte: prevTo } } }),
 
       prisma.feedback.findMany({
         where: { cabinetId, createdAt: { gte: from, lte: to } },
