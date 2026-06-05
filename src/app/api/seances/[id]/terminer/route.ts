@@ -9,8 +9,15 @@ import { Prisma, SeanceStatut, RdvStatut } from '@prisma/client'
 
 /**
  * PATCH /api/seances/[id]/terminer
- * Passe une séance "planifiee" en "realisee" avec saisie des notes médicales,
- * et bascule le RDV lié en "realise" si présent (transaction atomique).
+ *
+ * Finalise une séance planifiee vers l'un des 3 statuts terminaux :
+ *   - 'realisee' : set scores + seanceEndTime (= completedAt sémantique pour la
+ *     fenêtre d'édition 24h) + feedbackStatus 'pending' + bascule RDV → realise.
+ *   - 'no_show'  : seanceEndTime + scores + feedback restent null ; aucun
+ *     changement du RDV lié (RdvStatut n'a pas de no_show, cf. AGENTS.md §8).
+ *   - 'annulee'  : seanceEndTime + scores + feedback restent null ; RDV → annule.
+ *
+ * Idempotence : si la séance n'est plus planifiee → 409 statut_already_set.
  */
 export async function PATCH(
   request: NextRequest,
@@ -37,8 +44,8 @@ export async function PATCH(
 
     if (seance.statut !== SeanceStatut.planifiee) {
       return NextResponse.json(
-        { error: 'invalid_state', message: 'Séance déjà terminée ou non planifiée' },
-        { status: 400 },
+        { error: 'statut_already_set', current: seance.statut },
+        { status: 409 },
       )
     }
 
@@ -46,36 +53,48 @@ export async function PATCH(
     if ('error' in v) return v.error
     const body = v.data
 
-    // Diff-only : on ne pose que les champs effectivement envoyés.
-    // observations → notesInternes (la séance n'a pas de champ "observations").
-    const seanceData: Record<string, unknown> = {
-      statut:         SeanceStatut.realisee,
-      seanceEndTime:  new Date(),
-      feedbackStatus: 'pending',
-    }
-    if ('douleurScore'     in body) seanceData.douleurScore     = body.douleurScore
-    if ('mobiliteScore'    in body) seanceData.mobiliteScore    = body.mobiliteScore
-    if ('forceScore'       in body) seanceData.forceScore       = body.forceScore
-    if ('notesProgression' in body) seanceData.notesProgression = body.notesProgression
-    if ('observations'     in body) seanceData.notesInternes    = body.observations
+    // Construction du data Seance selon le statut cible.
+    const seanceData: Record<string, unknown> = { statut: body.statut }
 
-    // Transaction : maj séance + bascule du RDV lié si présent.
+    if (body.statut === SeanceStatut.realisee) {
+      seanceData.seanceEndTime  = new Date()
+      seanceData.feedbackStatus = 'pending'
+      if ('douleurScore'     in body) seanceData.douleurScore     = body.douleurScore     ?? null
+      if ('mobiliteScore'    in body) seanceData.mobiliteScore    = body.mobiliteScore    ?? null
+      if ('forceScore'       in body) seanceData.forceScore       = body.forceScore       ?? null
+      if ('notesProgression' in body) seanceData.notesProgression = body.notesProgression ?? null
+      if ('observations'     in body) seanceData.notesInternes    = body.observations     ?? null
+    } else {
+      // no_show / annulee : aucun score, pas de finalisation, pas de feedback.
+      seanceData.seanceEndTime    = null
+      seanceData.feedbackStatus   = null
+      seanceData.douleurScore     = null
+      seanceData.mobiliteScore    = null
+      seanceData.forceScore       = null
+      seanceData.notesProgression = null
+    }
+
+    // Mapping RDV lié (RdvStatut n'a pas no_show → on laisse le RDV inchangé).
+    let rdvNewStatut: RdvStatut | null = null
+    if      (body.statut === SeanceStatut.realisee) rdvNewStatut = RdvStatut.realise
+    else if (body.statut === SeanceStatut.annulee)  rdvNewStatut = RdvStatut.annule
+
     const ops: Prisma.PrismaPromise<unknown>[] = [
       prisma.seance.update({
         where: { id: seance.id },
-        data: seanceData,
+        data:  seanceData,
         include: {
-          patient:   { select: { id: true, nom: true, prenom: true, telephone: true } },
-          praticien: { select: { id: true, nom: true, prenom: true } },
+          patient:    { select: { id: true, nom: true, prenom: true, telephone: true } },
+          praticien:  { select: { id: true, nom: true, prenom: true } },
           rendezVous: { select: { id: true, statut: true } },
         },
       }),
     ]
-    if (seance.rendezVousId) {
+    if (seance.rendezVousId && rdvNewStatut) {
       ops.push(
         prisma.rendezVous.update({
           where: { id: seance.rendezVousId },
-          data: { statut: RdvStatut.realise },
+          data:  { statut: rdvNewStatut },
         }),
       )
     }
@@ -83,7 +102,7 @@ export async function PATCH(
     const [updatedSeance] = await prisma.$transaction(ops)
     return NextResponse.json(updatedSeance)
   } catch (error) {
-    console.error('[seances/terminer]', error)
+    console.error('[PATCH /api/seances/[id]/terminer]', error)
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
   }
 }

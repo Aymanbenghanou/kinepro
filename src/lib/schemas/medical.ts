@@ -96,10 +96,36 @@ export const createSeanceSchema = z.object({
 // Échelles cliniques : entier 0..10. Réutilisé par updateSeance + terminerSeance.
 const score0to10 = z.number().int().min(0).max(10)
 
-// PATCH /api/seances/[id]/terminer — passe une séance "planifiee" en "realisee"
-// avec saisie optionnelle des notes médicales. observations → notesInternes
-// côté handler (la séance n'a pas de champ "observations" dédié).
+// PATCH /api/seances/[id]/terminer — finalise une séance planifiee :
+//   statut = 'realisee' | 'no_show' | 'annulee' (requis).
+//   scores + notes : autorisés uniquement si statut === 'realisee'.
+// observations → notesInternes côté handler (pas de champ dédié sur Seance).
+const TERMINER_STATUTS = [
+  SeanceStatut.realisee,
+  SeanceStatut.no_show,
+  SeanceStatut.annulee,
+] as const
+
 export const terminerSeanceSchema = z.object({
+  statut:           z.enum(TERMINER_STATUTS),
+  douleurScore:     score0to10.optional().nullable(),
+  mobiliteScore:    score0to10.optional().nullable(),
+  forceScore:       score0to10.optional().nullable(),
+  notesProgression: z.string().max(5000).optional().nullable(),
+  observations:     z.string().max(5000).optional().nullable(),
+}).refine(
+  (d) => d.statut === SeanceStatut.realisee
+    || (
+         (d.douleurScore == null) && (d.mobiliteScore == null) && (d.forceScore == null)
+      && (d.notesProgression == null || d.notesProgression === '')
+      && (d.observations     == null || d.observations     === '')
+    ),
+  { message: 'Les scores et notes ne sont autorisés que pour le statut "realisee".' }
+)
+
+// PATCH /api/seances/[id]/scores — édition des scores cliniques uniquement,
+// fenêtre 24h après seanceEndTime (= completedAt sémantique). Pas de statut.
+export const editScoresSchema = z.object({
   douleurScore:     score0to10.optional().nullable(),
   mobiliteScore:    score0to10.optional().nullable(),
   forceScore:       score0to10.optional().nullable(),
