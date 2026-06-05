@@ -38,17 +38,17 @@ export function msgConfirmationRDV(p: {
   duree: number
   nomCabinet?: string | null
 }): string {
-  return `Bonjour ${p.prenom} 👋
+  return `Bonjour ${p.prenom} \u{1F44B}
 
 Votre RDV au *${cabinetLabel(p.nomCabinet)}* est confirmé :
 
-📅 *${p.date}* à *${p.heure}*
-👨‍⚕️ Praticien : Dr. ${p.praticien}
-🏥 Séance : ${p.typeSeance}
-⏱ Durée : ${p.duree} min
+\u{1F4C5} *${p.date}* à *${p.heure}*
+\u{1FA7A} Praticien : Dr. ${p.praticien}
+\u{1F4AA} Séance : ${p.typeSeance}
+\u{23F1}\u{FE0F} Durée : ${p.duree} min
 
 En cas d'empêchement, merci de nous prévenir 24h à l'avance.
-À bientôt 🙏`
+À bientôt \u{1F64F}`
 }
 
 // ─── 2. Rappel RDV 24h avant ─────────────────────────────────────────────────
@@ -61,16 +61,16 @@ export function msgRappelRDV(p: {
   telCabinet?: string
   nomCabinet?: string | null
 }): string {
-  return `Bonjour ${p.prenom} 👋
+  return `Bonjour ${p.prenom} \u{1F44B}
 
-Petit rappel : vous avez rendez-vous *demain* au ${cabinetLabel(p.nomCabinet)} 🏥
+Petit rappel : vous avez rendez-vous *demain* au ${cabinetLabel(p.nomCabinet)} \u{1F3E5}
 
-📅 *${p.date}* à *${p.heure}*
-👨‍⚕️ Dr. ${p.praticien}
-🏥 ${p.typeSeance}
+\u{1F4C5} *${p.date}* à *${p.heure}*
+\u{1FA7A} Dr. ${p.praticien}
+\u{1F4AA} ${p.typeSeance}
 
 Besoin de reporter ? Appelez-nous : ${p.telCabinet || CABINET_TEL}
-À demain ! 💪`
+À demain ! \u{1F4AA}`
 }
 
 // ─── 3. Post-séance Score 8-10 (Excellent) — includes Google Maps ────────────
@@ -86,18 +86,18 @@ export function msgFeedbackExcellent(p: {
     ? `Séance ${p.numSeance}/${p.totalSeances}`
     : `Séance ${p.numSeance}`
   const cab = cabinetLabel(p.nomCabinet)
-  return `Bonjour ${p.prenom} 😊
+  return `Bonjour ${p.prenom} \u{1F60A}
 
-Merci pour votre séance d'aujourd'hui chez *${cab}* ! 💪
+Merci pour votre séance d'aujourd'hui chez *${cab}* ! \u{1F4AA}
 
 *${seanceLabel} — ${p.typeSeance}*
 
-Continuez les exercices à la maison, ils font toute la différence ! 🏋️
+Continuez les exercices à la maison, ils font toute la différence ! \u{1F4AA}
 
 ---
-⭐ *Un petit avis Google nous aiderait énormément :*
-👉 ${p.googleMapsLink}
-Merci infiniment, ça prend 30 secondes ! 🙏
+\u{2B50} *Un petit avis Google nous aiderait énormément :*
+\u{1F449} ${p.googleMapsLink}
+Merci infiniment, ça prend 30 secondes ! \u{1F64F}
 
 À très bientôt,
 *${cab}*`
@@ -115,18 +115,18 @@ export function msgFeedbackMoyen(p: {
     ? p.messagePersonnalise.trim()
     : `Chaque séance nous rapproche de votre objectif. Le corps prend du temps pour s'adapter, mais nous sommes là pour vous accompagner.`
   const cab = cabinetLabel(p.nomCabinet)
-  return `Bonjour ${p.prenom} 👋
+  return `Bonjour ${p.prenom} \u{1F44B}
 
 Merci d'être venu(e) aujourd'hui chez *${cab}*.
 
-Cette séance était un peu difficile — c'est tout à fait normal dans votre parcours 🙏
+Cette séance était un peu difficile — c'est tout à fait normal dans votre parcours \u{1F64F}
 
 ${msg}
 
 Votre prochain RDV : *${p.prochainRdv || 'à planifier'}*
 
 N'hésitez pas à nous appeler si vous avez des questions.
-À bientôt 💪
+À bientôt \u{1F4AA}
 *${cab}* — ${p.telCabinet || CABINET_TEL}`
 }
 
@@ -138,9 +138,9 @@ export function msgFeedbackDifficile(p: {
   telCabinet?: string
   nomCabinet?: string | null
 }): string {
-  return `Bonjour ${p.prenom} 👋
+  return `Bonjour ${p.prenom} \u{1F44B}
 
-Merci pour votre courage aujourd'hui — nous savons que cette séance était difficile 🙏
+Merci pour votre courage aujourd'hui — nous savons que cette séance était difficile \u{1F64F}
 
 ${p.messagePersonnalise}
 
@@ -153,7 +153,7 @@ Votre prochain RDV : *${p.prochainRdv || 'à planifier'}*
 
 Appelez-nous à tout moment : *${p.telCabinet || CABINET_TEL}*
 
-Vous êtes entre de bonnes mains 💙
+Vous êtes entre de bonnes mains \u{1F499}
 *${cabinetLabel(p.nomCabinet)}*`
 }
 
@@ -163,15 +163,15 @@ export function msgExercices(p: {
   programme: string
   nomCabinet?: string | null
 }): string {
-  return `Bonjour ${p.prenom} 👋
+  return `Bonjour ${p.prenom} \u{1F44B}
 
-Voici votre programme d'exercices personnalisé 📋
+Voici votre programme d'exercices personnalisé \u{1F4CB}
 
 *${p.programme}*
 
-⚠️ En cas de douleur, arrêtez et contactez-nous.
+\u{26A0}\u{FE0F} En cas de douleur, arrêtez et contactez-nous.
 
-Bon courage ! 💪
+Bon courage ! \u{1F4AA}
 *${cabinetLabel(p.nomCabinet)}*`
 }
 
@@ -182,16 +182,16 @@ export function msgFeedbackAuto(p: {
   nomCabinet?: string | null
 }): string {
   const cab = cabinetLabel(p.nomCabinet)
-  return `Bonjour ${p.prenom} 👋
+  return `Bonjour ${p.prenom} \u{1F44B}
 
 Votre séance au *${cab}* vient de se terminer.
 
-Nous aimerions connaître votre ressenti 🙏
+Nous aimerions connaître votre ressenti \u{1F64F}
 
-👉 *Donnez votre avis ici (1 min) :*
+\u{1F449} *Donnez votre avis ici (1 min) :*
 ${p.feedbackUrl}
 
-Merci pour votre confiance 💙
+Merci pour votre confiance \u{1F499}
 *${cab}*`
 }
 
@@ -201,15 +201,15 @@ export function msgAvisGoogle(p: {
   googleMapsLink: string
   nomCabinet?: string | null
 }): string {
-  return `Bonjour ${p.prenom} 😊
+  return `Bonjour ${p.prenom} \u{1F60A}
 
 Nous espérons que votre séance s'est bien passée !
 
-Un petit avis Google nous aiderait énormément 🙏⭐
+Un petit avis Google nous aiderait énormément \u{1F64F}\u{2B50}
 
-👉 ${p.googleMapsLink}
+\u{1F449} ${p.googleMapsLink}
 
-Merci infiniment ! 🌟
+Merci infiniment ! \u{1F31F}
 *${cabinetLabel(p.nomCabinet)}*`
 }
 
