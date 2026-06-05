@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
         ...(effectivePraticienFilter ? { praticienId: effectivePraticienFilter } : {}),
       },
       include: {
-        patient:   { select: { id: true, nom: true, prenom: true } },
+        patient:   { select: { id: true, nom: true, prenom: true, telephone: true } },
         praticien: { select: { id: true, nom: true, prenom: true, couleur: true } },
       },
       orderBy: { date: 'asc' },
