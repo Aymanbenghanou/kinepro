@@ -13,9 +13,6 @@ export function buildWhatsAppUrl(phone: string, message: string): string {
   return `https://wa.me/${formatted}?text=${encodeURIComponent(message)}`
 }
 
-// ─── Cabinet config (fetched at runtime, fallback defaults) ──────────────────
-export const CABINET_TEL = '0522-456-789'
-
 /**
  * Retourne le libellé à afficher pour le cabinet courant dans un message
  * WhatsApp. Le nom est utilisé tel quel (le kiné a déjà choisi sa formulation
@@ -58,7 +55,7 @@ export function msgRappelRDV(p: {
   heure: string
   praticien: string
   typeSeance: string
-  telCabinet?: string
+  telCabinet?: string | null
   nomCabinet?: string | null
 }): string {
   return `Bonjour ${p.prenom} \u{1F44B}
@@ -69,7 +66,7 @@ Petit rappel : vous avez rendez-vous *demain* au ${cabinetLabel(p.nomCabinet)} \
 \u{1FA7A} Dr. ${p.praticien}
 \u{1F4AA} ${p.typeSeance}
 
-Besoin de reporter ? Appelez-nous : ${p.telCabinet || CABINET_TEL}
+${p.telCabinet ? `Besoin de reporter ? Appelez-nous : ${p.telCabinet}` : `Besoin de reporter ? Merci de nous contacter.`}
 À demain ! \u{1F4AA}`
 }
 
@@ -108,7 +105,7 @@ export function msgFeedbackMoyen(p: {
   prenom: string
   messagePersonnalise?: string
   prochainRdv?: string
-  telCabinet?: string
+  telCabinet?: string | null
   nomCabinet?: string | null
 }): string {
   const msg = p.messagePersonnalise?.trim()
@@ -127,7 +124,7 @@ Votre prochain RDV : *${p.prochainRdv || 'à planifier'}*
 
 N'hésitez pas à nous appeler si vous avez des questions.
 À bientôt \u{1F4AA}
-*${cab}* — ${p.telCabinet || CABINET_TEL}`
+*${cab}*${p.telCabinet ? ` — ${p.telCabinet}` : ''}`
 }
 
 // ─── 3. Post-séance Score 1-4 (Difficile) — empathie + promesse ─────────────
@@ -135,7 +132,7 @@ export function msgFeedbackDifficile(p: {
   prenom: string
   messagePersonnalise: string
   prochainRdv?: string
-  telCabinet?: string
+  telCabinet?: string | null
   nomCabinet?: string | null
 }): string {
   return `Bonjour ${p.prenom} \u{1F44B}
@@ -150,9 +147,7 @@ Votre bien-être est notre priorité absolue. Lors de votre prochaine séance no
 • Réévaluer votre programme si nécessaire
 
 Votre prochain RDV : *${p.prochainRdv || 'à planifier'}*
-
-Appelez-nous à tout moment : *${p.telCabinet || CABINET_TEL}*
-
+${p.telCabinet ? `\nAppelez-nous à tout moment : *${p.telCabinet}*\n` : ''}
 Vous êtes entre de bonnes mains \u{1F499}
 *${cabinetLabel(p.nomCabinet)}*`
 }

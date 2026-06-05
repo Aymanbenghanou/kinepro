@@ -16,7 +16,7 @@ import {
   msgConfirmationRDV, msgRappelRDV,
   buildWhatsAppUrl, formatPhoneForWhatsApp,
 } from '@/lib/whatsapp'
-import { useCabinetNom } from '@/lib/use-cabinet-nom'
+import { useCabinet } from '@/lib/use-cabinet-nom'
 
 // Fallback colours until API types load
 const TYPES_SEANCE_FALLBACK = ['Rééducation fonctionnelle', 'Massage thérapeutique', 'Électrothérapie', 'Balnéothérapie']
@@ -39,7 +39,7 @@ function getWeekDates(startDate: Date) {
 const JOURS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
 const HEURES = Array.from({ length: 12 }, (_, i) => i + 8)
 
-function RappelBtn({ rdv, nomCabinet }: { rdv: any; nomCabinet: string | null }) {
+function RappelBtn({ rdv, nomCabinet, telCabinet }: { rdv: any; nomCabinet: string | null; telCabinet: string | null }) {
   const [sent, setSent] = useState(false)
   if (!rdv.patient?.telephone) return null
 
@@ -55,6 +55,7 @@ function RappelBtn({ rdv, nomCabinet }: { rdv: any; nomCabinet: string | null })
       praticien: rdv.praticien ? `${rdv.praticien.prenom} ${rdv.praticien.nom}` : '',
       typeSeance: rdv.typeSeance,
       nomCabinet,
+      telCabinet,
     })
     try {
       await fetch('/api/whatsapp/log', {
@@ -112,7 +113,7 @@ function RealiseBadge() {
 
 // Contenu interne d'une carte RDV — réutilisé dans la carte de la grille
 // ET dans le DragOverlay (le visuel coloré est porté par le conteneur parent).
-function RdvCardBody({ rdv, nomCabinet }: { rdv: any; nomCabinet: string | null }) {
+function RdvCardBody({ rdv, nomCabinet, telCabinet }: { rdv: any; nomCabinet: string | null; telCabinet: string | null }) {
   // OWNER / SECRETAIRE / SUPER_ADMIN voient tous les RDV du cabinet → on leur
   // montre quel praticien assure chaque RDV. Un PRATICIEN ne voit que les siens,
   // donc cette info est inutile pour lui.
@@ -140,7 +141,7 @@ function RdvCardBody({ rdv, nomCabinet }: { rdv: any; nomCabinet: string | null 
           {rdv.patientNotes.slice(0, 30)}{rdv.patientNotes.length > 30 ? '…' : ''}
         </div>
       )}
-      <RappelBtn rdv={rdv} nomCabinet={nomCabinet} />
+      <RappelBtn rdv={rdv} nomCabinet={nomCabinet} telCabinet={telCabinet} />
     </>
   )
 }
@@ -209,8 +210,8 @@ export default function AgendaPage() {
   // supprimer un RDV. PRATICIEN n'a pas d'accès au popover dans cette vue.
   const canManageRdv = sessionRole === 'CABINET_OWNER' || sessionRole === 'SECRETAIRE' || sessionRole === 'SUPER_ADMIN'
 
-  // Nom du cabinet (tenant) pour personnaliser les templates WhatsApp.
-  const nomCabinet = useCabinetNom()
+  // Cabinet (tenant) pour personnaliser les templates WhatsApp (nom + tel).
+  const { nom: nomCabinet, telephone: telCabinet } = useCabinet()
 
   const [currentDate, setCurrentDate] = useState(new Date())
   const [rdvList, setRdvList]         = useState<any[]>([])
@@ -495,7 +496,7 @@ export default function AgendaPage() {
                             color={color}
                             onCardClick={canManageRdv ? openPopover : undefined}
                           >
-                            <RdvCardBody rdv={rdv} nomCabinet={nomCabinet} />
+                            <RdvCardBody rdv={rdv} nomCabinet={nomCabinet} telCabinet={telCabinet} />
                           </DraggableRdv>
                         )
                       })}
@@ -516,7 +517,7 @@ export default function AgendaPage() {
                 borderLeft: activeRdv.source === 'online' ? '3px solid #14B8A6' : undefined,
                 cursor: 'grabbing', boxShadow: '0 8px 20px rgba(0,0,0,0.25)',
               }}>
-                <RdvCardBody rdv={activeRdv} nomCabinet={nomCabinet} />
+                <RdvCardBody rdv={activeRdv} nomCabinet={nomCabinet} telCabinet={telCabinet} />
               </div>
             ) : null}
           </DragOverlay>
@@ -665,6 +666,7 @@ export default function AgendaPage() {
                     praticien: `${confirmationRdv.praticien?.prenom} ${confirmationRdv.praticien?.nom}`,
                     typeSeance: confirmationRdv.rdv?.typeSeance,
                     nomCabinet,
+                    telCabinet,
                   })}
                   type="rappel_rdv"
                   patientId={confirmationRdv.patient.id}

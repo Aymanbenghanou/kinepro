@@ -9,7 +9,7 @@ import {
   msgConfirmationRDV, msgRappelRDV, msgFeedbackAuto,
   buildWhatsAppUrl, scoreColor, scoreBadge, scoreCategory,
 } from '@/lib/whatsapp'
-import { useCabinetNom } from '@/lib/use-cabinet-nom'
+import { useCabinet } from '@/lib/use-cabinet-nom'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://kinepro-omega.vercel.app'
 
@@ -52,7 +52,7 @@ function WhatsAppSvg({ size = 14 }: { size?: number }) {
 export default function WhatsAppCenterPage() {
   const [tab, setTab] = useState<Tab>('envoyer')
   const [loading, setLoading] = useState(true)
-  const nomCabinet = useCabinetNom()
+  const { nom: nomCabinet, telephone: telCabinet } = useCabinet()
   const [seances, setSeances] = useState<any[]>([])
   const [rdvs, setRdvs] = useState<any[]>([])
   const [feedbacks, setFeedbacks] = useState<any[]>([])
@@ -279,6 +279,7 @@ export default function WhatsAppCenterPage() {
                               typeSeance: rdv.typeSeance,
                               praticien: rdv.praticien ? `${rdv.praticien.prenom} ${rdv.praticien.nom}` : '',
                               nomCabinet,
+                              telCabinet,
                             })}
                             type="rappel_rdv"
                             patientId={rdv.patient.id}

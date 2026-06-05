@@ -41,12 +41,14 @@ export default function FeedbackModal({ seance, patient, praticienNom, onClose, 
   const [saving, setSaving] = useState(false)
   const [googleMapsLink, setGoogleMapsLink] = useState(GOOGLE_MAPS_DEFAULT)
   const [nomCabinet, setNomCabinet] = useState<string | null>(null)
+  const [telCabinet, setTelCabinet] = useState<string | null>(null)
 
-  // Fetch cabinet google maps link + nom (un seul appel pour les deux).
+  // Fetch cabinet google maps link + nom + téléphone (un seul appel pour les trois).
   useEffect(() => {
     fetch('/api/cabinet').then(r => r.json()).then(d => {
       if (d?.googleMapsLink) setGoogleMapsLink(d.googleMapsLink)
       if (typeof d?.nom === 'string') setNomCabinet(d.nom)
+      if (typeof d?.telephone === 'string') setTelCabinet(d.telephone)
     }).catch(() => {})
   }, [])
 
@@ -69,6 +71,7 @@ export default function FeedbackModal({ seance, patient, praticienNom, onClose, 
         messagePersonnalise: msgPerso,
         prochainRdv: undefined,
         nomCabinet,
+        telCabinet,
       })
     }
     return msgFeedbackDifficile({
@@ -76,6 +79,7 @@ export default function FeedbackModal({ seance, patient, praticienNom, onClose, 
       messagePersonnalise: msgPerso || 'Votre kiné va adapter votre programme lors de la prochaine séance.',
       prochainRdv: undefined,
       nomCabinet,
+      telCabinet,
     })
   }
 
