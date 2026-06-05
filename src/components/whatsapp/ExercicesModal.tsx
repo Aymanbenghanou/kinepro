@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { X } from 'lucide-react'
 import { msgExercices, buildWhatsAppUrl } from '@/lib/whatsapp'
+import { useCabinetNom } from '@/lib/use-cabinet-nom'
 
 interface Props {
   patient: { id: string; prenom: string; nom: string; telephone?: string | null }
@@ -14,7 +15,8 @@ export default function ExercicesModal({ patient, onClose }: Props) {
   const [step, setStep] = useState<'edit' | 'preview'>('edit')
   const [sending, setSending] = useState(false)
 
-  const message = msgExercices({ prenom: patient.prenom, programme })
+  const nomCabinet = useCabinetNom()
+  const message = msgExercices({ prenom: patient.prenom, programme, nomCabinet })
 
   async function handleSend() {
     if (!patient.telephone || !programme.trim()) return

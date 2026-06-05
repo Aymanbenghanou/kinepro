@@ -15,7 +15,18 @@ export function buildWhatsAppUrl(phone: string, message: string): string {
 
 // ─── Cabinet config (fetched at runtime, fallback defaults) ──────────────────
 export const CABINET_TEL = '0522-456-789'
-export const CABINET_NOM = 'Cabinet KinéPro'
+
+/**
+ * Retourne le libellé à afficher pour le cabinet courant dans un message
+ * WhatsApp. Le nom est utilisé tel quel (le kiné a déjà choisi sa formulation
+ * — beaucoup mettent "Cabinet X", d'autres juste "X"). On n'ajoute jamais
+ * "Cabinet" en préfixe pour éviter "Cabinet Cabinet Al Amal".
+ * Fallback neutre si nom null/vide.
+ */
+export function cabinetLabel(nom?: string | null): string {
+  const t = (nom ?? '').trim()
+  return t.length > 0 ? t : 'votre cabinet'
+}
 
 // ─── 1. Confirmation RDV ─────────────────────────────────────────────────────
 export function msgConfirmationRDV(p: {
@@ -25,10 +36,11 @@ export function msgConfirmationRDV(p: {
   praticien: string // "Rachid Amrani"
   typeSeance: string
   duree: number
+  nomCabinet?: string | null
 }): string {
   return `Bonjour ${p.prenom} 👋
 
-Votre RDV au *${CABINET_NOM}* est confirmé :
+Votre RDV au *${cabinetLabel(p.nomCabinet)}* est confirmé :
 
 📅 *${p.date}* à *${p.heure}*
 👨‍⚕️ Praticien : Dr. ${p.praticien}
@@ -47,10 +59,11 @@ export function msgRappelRDV(p: {
   praticien: string
   typeSeance: string
   telCabinet?: string
+  nomCabinet?: string | null
 }): string {
   return `Bonjour ${p.prenom} 👋
 
-Petit rappel : vous avez rendez-vous *demain* au ${CABINET_NOM} 🏥
+Petit rappel : vous avez rendez-vous *demain* au ${cabinetLabel(p.nomCabinet)} 🏥
 
 📅 *${p.date}* à *${p.heure}*
 👨‍⚕️ Dr. ${p.praticien}
@@ -67,13 +80,15 @@ export function msgFeedbackExcellent(p: {
   totalSeances: number | null
   typeSeance: string
   googleMapsLink: string
+  nomCabinet?: string | null
 }): string {
   const seanceLabel = p.totalSeances
     ? `Séance ${p.numSeance}/${p.totalSeances}`
     : `Séance ${p.numSeance}`
+  const cab = cabinetLabel(p.nomCabinet)
   return `Bonjour ${p.prenom} 😊
 
-Merci pour votre séance d'aujourd'hui chez *${CABINET_NOM}* ! 💪
+Merci pour votre séance d'aujourd'hui chez *${cab}* ! 💪
 
 *${seanceLabel} — ${p.typeSeance}*
 
@@ -85,7 +100,7 @@ Continuez les exercices à la maison, ils font toute la différence ! 🏋️
 Merci infiniment, ça prend 30 secondes ! 🙏
 
 À très bientôt,
-*${CABINET_NOM}*`
+*${cab}*`
 }
 
 // ─── 3. Post-séance Score 5-7 (Moyen) — NO Google link ──────────────────────
@@ -94,13 +109,15 @@ export function msgFeedbackMoyen(p: {
   messagePersonnalise?: string
   prochainRdv?: string
   telCabinet?: string
+  nomCabinet?: string | null
 }): string {
   const msg = p.messagePersonnalise?.trim()
     ? p.messagePersonnalise.trim()
     : `Chaque séance nous rapproche de votre objectif. Le corps prend du temps pour s'adapter, mais nous sommes là pour vous accompagner.`
+  const cab = cabinetLabel(p.nomCabinet)
   return `Bonjour ${p.prenom} 👋
 
-Merci d'être venu(e) aujourd'hui chez *${CABINET_NOM}*.
+Merci d'être venu(e) aujourd'hui chez *${cab}*.
 
 Cette séance était un peu difficile — c'est tout à fait normal dans votre parcours 🙏
 
@@ -110,7 +127,7 @@ Votre prochain RDV : *${p.prochainRdv || 'à planifier'}*
 
 N'hésitez pas à nous appeler si vous avez des questions.
 À bientôt 💪
-*${CABINET_NOM}* — ${p.telCabinet || CABINET_TEL}`
+*${cab}* — ${p.telCabinet || CABINET_TEL}`
 }
 
 // ─── 3. Post-séance Score 1-4 (Difficile) — empathie + promesse ─────────────
@@ -119,6 +136,7 @@ export function msgFeedbackDifficile(p: {
   messagePersonnalise: string
   prochainRdv?: string
   telCabinet?: string
+  nomCabinet?: string | null
 }): string {
   return `Bonjour ${p.prenom} 👋
 
@@ -136,13 +154,14 @@ Votre prochain RDV : *${p.prochainRdv || 'à planifier'}*
 Appelez-nous à tout moment : *${p.telCabinet || CABINET_TEL}*
 
 Vous êtes entre de bonnes mains 💙
-*${CABINET_NOM}*`
+*${cabinetLabel(p.nomCabinet)}*`
 }
 
 // ─── 4. Programme d'exercices ─────────────────────────────────────────────────
 export function msgExercices(p: {
   prenom: string
   programme: string
+  nomCabinet?: string | null
 }): string {
   return `Bonjour ${p.prenom} 👋
 
@@ -153,16 +172,16 @@ Voici votre programme d'exercices personnalisé 📋
 ⚠️ En cas de douleur, arrêtez et contactez-nous.
 
 Bon courage ! 💪
-*${CABINET_NOM}*`
+*${cabinetLabel(p.nomCabinet)}*`
 }
 
 // ─── 5. Feedback automatique (lien token post-séance) ────────────────────────
 export function msgFeedbackAuto(p: {
   prenom: string
   feedbackUrl: string
-  nomCabinet?: string
+  nomCabinet?: string | null
 }): string {
-  const cab = p.nomCabinet || CABINET_NOM
+  const cab = cabinetLabel(p.nomCabinet)
   return `Bonjour ${p.prenom} 👋
 
 Votre séance au *${cab}* vient de se terminer.
@@ -180,6 +199,7 @@ Merci pour votre confiance 💙
 export function msgAvisGoogle(p: {
   prenom: string
   googleMapsLink: string
+  nomCabinet?: string | null
 }): string {
   return `Bonjour ${p.prenom} 😊
 
@@ -190,7 +210,7 @@ Un petit avis Google nous aiderait énormément 🙏⭐
 👉 ${p.googleMapsLink}
 
 Merci infiniment ! 🌟
-*${CABINET_NOM}*`
+*${cabinetLabel(p.nomCabinet)}*`
 }
 
 // ─── Score helpers ────────────────────────────────────────────────────────────

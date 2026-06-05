@@ -9,6 +9,7 @@ import {
   msgConfirmationRDV, msgRappelRDV, msgFeedbackAuto,
   buildWhatsAppUrl, scoreColor, scoreBadge, scoreCategory,
 } from '@/lib/whatsapp'
+import { useCabinetNom } from '@/lib/use-cabinet-nom'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://kinepro-omega.vercel.app'
 
@@ -51,6 +52,7 @@ function WhatsAppSvg({ size = 14 }: { size?: number }) {
 export default function WhatsAppCenterPage() {
   const [tab, setTab] = useState<Tab>('envoyer')
   const [loading, setLoading] = useState(true)
+  const nomCabinet = useCabinetNom()
   const [seances, setSeances] = useState<any[]>([])
   const [rdvs, setRdvs] = useState<any[]>([])
   const [feedbacks, setFeedbacks] = useState<any[]>([])
@@ -189,6 +191,7 @@ export default function WhatsAppCenterPage() {
                                 typeSeance: rdv.typeSeance,
                                 praticien: rdv.praticien ? `${rdv.praticien.prenom} ${rdv.praticien.nom}` : '',
                                 duree: rdv.duree || 45,
+                                nomCabinet,
                               })}
                               type="confirmation_rdv"
                               patientId={rdv.patient.id}
@@ -275,6 +278,7 @@ export default function WhatsAppCenterPage() {
                               heure: formatTime(rdv.date),
                               typeSeance: rdv.typeSeance,
                               praticien: rdv.praticien ? `${rdv.praticien.prenom} ${rdv.praticien.nom}` : '',
+                              nomCabinet,
                             })}
                             type="rappel_rdv"
                             patientId={rdv.patient.id}
@@ -361,6 +365,7 @@ export default function WhatsAppCenterPage() {
                                 msgFeedbackAuto({
                                   prenom: s.patient.prenom,
                                   feedbackUrl: `${APP_URL}/feedback/${s.feedbackToken}`,
+                                  nomCabinet,
                                 })
                               )}
                               target="_blank"
