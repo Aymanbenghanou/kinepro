@@ -61,6 +61,9 @@ export default function FeedbackPage() {
   const [commentaire, setCommentaire] = useState('')
   const [status, setStatus]           = useState<'idle' | 'loading' | 'success' | 'error' | 'already'>('idle')
   const [errorMsg, setErrorMsg]       = useState('')
+  // googleMapsLink du cabinet renvoyé par /api/feedback/submit après succès.
+  // Sert à afficher le CTA "Avis Google" UNIQUEMENT si score >= 8 ET lien présent.
+  const [googleMapsLink, setGoogleMapsLink] = useState<string | null>(null)
 
   useEffect(() => {
     document.title = 'Votre avis — KinéPro'
@@ -81,6 +84,9 @@ export default function FeedbackPage() {
       if (res.status === 409) { setStatus('already'); return }
       if (!res.ok) { setErrorMsg(data.error || 'Erreur'); setStatus('error'); return }
 
+      if (typeof data?.googleMapsLink === 'string' && data.googleMapsLink.trim().length > 0) {
+        setGoogleMapsLink(data.googleMapsLink.trim())
+      }
       setStatus('success')
     } catch {
       setErrorMsg('Erreur réseau. Veuillez réessayer.')
@@ -91,6 +97,7 @@ export default function FeedbackPage() {
   // ─── Success screen ───────────────────────────────────────────────────────
 
   if (status === 'success') {
+    const showGoogleCta = score >= 8 && !!googleMapsLink
     return (
       <div style={pageWrap}>
         <div style={card}>
@@ -107,6 +114,36 @@ export default function FeedbackPage() {
               ⭐ Votre note : <strong>{score}/10</strong>
             </p>
           </div>
+
+          {showGoogleCta && (
+            <div style={{ marginTop: 20, padding: '20px 18px', background: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: 12, textAlign: 'center' }}>
+              <p style={{ color: '#92400E', fontWeight: 600, margin: '0 0 12px', fontSize: 14, lineHeight: 1.5 }}>
+                Votre satisfaction nous touche énormément 💛<br />
+                Un petit avis Google nous aiderait beaucoup !
+              </p>
+              <a
+                href={googleMapsLink!}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-block',
+                  background: '#F59E0B',
+                  color: 'white',
+                  padding: '12px 22px',
+                  borderRadius: 10,
+                  fontSize: 14,
+                  fontWeight: 700,
+                  textDecoration: 'none',
+                  boxShadow: '0 2px 8px rgba(245,158,11,0.35)',
+                }}
+              >
+                ⭐ Laisser un avis Google
+              </a>
+              <p style={{ color: '#B45309', fontSize: 11, margin: '10px 0 0' }}>
+                Ça prend moins de 30 secondes 🙏
+              </p>
+            </div>
+          )}
         </div>
         <p style={{ textAlign: 'center', color: '#94A3B8', fontSize: 12, marginTop: 16 }}>
           Propulsé par KinéPro

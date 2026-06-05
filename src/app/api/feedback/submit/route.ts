@@ -49,7 +49,22 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    return NextResponse.json({ success: true, feedback }, { status: 201 })
+    // googleMapsLink renvoyé au client pour afficher le CTA "Avis Google"
+    // post-soumission quand score >= 8. Lookup séparé : Seance n'a pas de
+    // relation Prisma `cabinet` (cabinetId scalar seulement).
+    const cab = await prisma.cabinet.findUnique({
+      where: { id: seance.cabinetId },
+      select: { googleMapsLink: true },
+    })
+
+    return NextResponse.json(
+      {
+        success: true,
+        feedback,
+        googleMapsLink: cab?.googleMapsLink ?? null,
+      },
+      { status: 201 },
+    )
   } catch (error) {
     console.error('[feedback/submit]', error)
     return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
