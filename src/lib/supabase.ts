@@ -63,3 +63,15 @@ export async function removeObject(path: string): Promise<void> {
   const { error } = await admin().storage.from(STORAGE_BUCKET).remove([path])
   if (error) throw error
 }
+
+/**
+ * Suppression bulk best-effort de plusieurs paths. Renvoie le détail des
+ * fichiers droppés + des erreurs (jamais throw — le caller continue).
+ * Utilisé pour le cleanup Storage lors de la suppression d'un patient.
+ */
+export async function removeObjects(paths: string[]): Promise<{ deleted: string[]; errors: string[] }> {
+  if (paths.length === 0) return { deleted: [], errors: [] }
+  const { data, error } = await admin().storage.from(STORAGE_BUCKET).remove(paths)
+  if (error) return { deleted: [], errors: [error.message] }
+  return { deleted: (data ?? []).map(f => f.name), errors: [] }
+}

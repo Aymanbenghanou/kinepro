@@ -8,6 +8,9 @@ import { ArrowLeft, Download, Wallet, Trash2 } from 'lucide-react'
 import { generateFacturePDF } from '@/lib/pdf-utils'
 import { STATUT_LABELS, MODE_PAIEMENT, type FactureStatut } from '@/lib/facture-statut'
 import PaymentModal from '@/components/facturation/PaymentModal'
+import DeleteFactureModal from '@/components/facturation/DeleteFactureModal'
+import { useCan } from '@/lib/use-permissions'
+import { useRouter } from 'next/navigation'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://kinepro-omega.vercel.app'
 
@@ -18,7 +21,11 @@ export default function FactureDetailPage({ params }: { params: Promise<{ id: st
   const [cabinet, setCabinet] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [showPayment, setShowPayment] = useState(false)
+  const [showDelete, setShowDelete] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+  const router = useRouter()
+  const can = useCan()
+  const canDelete = can('factures')
 
   function showToast(msg: string) { setToast(msg); setTimeout(() => setToast(null), 3500) }
 
@@ -107,6 +114,12 @@ export default function FactureDetailPage({ params }: { params: Promise<{ id: st
             <button onClick={exportPDF} style={btnSecondary}>
               <Download size={15} /> Générer PDF
             </button>
+            {canDelete && (
+              <button onClick={() => setShowDelete(true)} title="Supprimer cette facture"
+                style={{ ...btnSecondary, color: '#DC2626', border: '1.5px solid #FECACA' }}>
+                <Trash2 size={15} /> Supprimer
+              </button>
+            )}
           </div>
         </div>
 
@@ -183,6 +196,15 @@ export default function FactureDetailPage({ params }: { params: Promise<{ id: st
           facture={facture}
           onClose={() => setShowPayment(false)}
           onSuccess={msg => { showToast(msg); load() }}
+        />
+      )}
+
+      {showDelete && facture && (
+        <DeleteFactureModal
+          factureId={facture.id}
+          factureLabel={`Facture ${facture.numero ?? `#${facture.id.slice(-6)}`}`}
+          onClose={() => setShowDelete(false)}
+          onDeleted={() => router.push('/facturation')}
         />
       )}
 

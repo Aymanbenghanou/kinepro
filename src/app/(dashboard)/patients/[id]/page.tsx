@@ -14,11 +14,12 @@ import { generateDossierPatientPDF } from '@/lib/pdf-utils'
 import ProgressionTab from '@/components/patients/ProgressionTab'
 import DocumentsTab from '@/components/patients/DocumentsTab'
 import EditPatientModal from '@/components/patients/EditPatientModal'
+import DeletePatientModal from '@/components/patients/DeletePatientModal'
 import ExerciseProgramModal from '@/components/exercise-program/ExerciseProgramModal'
 import { formatWhatsAppMessage, waUrl } from '@/lib/exercise-program'
 import Toast from '@/components/ui/Toast'
 import { useCan } from '@/lib/use-permissions'
-import { Edit2 } from 'lucide-react'
+import { Edit2, Trash2 } from 'lucide-react'
 import dynamic from 'next/dynamic'
 
 const QrCodeModal = dynamic(() => import('@/components/qr/QrCodeModal'), { ssr: false })
@@ -193,6 +194,7 @@ export default function PatientDetailPage() {
   const [qrToken, setQrToken] = useState<string | null>(null)
   const [qrLoading, setQrLoading] = useState(false)
   const [showEdit, setShowEdit] = useState(false)
+  const [showDelete, setShowDelete] = useState(false)
   const [toast, setToast]       = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
   const can      = useCan()
@@ -331,6 +333,13 @@ export default function PatientDetailPage() {
                 style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#2563EB', color: 'white', border: 'none', borderRadius: 10, padding: '10px 18px', cursor: 'pointer', fontWeight: 600, fontSize: 14, boxShadow: '0 2px 8px rgba(37,99,235,0.25)' }}>
                 <Calendar size={16} /> Planifier séance
               </button>
+              {canEdit && (
+                <button onClick={() => setShowDelete(true)}
+                  title="Supprimer ce patient"
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'white', color: '#DC2626', border: '1px solid #FECACA', borderRadius: 10, padding: '10px 14px', cursor: 'pointer', fontWeight: 500, fontSize: 14 }}>
+                  <Trash2 size={15} /> Supprimer
+                </button>
+              )}
             </div>
           </div>
 
@@ -611,6 +620,14 @@ export default function PatientDetailPage() {
           patient={patient}
           onClose={() => setShowEdit(false)}
           onSuccess={(t) => { setToast(t); fetchPatient() }}
+        />
+      )}
+
+      {showDelete && patient && (
+        <DeletePatientModal
+          patientId={patient.id}
+          patientName={`${patient.prenom} ${patient.nom}`}
+          onClose={() => setShowDelete(false)}
         />
       )}
 

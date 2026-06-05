@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
+import { FactureStatut } from '@prisma/client'
 import { requirePermission } from '@/lib/permissions-server'
 import { assertNotWalled } from '@/lib/plan-server'
 import { validateBody } from '@/lib/validate'
 import { updatePatientSchema } from '@/lib/schemas/medical'
+import { removeObjects } from '@/lib/supabase'
 
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : 'Erreur inconnue'
@@ -119,6 +121,18 @@ export async function PUT(
   }
 }
 
+/**
+ * DELETE /api/patients/[id]
+ *
+ * Garde-fou métier : BLOQUÉ s'il existe au moins une facture payée. La perte
+ * d'historique comptable n'est jamais accidentelle — il faut d'abord annuler
+ * les factures payées (ou contacter le support).
+ *
+ * Cascade manuelle (le schéma n'a onDelete:Cascade que sur ExerciceProgram) :
+ *   Paiement → Facture → Document → Seance → RendezVous → Feedback →
+ *   WhatsAppLog → Patient (ExerciceProgram cascadé auto).
+ * Après commit DB, suppression best-effort des fichiers Supabase Storage.
+ */
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -133,12 +147,57 @@ export async function DELETE(
     const { cabinetId } = session.user
     const { id } = await params
 
-    // Verify ownership
-    const existing = await prisma.patient.findFirst({ where: { id, cabinetId } })
+    const existing = await prisma.patient.findFirst({ where: { id, cabinetId }, select: { id: true } })
     if (!existing) return NextResponse.json({ error: 'Patient non trouvé' }, { status: 404 })
 
-    await prisma.patient.delete({ where: { id } })
-    return NextResponse.json({ success: true })
+    // Garde-fou : factures payées ⇒ refus
+    const facturesPayees = await prisma.facture.count({
+      where: { patientId: id, cabinetId, statut: FactureStatut.paye },
+    })
+    if (facturesPayees > 0) {
+      return NextResponse.json(
+        { error: 'patient_has_paid_factures', count: facturesPayees },
+        { status: 409 }
+      )
+    }
+
+    // Récup des paths Storage AVANT delete (sera perdu sinon)
+    const docs = await prisma.document.findMany({
+      where: { patientId: id, cabinetId },
+      select: { url: true },
+    })
+
+    // Cascade topologique (Paiement → Facture est cascade auto FK, mais on
+    // est explicite pour cohérence avec les autres tables NO ACTION).
+    await prisma.$transaction(async (tx) => {
+      await tx.paiement.deleteMany({ where: { facture: { patientId: id, cabinetId } } })
+      await tx.facture.deleteMany({ where: { patientId: id, cabinetId } })
+      await tx.document.deleteMany({ where: { patientId: id, cabinetId } })
+      await tx.seance.deleteMany({ where: { patientId: id, cabinetId } })
+      await tx.rendezVous.deleteMany({ where: { patientId: id, cabinetId } })
+      await tx.feedback.deleteMany({ where: { patientId: id } })
+      await tx.whatsAppLog.deleteMany({ where: { patientId: id, cabinetId } })
+      // ExerciceProgram : Cascade auto via FK onDelete: Cascade
+      await tx.patient.delete({ where: { id } })
+    })
+
+    // Storage cleanup best-effort (post-commit) — la DB reste cohérente même
+    // si Supabase échoue. Fichiers orphelins récupérables manuellement.
+    let storage: { deleted: number; errors: string[] } = { deleted: 0, errors: [] }
+    const paths = docs.map(d => d.url).filter(Boolean)
+    if (paths.length > 0) {
+      try {
+        const res = await removeObjects(paths)
+        storage = { deleted: res.deleted.length, errors: res.errors }
+      } catch (e) {
+        storage.errors.push(e instanceof Error ? e.message : String(e))
+      }
+      if (storage.errors.length) {
+        console.error('[DELETE patient — storage errors]', { patientId: id, storage })
+      }
+    }
+
+    return NextResponse.json({ deleted: true, patientId: id, storage })
   } catch (error) {
     console.error('[DELETE /api/patients/[id]]', error)
     return NextResponse.json({ error: errMsg(error) }, { status: 500 })
