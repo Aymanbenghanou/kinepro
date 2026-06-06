@@ -13,7 +13,6 @@ export const updateCabinetSchema = z.object({
   adresse:          z.string().max(500).optional().nullable(),
   telephone:        z.string().max(50).optional().nullable(),
   email:            z.string().email().max(200).optional().nullable(),
-  googleMapsLink:   z.string().max(1000).optional().nullable(),
   whatsappNumber:   z.string().max(50).optional().nullable(),
   googleReviewLink: z.string().max(1000).optional().nullable(),
   logoUrl:          z.string().max(1000).optional().nullable(),

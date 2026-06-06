@@ -45,7 +45,6 @@ export async function PATCH(request: NextRequest) {
       ...(body.adresse          !== undefined && { adresse: body.adresse }),
       ...(body.telephone        !== undefined && { telephone: body.telephone }),
       ...(body.email            !== undefined && { email: body.email }),
-      ...(body.googleMapsLink   !== undefined && { googleMapsLink: body.googleMapsLink }),
       ...(body.whatsappNumber   !== undefined && { whatsappNumber: body.whatsappNumber }),
       ...(body.googleReviewLink !== undefined && { googleReviewLink: body.googleReviewLink }),
       ...(body.logoUrl          !== undefined && { logoUrl: body.logoUrl }),

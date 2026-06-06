@@ -111,7 +111,6 @@ model Cabinet {
   ville              String?
   telephone          String?
   email              String?
-  googleMapsLink     String?
   whatsappNumber     String?
   googleReviewLink   String?
   ownerId            String?             @unique

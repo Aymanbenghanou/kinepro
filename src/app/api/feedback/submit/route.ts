@@ -37,9 +37,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Lien invalide ou expiré' }, { status: 404 })
     }
 
-    // Source de vérité : Cabinet.googleReviewLink (colonne alimentée par le
-     // formulaire /parametres/cabinet). Cabinet.googleMapsLink existe au
-     // schéma mais n'est jamais écrit par l'UI → dette à nettoyer séparément.
+    // Source : Cabinet.googleReviewLink (colonne alimentée par le formulaire
+    // /parametres/cabinet). La clé JSON de réponse reste `googleMapsLink`
+    // pour ne pas casser les clients existants.
     const cab = await prisma.cabinet.findUnique({
       where: { id: seance.cabinetId },
       select: { googleReviewLink: true },
