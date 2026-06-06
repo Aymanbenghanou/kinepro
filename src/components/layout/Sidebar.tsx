@@ -43,7 +43,7 @@ function WhatsAppIcon({ size = 18 }: { size?: number }) {
 
 export default function Sidebar() {
   const pathname = usePathname()
-  const { isOpen, close } = useSidebar()
+  const { isOpen, close, desktopCollapsed, toggleDesktopCollapsed } = useSidebar()
   const can = useCan()
   const role = useRole()
   const isOwnerOrAdmin = role === 'CABINET_OWNER' || role === 'SUPER_ADMIN'
@@ -106,17 +106,15 @@ export default function Sidebar() {
         />
       )}
 
-      <aside className={`sidebar${isOpen ? ' sidebar-mobile-open' : ''}`} style={{ display: 'flex', flexDirection: 'column' }}>
-        {/* Logo + mobile close button */}
+      <aside className={`sidebar${isOpen ? ' sidebar-mobile-open' : ''}${desktopCollapsed ? ' sidebar-desktop-collapsed' : ''}`} style={{ display: 'flex', flexDirection: 'column' }}>
+        {/* Logo + bouton X (mobile: close ; desktop: collapse). */}
         <div className="flex items-center gap-2 px-5 py-5 border-b border-blue-800">
           <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
             <span className="text-white font-bold text-sm">K</span>
           </div>
           <span className="text-white font-bold text-lg flex-1">KinéPro</span>
-          {/* Close button — only meaningful on mobile */}
           <button
-            onClick={close}
-            className="md:hidden"
+            onClick={() => { close(); toggleDesktopCollapsed() }}
             style={{
               background: 'rgba(255,255,255,0.1)',
               border: 'none', cursor: 'pointer',
@@ -124,7 +122,7 @@ export default function Sidebar() {
               color: 'rgba(255,255,255,0.8)',
               display: 'flex', alignItems: 'center',
             }}
-            aria-label="Fermer le menu"
+            aria-label="Fermer/replier le menu"
           >
             <X size={18} />
           </button>

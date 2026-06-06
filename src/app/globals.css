@@ -779,3 +779,42 @@ button, a, [role="button"] {
     animation: none !important;
   }
 }
+
+/* ─── Sidebar collapse desktop ──────────────────────────────────────────── */
+/* Le bouton X (haut sidebar) collapse la sidebar sur desktop ; le hamburger
+   du Topbar prend alors le relais pour rouvrir. Transition douce et
+   réversible. Sur mobile (<768px) la mécanique slide-in/out existante
+   `.sidebar-mobile-open` continue de gérer l'ouverture par overlay — ces
+   règles desktop ne s'appliquent qu'au-dessus de 768px. */
+@media (min-width: 769px) {
+  .sidebar.sidebar-desktop-collapsed {
+    transform: translateX(-220px);
+  }
+  .main-content.main-content-expanded {
+    margin-left: 0;
+  }
+  /* Hamburger Topbar : caché par défaut sur desktop, devient visible quand
+     la sidebar est collapsée pour permettre la réouverture. */
+  .topbar-hamburger.topbar-hamburger--visible-desktop {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    border-radius: 8px;
+    color: #64748B;
+    flex-shrink: 0;
+  }
+  .topbar-hamburger.topbar-hamburger--visible-desktop:hover {
+    background: #F1F5F9;
+    color: #0F172A;
+  }
+}
+
+/* Transition douce pour le main-content (le margin-left bouge). */
+.main-content {
+  transition: margin-left 0.3s ease;
+}

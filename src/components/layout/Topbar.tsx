@@ -283,15 +283,17 @@ function NotificationBell() {
 
 // ─── Topbar ───────────────────────────────────────────────────────────────────
 export default function Topbar({ title, subtitle }: TopbarProps) {
-  const { toggle } = useSidebar()
+  const { toggle, desktopCollapsed, expandDesktop } = useSidebar()
   const [showScanner, setShowScanner] = useState(false)
 
   return (
     <div className="topbar">
-      {/* Mobile hamburger */}
+      {/* Hamburger : visible mobile par CSS, et aussi desktop quand la
+          sidebar est collapsée (sinon l'utilisateur n'aurait aucun moyen
+          de rouvrir le menu). */}
       <button
-        className="topbar-hamburger"
-        onClick={toggle}
+        className={`topbar-hamburger${desktopCollapsed ? ' topbar-hamburger--visible-desktop' : ''}`}
+        onClick={() => { toggle(); if (desktopCollapsed) expandDesktop() }}
         aria-label="Ouvrir le menu"
       >
         <Menu size={22} />

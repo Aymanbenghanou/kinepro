@@ -1,4 +1,5 @@
 import Sidebar from '@/components/layout/Sidebar'
+import MainContent from '@/components/layout/MainContent'
 import MobileBottomNav from '@/components/layout/MobileBottomNav'
 import FeedbackNotificationBar from '@/components/layout/FeedbackNotificationBar'
 import InstallPrompt from '@/components/pwa/InstallPrompt'
@@ -99,9 +100,7 @@ export default async function DashboardLayout({
           <FeedbackNotificationBar />
           <div className="flex flex-1" style={{ position: 'relative' }}>
             <Sidebar />
-            <div className="main-content flex-1">
-              {children}
-            </div>
+            <MainContent>{children}</MainContent>
           </div>
         </div>
         <MobileBottomNav />
