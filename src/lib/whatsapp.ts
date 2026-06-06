@@ -10,7 +10,21 @@ export function formatPhoneForWhatsApp(phone: string): string {
 
 export function buildWhatsAppUrl(phone: string, message: string): string {
   const formatted = formatPhoneForWhatsApp(phone)
-  return `https://wa.me/${formatted}?text=${encodeURIComponent(message)}`
+  // [WA-DIAG] TEMPORAIRE — à retirer après diagnostic emojis.
+  if (typeof window !== 'undefined') {
+    const codepoints = Array.from(message).map(c => c.codePointAt(0)!.toString(16)).join(' ')
+    console.log('[WA-DIAG] buildWhatsAppUrl phone=', phone, '| formatted=', formatted)
+    console.log('[WA-DIAG] message brut:', JSON.stringify(message))
+    console.log('[WA-DIAG] codepoints:', codepoints)
+    console.log('[WA-DIAG] message contient FFFD?', message.includes('�'),
+      '| message contient 1FA7A (stetho)?', codepoints.split(' ').includes('1fa7a'))
+  }
+  const url = `https://wa.me/${formatted}?text=${encodeURIComponent(message)}`
+  if (typeof window !== 'undefined') {
+    console.log('[WA-DIAG] url finale:', url)
+    console.log('[WA-DIAG] url contient %EF%BF%BD?', url.includes('%EF%BF%BD'))
+  }
+  return url
 }
 
 /**
