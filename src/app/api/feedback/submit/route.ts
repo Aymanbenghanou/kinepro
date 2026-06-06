@@ -2,35 +2,64 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { publicLimiter, checkRateLimit } from '@/lib/rate-limit'
 
+/**
+ * POST /api/feedback/submit
+ *
+ * Nouveau flux : réponse binaire Oui/Non issue des liens dans le message
+ * WhatsApp (cf. msgFeedbackAuto). Le score numérique 1-10 est supprimé.
+ *
+ * Stockage sans migration :
+ *   - Feedback.score (Int requis) : Oui → 10, Non → 1. Conserve la
+ *     compatibilité avec scoreCategory (>=8 excellent, <5 difficile)
+ *     utilisé par les stats historiques du WhatsApp Center.
+ *   - Seance.scorePatient : même mapping.
+ *   - Seance.feedbackStatus : 'satisfait' | 'non_satisfait'.
+ *
+ * Idempotence : si le feedback est déjà soumis (feedbackEnvoye=true), on
+ * renvoie 200 avec la réponse persistée + googleMapsLink (utile pour le cas
+ * où le patient reclique le lien Oui après une 1re soumission).
+ */
 export async function POST(request: NextRequest) {
   const rl = await checkRateLimit(request, publicLimiter); if (rl) return rl
   try {
     const body = await request.json()
-    const { token, score, commentaire } = body
+    const { token, reponse } = body as { token?: unknown; reponse?: unknown }
 
-    if (!token || typeof score !== 'number' || score < 1 || score > 10) {
+    if (typeof token !== 'string' || (reponse !== 'oui' && reponse !== 'non')) {
       return NextResponse.json({ error: 'Données invalides' }, { status: 400 })
     }
 
-    // Find the séance by token
     const seance = await prisma.seance.findUnique({
       where: { feedbackToken: token },
       include: { patient: { select: { id: true } } },
     })
-
     if (!seance) {
       return NextResponse.json({ error: 'Lien invalide ou expiré' }, { status: 404 })
     }
 
-    if (seance.feedbackStatus === 'sent' || seance.feedbackEnvoye) {
-      return NextResponse.json({ error: 'Feedback déjà soumis' }, { status: 409 })
+    const cab = await prisma.cabinet.findUnique({
+      where: { id: seance.cabinetId },
+      select: { googleMapsLink: true },
+    })
+    const googleMapsLink = cab?.googleMapsLink ?? null
+
+    // Idempotence : déjà soumis → on renvoie l'état actuel sans recréer.
+    if (seance.feedbackEnvoye) {
+      const satisfied = seance.feedbackStatus === 'satisfait'
+      return NextResponse.json(
+        { success: true, alreadySubmitted: true, satisfied, googleMapsLink },
+        { status: 200 },
+      )
     }
 
-    // Create the feedback record
+    const satisfied = reponse === 'oui'
+    const score = satisfied ? 10 : 1
+    const feedbackStatus = satisfied ? 'satisfait' : 'non_satisfait'
+
     const feedback = await prisma.feedback.create({
       data: {
         score,
-        commentaire:  commentaire || null,
+        commentaire:  null,
         typeMessage:  'post_seance',
         cabinetId:    seance.cabinetId,
         patientId:    seance.patientId,
@@ -38,31 +67,18 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    // Mark séance as feedback sent
     await prisma.seance.update({
       where: { id: seance.id },
       data: {
-        feedbackStatus:  'sent',
+        feedbackStatus,
         feedbackEnvoye:  true,
         dateFeedback:    new Date(),
         scorePatient:    score,
       },
     })
 
-    // googleMapsLink renvoyé au client pour afficher le CTA "Avis Google"
-    // post-soumission quand score >= 8. Lookup séparé : Seance n'a pas de
-    // relation Prisma `cabinet` (cabinetId scalar seulement).
-    const cab = await prisma.cabinet.findUnique({
-      where: { id: seance.cabinetId },
-      select: { googleMapsLink: true },
-    })
-
     return NextResponse.json(
-      {
-        success: true,
-        feedback,
-        googleMapsLink: cab?.googleMapsLink ?? null,
-      },
+      { success: true, satisfied, googleMapsLink, feedback },
       { status: 201 },
     )
   } catch (error) {

@@ -89,20 +89,31 @@ Bon courage ! \u{1F4AA}
 }
 
 // ─── 5. Feedback automatique (lien token post-séance) ────────────────────────
+/**
+ * Feedback post-séance — réponse binaire Oui/Non.
+ * `feedbackUrl` est l'URL de base (sans query string), ex
+ * `https://app.kinepro.../feedback/<token>`. La fonction y appose elle-même
+ * `?r=oui` et `?r=non`. wa.me ne supporte pas les boutons → on présente
+ * les deux liens comme du texte cliquable.
+ */
 export function msgFeedbackAuto(p: {
   prenom: string
   feedbackUrl: string
   nomCabinet?: string | null
 }): string {
   const cab = cabinetLabel(p.nomCabinet)
+  const sep = p.feedbackUrl.includes('?') ? '&' : '?'
+  const urlOui = `${p.feedbackUrl}${sep}r=oui`
+  const urlNon = `${p.feedbackUrl}${sep}r=non`
   return `Bonjour ${p.prenom} \u{1F44B}
 
-Votre séance au *${cab}* vient de se terminer.
+Votre séance au *${cab}* est terminée. Êtes-vous satisfait(e) ?
 
-Nous aimerions connaître votre ressenti \u{1F64F}
+\u{2705} Oui :
+${urlOui}
 
-\u{1F449} *Donnez votre avis ici (1 min) :*
-${p.feedbackUrl}
+\u{274C} Non :
+${urlNon}
 
 Merci pour votre confiance \u{1F499}
 *${cab}*`
