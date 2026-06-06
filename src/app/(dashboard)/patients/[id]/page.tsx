@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import ExercicesModal from '@/components/whatsapp/ExercicesModal'
 import { generateDossierPatientPDF } from '@/lib/pdf-utils'
+import { useCabinetFull } from '@/lib/use-cabinet-nom'
 import ProgressionTab from '@/components/patients/ProgressionTab'
 import DocumentsTab from '@/components/patients/DocumentsTab'
 import EditPatientModal from '@/components/patients/EditPatientModal'
@@ -185,7 +186,7 @@ export default function PatientDetailPage() {
   const id = params.id as string
 
   const [patient, setPatient] = useState<any>(null)
-  const [cabinet, setCabinet] = useState<any>(null)
+  const cabinet = useCabinetFull()
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<TabId>('informations')
   const [showPlanifier, setShowPlanifier] = useState(false)
@@ -223,9 +224,6 @@ export default function PatientDetailPage() {
   }, [id])
 
   useEffect(() => { fetchPatient() }, [fetchPatient])
-  useEffect(() => {
-    fetch('/api/cabinet').then(r => r.json()).then(d => setCabinet(d)).catch(() => {})
-  }, [])
 
   if (loading) return (
     <div>

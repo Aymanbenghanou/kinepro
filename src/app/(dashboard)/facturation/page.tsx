@@ -9,6 +9,7 @@ import { Plus, X, Download, Search, RotateCcw, Wallet, Eye, CheckCircle2 } from 
 import { generateFacturePDF } from '@/lib/pdf-utils'
 import { STATUT_LABELS, type FactureStatut } from '@/lib/facture-statut'
 import PaymentModal from '@/components/facturation/PaymentModal'
+import { useCabinetFull } from '@/lib/use-cabinet-nom'
 
 const QrCodeModal = dynamic(() => import('@/components/qr/QrCodeModal'), { ssr: false })
 
@@ -44,7 +45,7 @@ export default function FacturationPage() {
   const [factures, setFactures] = useState<any[]>([])
   const [patients, setPatients] = useState<any[]>([])
   const [praticiens, setPraticiens] = useState<any[]>([])
-  const [cabinet, setCabinet] = useState<any>(null)
+  const cabinet = useCabinetFull()
   const [loading, setLoading] = useState(true)
 
   // Filters
@@ -86,7 +87,6 @@ export default function FacturationPage() {
   useEffect(() => {
     fetch('/api/patients').then(r => r.json()).then(d => setPatients(Array.isArray(d) ? d : []))
     fetch('/api/praticiens').then(r => r.json()).then(d => setPraticiens(Array.isArray(d) ? d : []))
-    fetch('/api/cabinet').then(r => r.json()).then(setCabinet).catch(() => {})
   }, [])
 
   // Client-side search by patient name

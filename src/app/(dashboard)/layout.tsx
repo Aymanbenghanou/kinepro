@@ -3,6 +3,7 @@ import MobileBottomNav from '@/components/layout/MobileBottomNav'
 import FeedbackNotificationBar from '@/components/layout/FeedbackNotificationBar'
 import InstallPrompt from '@/components/pwa/InstallPrompt'
 import { SidebarProvider } from '@/lib/sidebar-context'
+import { CabinetProvider, type CabinetClient } from '@/lib/cabinet-context'
 import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 import { CabinetPlanStatus } from '@prisma/client'
@@ -48,10 +49,20 @@ export default async function DashboardLayout({
   const session = await auth()
 
   let trialDaysLeft: number | null = null
+  let cabinetForClient: CabinetClient = null
   if (session?.user?.cabinetId) {
+    // Une seule requête : on ramène à la fois les champs `plan*` pour le mur
+    // d'essai/suspension ci-dessous ET les champs publics côté UI client,
+    // exposés au CabinetProvider (élimine ~8 fetch('/api/cabinet') redondants
+    // sur l'arbre dashboard — voir commit perf P1).
     const cabinet = await prisma.cabinet.findUnique({
       where: { id: session.user.cabinetId },
-      select: { plan: true, planStatus: true, trialEndsAt: true, createdAt: true },
+      select: {
+        id: true, nom: true, adresse: true, ville: true,
+        telephone: true, email: true, whatsappNumber: true,
+        googleReviewLink: true, logoUrl: true, publicToken: true,
+        plan: true, planStatus: true, trialEndsAt: true, createdAt: true,
+      },
     })
     if (cabinet) {
       const pathname = (await headers()).get('x-pathname') ?? ''
@@ -66,25 +77,36 @@ export default async function DashboardLayout({
       const state = getPlanState(cabinet)
       if (state === 'trial_expired' && !exempt) redirect('/abonnement')
       if (state === 'trialing') trialDaysLeft = getTrialDaysLeft(cabinet.trialEndsAt)
+
+      cabinetForClient = {
+        id: cabinet.id, nom: cabinet.nom,
+        adresse: cabinet.adresse, ville: cabinet.ville,
+        telephone: cabinet.telephone, email: cabinet.email,
+        whatsappNumber: cabinet.whatsappNumber,
+        googleReviewLink: cabinet.googleReviewLink,
+        logoUrl: cabinet.logoUrl, publicToken: cabinet.publicToken,
+      }
     }
   }
 
   const contactUrl = buildContactCtaUrl((await getAppConfig()).supportWhatsapp)
 
   return (
-    <SidebarProvider>
-      <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-        {trialDaysLeft !== null && <TrialBanner daysLeft={trialDaysLeft} contactUrl={contactUrl} />}
-        <FeedbackNotificationBar />
-        <div className="flex flex-1" style={{ position: 'relative' }}>
-          <Sidebar />
-          <div className="main-content flex-1">
-            {children}
+    <CabinetProvider cabinet={cabinetForClient}>
+      <SidebarProvider>
+        <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+          {trialDaysLeft !== null && <TrialBanner daysLeft={trialDaysLeft} contactUrl={contactUrl} />}
+          <FeedbackNotificationBar />
+          <div className="flex flex-1" style={{ position: 'relative' }}>
+            <Sidebar />
+            <div className="main-content flex-1">
+              {children}
+            </div>
           </div>
         </div>
-      </div>
-      <MobileBottomNav />
-      <InstallPrompt />
-    </SidebarProvider>
+        <MobileBottomNav />
+        <InstallPrompt />
+      </SidebarProvider>
+    </CabinetProvider>
   )
 }

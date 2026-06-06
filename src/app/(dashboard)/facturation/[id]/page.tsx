@@ -11,6 +11,7 @@ import PaymentModal from '@/components/facturation/PaymentModal'
 import DeleteFactureModal from '@/components/facturation/DeleteFactureModal'
 import { useCan } from '@/lib/use-permissions'
 import { useRouter } from 'next/navigation'
+import { useCabinetFull } from '@/lib/use-cabinet-nom'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://kinepro-omega.vercel.app'
 
@@ -18,7 +19,7 @@ export default function FactureDetailPage({ params }: { params: Promise<{ id: st
   const { id } = usePromise(params)
 
   const [facture, setFacture] = useState<any>(null)
-  const [cabinet, setCabinet] = useState<any>(null)
+  const cabinet = useCabinetFull()
   const [loading, setLoading] = useState(true)
   const [showPayment, setShowPayment] = useState(false)
   const [showDelete, setShowDelete] = useState(false)
@@ -39,7 +40,6 @@ export default function FactureDetailPage({ params }: { params: Promise<{ id: st
   }
 
   useEffect(() => { load() }, [id])
-  useEffect(() => { fetch('/api/cabinet').then(r => r.json()).then(setCabinet).catch(() => {}) }, [])
 
   const reste = useMemo(() => facture ? Math.max(0, facture.montant - (facture.montantPaye ?? 0)) : 0, [facture])
   const pct   = useMemo(() => facture && facture.montant > 0 ? Math.min(100, (facture.montantPaye / facture.montant) * 100) : 0, [facture])

@@ -8,6 +8,7 @@ import {
   Wallet, Calendar, CheckCircle2, Users, Activity, Star, ChevronDown,
 } from 'lucide-react'
 import { generateRapportComplet } from '@/lib/pdf-utils'
+import { useCabinetFull } from '@/lib/use-cabinet-nom'
 import {
   LineChart, Line, BarChart, Bar, AreaChart, Area, PieChart, Pie,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell,
@@ -130,7 +131,7 @@ export default function RapportsPage() {
   const [praticienId, setPraticienId] = useState<string>('all')
 
   const [stats, setStats]     = useState<any>(null)
-  const [cabinet, setCabinet] = useState<any>(null)
+  const cabinet = useCabinetFull()
   const [loading, setLoading] = useState(true)
   const [sortKey, setSortKey] = useState<string>('revenus')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
@@ -144,10 +145,6 @@ export default function RapportsPage() {
       .then(d => { setStats(d); setLoading(false) })
       .catch(() => setLoading(false))
   }, [from, to, praticienId])
-
-  useEffect(() => {
-    fetch('/api/cabinet').then(r => r.json()).then(setCabinet).catch(() => {})
-  }, [])
 
   const years = Array.from({ length: 5 }, (_, i) => now.getFullYear() - 2 + i)
   const praticienName = praticienId === 'all'
