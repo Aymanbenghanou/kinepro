@@ -58,7 +58,10 @@ export default function FacturationPage() {
   const [showCreate, setShowCreate] = useState(false)
   const [showAutocomplete, setShowAutocomplete] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [form, setForm] = useState({ patientId: '', montant: '', statut: 'en_attente' })
+  const [form, setForm] = useState({ patientId: '', seanceId: '', montant: '', statut: 'en_attente' })
+  // Séances du patient choisi dans le modal — chargées dynamiquement.
+  const [patientSeances, setPatientSeances] = useState<any[]>([])
+  const [seancesLoading, setSeancesLoading] = useState(false)
 
   const [qrFacture, setQrFacture] = useState<{ url: string; title: string } | null>(null)
   const [paymentFor, setPaymentFor] = useState<any>(null)
@@ -111,16 +114,61 @@ export default function FacturationPage() {
     setSearch(''); setStatut('all'); setFrom(''); setTo(''); setPraticienId('all')
   }
 
+  // Charge les séances d'un patient et reset seanceId/montant à chaque
+  // changement de patient dans le modal "Créer une facture".
+  useEffect(() => {
+    if (!showCreate || !form.patientId) {
+      setPatientSeances([])
+      return
+    }
+    let alive = true
+    setSeancesLoading(true)
+    fetch(`/api/seances?patientId=${encodeURIComponent(form.patientId)}`)
+      .then(r => r.json())
+      .then(data => {
+        if (!alive) return
+        setPatientSeances(Array.isArray(data) ? data : [])
+      })
+      .catch(() => { if (alive) setPatientSeances([]) })
+      .finally(() => { if (alive) setSeancesLoading(false) })
+    return () => { alive = false }
+  }, [showCreate, form.patientId])
+
+  // Tarif déduit : priorité seanceType.tarifDefaut → Patient.tarifSeance.
+  // Retourne null si rien d'exploitable → l'utilisateur saisit à la main.
+  function tarifPourSeance(seanceId: string): number | null {
+    const s = patientSeances.find(x => x.id === seanceId)
+    if (s?.seanceType?.tarifDefaut != null) return Number(s.seanceType.tarifDefaut)
+    const p = patients.find(x => x.id === form.patientId)
+    if (p?.tarifSeance != null) return Number(p.tarifSeance)
+    return null
+  }
+
+  function handleSeanceChange(seanceId: string) {
+    const tarif = tarifPourSeance(seanceId)
+    setForm(f => ({
+      ...f,
+      seanceId,
+      montant: tarif != null ? String(tarif) : f.montant,
+    }))
+  }
+
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
+    if (!form.patientId || !form.seanceId) return
     setSaving(true)
     try {
       await fetch('/api/facturation', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ patientId: form.patientId, montant: parseFloat(form.montant) }),
+        body: JSON.stringify({
+          patientId: form.patientId,
+          seanceId:  form.seanceId,
+          montant:   parseFloat(form.montant),
+        }),
       })
       setShowCreate(false)
-      setForm({ patientId: '', montant: '', statut: 'en_attente' })
+      setForm({ patientId: '', seanceId: '', montant: '', statut: 'en_attente' })
+      setPatientSeances([])
       fetchFactures()
       showToast('Facture créée ✓')
     } finally { setSaving(false) }
@@ -290,18 +338,72 @@ export default function FacturationPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div>
                 <label style={lbl}>Patient *</label>
-                <select value={form.patientId} onChange={e => setForm(f => ({ ...f, patientId: e.target.value }))} required style={input}>
+                <select
+                  value={form.patientId}
+                  onChange={e => setForm(f => ({ ...f, patientId: e.target.value, seanceId: '', montant: '' }))}
+                  required
+                  style={input}
+                >
                   <option value="">Sélectionner un patient</option>
                   {patients.map(p => <option key={p.id} value={p.id}>{p.prenom} {p.nom}</option>)}
                 </select>
               </div>
               <div>
-                <label style={lbl}>Montant (MAD) *</label>
-                <input type="number" min={0} step="0.01" value={form.montant} onChange={e => setForm(f => ({ ...f, montant: e.target.value }))} required style={input} placeholder="Ex: 350" />
+                <label style={lbl}>Séance *</label>
+                <select
+                  value={form.seanceId}
+                  onChange={e => handleSeanceChange(e.target.value)}
+                  required
+                  disabled={!form.patientId || seancesLoading}
+                  style={{ ...input, opacity: !form.patientId ? 0.6 : 1 }}
+                >
+                  <option value="">
+                    {!form.patientId
+                      ? 'Choisir un patient d\'abord'
+                      : seancesLoading
+                        ? 'Chargement…'
+                        : patientSeances.length === 0
+                          ? 'Aucune séance pour ce patient'
+                          : 'Sélectionner une séance'}
+                  </option>
+                  {patientSeances.map((s: any) => {
+                    const d = new Date(s.date)
+                    const dateStr = d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
+                    const tarif = s.seanceType?.tarifDefaut
+                    return (
+                      <option key={s.id} value={s.id}>
+                        {dateStr} · {s.typeSeance}
+                        {tarif != null ? ` · ${tarif} MAD` : ''}
+                      </option>
+                    )
+                  })}
+                </select>
+              </div>
+              <div>
+                <label style={lbl}>
+                  Montant (MAD) *
+                  {form.seanceId && tarifPourSeance(form.seanceId) != null && (
+                    <span style={{ fontWeight: 400, color: '#64748B', marginLeft: 6, fontSize: 12 }}>
+                      (pré-rempli — modifiable)
+                    </span>
+                  )}
+                </label>
+                <input
+                  type="number" min={0} step="0.01"
+                  value={form.montant}
+                  onChange={e => setForm(f => ({ ...f, montant: e.target.value }))}
+                  required
+                  style={input}
+                  placeholder="Ex: 350"
+                />
               </div>
               <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
                 <button type="button" onClick={() => setShowCreate(false)} style={{ flex: 1, ...btnSecondary }}>Annuler</button>
-                <button type="submit" disabled={saving} style={{ ...btnPrimary, flex: 2 }}>
+                <button
+                  type="submit"
+                  disabled={saving || !form.patientId || !form.seanceId || !form.montant}
+                  style={{ ...btnPrimary, flex: 2, opacity: (!form.patientId || !form.seanceId || !form.montant) ? 0.6 : 1 }}
+                >
                   {saving ? 'Création…' : <><CheckCircle2 size={15} /> Créer</>}
                 </button>
               </div>

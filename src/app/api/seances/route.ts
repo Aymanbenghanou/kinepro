@@ -45,8 +45,12 @@ export async function GET(request: NextRequest) {
         ...dateFilter,
       },
       include: {
-        patient:   { select: { id: true, nom: true, prenom: true } },
-        praticien: { select: { id: true, nom: true, prenom: true, couleur: true } },
+        patient:    { select: { id: true, nom: true, prenom: true } },
+        praticien:  { select: { id: true, nom: true, prenom: true, couleur: true } },
+        // Tarif exposé pour le modal "Créer facture" (auto-fill montant).
+        // Champ optionnel : si la séance n'est pas liée à un SeanceType, le
+        // client retombe sur Patient.tarifSeance puis saisie manuelle.
+        seanceType: { select: { id: true, nom: true, tarifDefaut: true } },
       },
       orderBy: { date: 'desc' },
       ...(take !== undefined ? { take } : {}),
