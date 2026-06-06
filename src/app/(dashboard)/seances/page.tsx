@@ -67,14 +67,10 @@ export default function SeancesPage() {
   const [showModal, setShowModal] = useState(false)
   const [selectedSeance, setSelectedSeance] = useState<any>(null)
   const [progScores, setProgScores] = useState({ douleur: 5, mobilite: 5, force: 5, notes: '' })
-  const [savingScores, setSavingScores] = useState(false)
-  const [scoresSaved, setScoresSaved] = useState(false)
   const [terminating, setTerminating] = useState(false)
   const [terminateDone, setTerminateDone] = useState(false)
   // Statut choisi dans la modal Terminer (radio buttons).
   const [terminerStatut, setTerminerStatut] = useState<SeanceStatut>(SeanceStatut.realisee)
-  // Fenêtre d'édition des scores après réalisation : 24h après seanceEndTime.
-  const EDIT_WINDOW_MS = 24 * 60 * 60 * 1000
   const [filterPatient, setFilterPatient]   = useState('')
   const [filterPraticien, setFilterPraticien] = useState('')
   const [filterStatut, setFilterStatut]     = useState('')
@@ -165,56 +161,10 @@ export default function SeancesPage() {
         force:    selectedSeance.forceScore    ?? 5,
         notes:    selectedSeance.notesProgression ?? '',
       })
-      setScoresSaved(false)
       setTerminateDone(false)
       setTerminerStatut(SeanceStatut.realisee)
     }
   }, [selectedSeance])
-
-  // Fenêtre 24h après seanceEndTime (= completedAt sémantique).
-  function withinEditWindow(s: any): boolean {
-    if (!s || s.statut !== SeanceStatut.realisee || !s.seanceEndTime) return false
-    return Date.now() - new Date(s.seanceEndTime).getTime() <= EDIT_WINDOW_MS
-  }
-  function editWindowEnd(s: any): Date | null {
-    return s?.seanceEndTime ? new Date(new Date(s.seanceEndTime).getTime() + EDIT_WINDOW_MS) : null
-  }
-
-  // PATCH /api/seances/[id]/scores — édition des scores cliniques pendant la
-  // fenêtre 24h après réalisation. Pas de modification du statut.
-  async function saveProgScores() {
-    if (!selectedSeance) return
-    setSavingScores(true)
-    try {
-      const res = await fetch(`/api/seances/${selectedSeance.id}/scores`, {
-        method:  'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({
-          douleurScore:     progScores.douleur,
-          mobiliteScore:    progScores.mobilite,
-          forceScore:       progScores.force,
-          notesProgression: progScores.notes || null,
-        }),
-      })
-      if (res.ok) {
-        const updated = await res.json()
-        setSelectedSeance((prev: any) => ({ ...prev, ...updated }))
-        setScoresSaved(true)
-        fetchData()
-      } else {
-        const err = await res.json().catch(() => ({}))
-        const msg = err?.error === 'scores_locked'
-          ? 'Fenêtre d\'édition de 24h dépassée.'
-          : err?.error === 'not_realisee'
-            ? 'Cette séance n\'est pas réalisée.'
-            : err?.message || 'Impossible d\'enregistrer les scores'
-        setToast({ message: msg, type: 'error' })
-      }
-    } catch {
-      setToast({ message: 'Erreur réseau', type: 'error' })
-    }
-    setSavingScores(false)
-  }
 
   // PATCH /api/seances/[id]/terminer — finalise une séance planifiee avec le
   // statut choisi (radio). Scores envoyés uniquement si statut === realisee.
@@ -553,56 +503,48 @@ export default function SeancesPage() {
                 </div>
               )}
 
-              {/* Scores de progression — édition gated par la fenêtre 24h.
-                  Au-delà, affichage read-only avec mention du verrouillage. */}
+              {/* Scores de progression — read-only. La saisie se fait UNE SEULE FOIS
+                  dans le bloc "TERMINER LA SÉANCE" ci-dessus. Ici on n'affiche que
+                  les valeurs déjà persistées (douleurScore/mobiliteScore/forceScore
+                  /notesProgression), ou un état neutre si rien n'a été saisi. */}
               {selectedSeance.statut === SeanceStatut.realisee && (() => {
-                const editable = canTerminer && withinEditWindow(selectedSeance)
-                const lockDate = editWindowEnd(selectedSeance)
+                const d = selectedSeance.douleurScore
+                const m = selectedSeance.mobiliteScore
+                const f = selectedSeance.forceScore
+                const notes = selectedSeance.notesProgression
+                const hasAnyScore = d != null || m != null || f != null
                 return (
                   <div style={{ marginTop: 8, padding: 14, background: '#F0FDF4', borderRadius: 10, borderLeft: '3px solid #16A34A' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                      <div style={{ fontSize: 12, color: '#166534', fontWeight: 700 }}>📈 SCORES DE PROGRESSION</div>
-                      {editable && lockDate && (
-                        <div style={{ fontSize: 10, color: '#166534', fontWeight: 600 }}>
-                          Modifiable jusqu'au {lockDate.toLocaleString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                        </div>
-                      )}
-                      {!editable && canTerminer && (
-                        <div style={{ fontSize: 10, color: '#94A3B8', fontWeight: 600 }}>🔒 Verrouillés (fenêtre 24h dépassée)</div>
-                      )}
+                    <div style={{ fontSize: 12, color: '#166534', fontWeight: 700, marginBottom: 12 }}>
+                      📈 SCORES DE PROGRESSION
                     </div>
-                    {(['douleur', 'mobilite', 'force'] as const).map(key => {
-                      const labels: Record<string, string> = { douleur: '🔴 Douleur', mobilite: '🔵 Mobilité', force: '🟢 Force' }
-                      const colors: Record<string, string> = { douleur: '#DC2626', mobilite: '#2563EB', force: '#16A34A' }
-                      return (
-                        <div key={key} style={{ marginBottom: 12 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                            <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>{labels[key]}</span>
-                            <span style={{ fontSize: 14, fontWeight: 800, color: colors[key] }}>{progScores[key]}<span style={{ fontSize: 10, color: '#94A3B8' }}>/10</span></span>
-                          </div>
-                          <input type="range" min={0} max={10} value={progScores[key]}
-                            disabled={!editable}
-                            onChange={e => setProgScores(s => ({ ...s, [key]: Number(e.target.value) }))}
-                            style={{ width: '100%', accentColor: colors[key], opacity: editable ? 1 : 0.6 }}
-                          />
+                    {hasAnyScore ? (
+                      <>
+                        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: notes ? 12 : 0 }}>
+                          {([
+                            { key: 'douleur',  label: '🔴 Douleur',  value: d, color: '#DC2626', bg: '#FEE2E2' },
+                            { key: 'mobilite', label: '🔵 Mobilité', value: m, color: '#2563EB', bg: '#DBEAFE' },
+                            { key: 'force',    label: '🟢 Force',    value: f, color: '#16A34A', bg: '#DCFCE7' },
+                          ] as const).map(s => (
+                            <div key={s.key} style={{ flex: '1 1 120px', background: s.bg, borderRadius: 8, padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                              <span style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>{s.label}</span>
+                              <span style={{ fontSize: 16, fontWeight: 800, color: s.color }}>
+                                {s.value != null ? s.value : '—'}
+                                <span style={{ fontSize: 10, color: '#94A3B8', marginLeft: 2 }}>/10</span>
+                              </span>
+                            </div>
+                          ))}
                         </div>
-                      )
-                    })}
-                    <textarea
-                      value={progScores.notes}
-                      onChange={e => setProgScores(s => ({ ...s, notes: e.target.value }))}
-                      placeholder="Notes de progression..."
-                      rows={2}
-                      disabled={!editable}
-                      style={{ width: '100%', padding: '8px 10px', border: '1px solid #BBF7D0', borderRadius: 8, fontSize: 12, resize: 'vertical', marginBottom: 10, boxSizing: 'border-box', background: editable ? 'white' : '#F8FAFC' }}
-                    />
-                    {editable && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <button onClick={saveProgScores} disabled={savingScores}
-                          style={{ padding: '8px 16px', background: savingScores ? '#86EFAC' : '#16A34A', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 12 }}>
-                          {savingScores ? 'Enregistrement...' : 'Enregistrer scores'}
-                        </button>
-                        {scoresSaved && <span style={{ fontSize: 12, color: '#16A34A', fontWeight: 600 }}>✅ Enregistré</span>}
+                        {notes && (
+                          <div style={{ fontSize: 12, color: '#166534', lineHeight: 1.6, whiteSpace: 'pre-wrap', background: 'white', padding: '8px 10px', borderRadius: 6, border: '1px solid #BBF7D0' }}>
+                            <span style={{ color: '#65A30D', fontWeight: 600 }}>Notes : </span>
+                            {notes}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div style={{ fontSize: 13, color: '#65A30D', fontStyle: 'italic' }}>
+                        Aucun score renseigné au moment de la finalisation de la séance.
                       </div>
                     )}
                   </div>
