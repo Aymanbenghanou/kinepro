@@ -26,8 +26,12 @@ export default async function middleware(req: NextRequest) {
   // Root landing page — always public (no redirect even if logged in)
   if (pathname === '/') return NextResponse.next()
 
-  // Fully open routes — no auth, no redirect even when logged in
-  const openPaths = ['/cabinet', '/scan', '/booking', '/checkin', '/patient-public', '/feedback', '/legal', '/privacy', '/terms']
+  // Fully open routes — no auth, no redirect even when logged in.
+  // `/api/feedback` est inclus : la page publique `/feedback/<token>` ne
+  // peut soumettre vers `/api/feedback/submit` que si l'API est aussi
+  // publique. Les routes API conservent leur rate-limit (publicLimiter)
+  // et un check de validité du token côté handler.
+  const openPaths = ['/cabinet', '/scan', '/booking', '/checkin', '/patient-public', '/feedback', '/api/feedback', '/legal', '/privacy', '/terms']
   if (openPaths.some(p => pathname.startsWith(p))) {
     return NextResponse.next()
   }

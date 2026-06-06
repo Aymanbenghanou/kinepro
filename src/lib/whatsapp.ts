@@ -102,18 +102,13 @@ export function msgFeedbackAuto(p: {
   nomCabinet?: string | null
 }): string {
   const cab = cabinetLabel(p.nomCabinet)
-  const sep = p.feedbackUrl.includes('?') ? '&' : '?'
-  const urlOui = `${p.feedbackUrl}${sep}r=oui`
-  const urlNon = `${p.feedbackUrl}${sep}r=non`
   return `Bonjour ${p.prenom} \u{1F44B}
 
-Votre séance au *${cab}* est terminée. Êtes-vous satisfait(e) ?
+Merci pour votre séance au *${cab}* aujourd'hui.
 
-\u{2705} Oui :
-${urlOui}
+Pouvez-vous nous donner votre avis en 30 secondes \u{1F64F} ?
 
-\u{274C} Non :
-${urlNon}
+\u{1F449} ${p.feedbackUrl}
 
 Merci pour votre confiance \u{1F499}
 *${cab}*`

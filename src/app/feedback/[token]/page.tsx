@@ -1,133 +1,157 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams, useSearchParams } from 'next/navigation'
+import { useParams } from 'next/navigation'
 
-type Status =
-  | 'idle'           // initial / no ?r param
-  | 'loading'        // calling /api/feedback/submit
-  | 'thanks_oui'     // Oui sans googleMapsLink → remerciement
-  | 'thanks_non'     // Non → remerciement empathique
-  | 'redirecting'    // Oui avec googleMapsLink → redirection Google en cours
-  | 'error'
+type Status = 'idle' | 'loading' | 'thanks' | 'redirecting' | 'error'
 
 /**
- * Valide qu'une URL est http(s) avant redirection — anti open-redirect.
- * On accepte http et https uniquement ; tout autre protocole (javascript:,
- * data:, file:, etc.) est rejeté.
+ * Normalise une URL stockée en base :
+ *   - trim espaces
+ *   - si pas de schéma "http(s)://" → préfixe "https://"
+ *   - parse et accepte UNIQUEMENT http: ou https: (anti open-redirect)
+ *
+ * Retourne l'URL normalisée prête pour `window.location.replace`, ou
+ * `null` si elle est invalide / d'un protocole interdit.
  */
-function isSafeHttpUrl(u: string | null | undefined): u is string {
-  if (typeof u !== 'string' || !u.trim()) return false
+function safeNormalizeUrl(raw: string | null | undefined): string | null {
+  if (typeof raw !== 'string') return null
+  const trimmed = raw.trim()
+  if (!trimmed) return null
+  // Tolère "maps.app.goo.gl/...", "www.example.com/...", "g.page/..." en
+  // ajoutant https:// si aucun schéma n'est présent.
+  const withScheme = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`
   try {
-    const url = new URL(u.trim())
-    return url.protocol === 'http:' || url.protocol === 'https:'
+    const u = new URL(withScheme)
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null
+    return u.toString()
   } catch {
-    return false
+    return null
   }
 }
 
 export default function FeedbackPage() {
   const { token } = useParams<{ token: string }>()
-  const searchParams = useSearchParams()
-  const r = searchParams.get('r')
-
+  const [score, setScore]   = useState<number | null>(null)
   const [status, setStatus] = useState<Status>('idle')
   const [errorMsg, setErrorMsg] = useState('')
+  // Lien Google pré-chargé au mount via GET /api/feedback/[token].
+  // Sert au redirect même si le POST submit plante côté réseau.
+  const [prefetchedLink, setPrefetchedLink] = useState<string | null>(null)
+  const [tokenValid, setTokenValid] = useState<boolean | null>(null)
 
-  useEffect(() => {
-    document.title = 'Votre avis — KinéPro'
-  }, [])
+  useEffect(() => { document.title = 'Votre avis — KinéPro' }, [])
 
+  // Pré-chargement du contexte token + lien Google.
   useEffect(() => {
-    if (r !== 'oui' && r !== 'non') return
     if (!token) return
-
     let cancelled = false
-    const submit = async () => {
-      setStatus('loading')
-      try {
-        const res = await fetch('/api/feedback/submit', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token, reponse: r }),
-        })
-        const data = await res.json().catch(() => ({}))
+    fetch(`/api/feedback/${token}`)
+      .then(r => r.json())
+      .then(d => {
         if (cancelled) return
-
-        if (!res.ok) {
-          setErrorMsg(data?.error || 'Erreur')
-          setStatus('error')
-          return
-        }
-
-        // Si Oui ET googleMapsLink valide → redirection immédiate.
-        if (r === 'oui' && isSafeHttpUrl(data?.googleMapsLink)) {
-          setStatus('redirecting')
-          // petit délai pour laisser le navigateur peindre l'écran "Merci"
-          // pendant qu'il ouvre Google.
-          window.location.replace(data.googleMapsLink as string)
-          return
-        }
-
-        setStatus(r === 'oui' ? 'thanks_oui' : 'thanks_non')
-      } catch {
-        if (!cancelled) {
-          setErrorMsg('Erreur réseau. Veuillez réessayer.')
-          setStatus('error')
-        }
-      }
-    }
-    submit()
+        setTokenValid(!!d?.valid)
+        setPrefetchedLink(typeof d?.googleMapsLink === 'string' ? d.googleMapsLink : null)
+      })
+      .catch(() => {
+        if (!cancelled) setTokenValid(null) // garde l'incertitude, ne bloque pas la saisie
+      })
     return () => { cancelled = true }
-  }, [r, token])
+  }, [token])
 
-  // ─── Pas de param r → accueil neutre ────────────────────────────────────
-  if (r !== 'oui' && r !== 'non') {
+  async function handleSubmit() {
+    if (!score || !token) return
+    setStatus('loading')
+
+    // Calcule l'URL de redirection POTENTIELLE (basée sur le link pré-chargé)
+    // avant même de tenter le POST. Si le POST échoue côté réseau ET que le
+    // score est éligible, on rediriger quand même.
+    const eligibleForGoogle = score >= 8
+    const fallbackRedirect  = eligibleForGoogle ? safeNormalizeUrl(prefetchedLink) : null
+
+    try {
+      const res = await fetch('/api/feedback/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, score }),
+      })
+      const data = await res.json().catch(() => ({}))
+
+      if (!res.ok) {
+        // 400/404/500 → erreur métier. On n'utilise pas le fallback car
+        // l'erreur peut être "token invalide" → ne PAS rediriger.
+        setErrorMsg(data?.error || 'Erreur')
+        setStatus('error')
+        return
+      }
+
+      const link = safeNormalizeUrl(data?.googleMapsLink) || fallbackRedirect
+      if (eligibleForGoogle && link) {
+        setStatus('redirecting')
+        window.location.replace(link)
+        return
+      }
+      setStatus('thanks')
+    } catch {
+      // Erreur réseau : si éligible et qu'on a un lien pré-chargé valide,
+      // on tente la redirection quand même.
+      if (eligibleForGoogle && fallbackRedirect) {
+        setStatus('redirecting')
+        window.location.replace(fallbackRedirect)
+        return
+      }
+      setErrorMsg('Erreur réseau. Veuillez réessayer.')
+      setStatus('error')
+    }
+  }
+
+  // ─── Token invalide (confirmé par le GET au mount) ───────────────────────
+  if (tokenValid === false) {
     return (
       <div style={pageWrap}>
         <Logo />
         <div style={card}>
-          <h1 style={h1}>Votre avis nous intéresse</h1>
-          <p style={p}>
-            Ouvrez le message WhatsApp que nous vous avons envoyé et cliquez
-            sur <strong>Oui</strong> ou <strong>Non</strong> pour répondre.
-          </p>
+          <div style={{ fontSize: 48, textAlign: 'center', marginBottom: 16 }}>⚠️</div>
+          <h1 style={h1}>Lien invalide</h1>
+          <p style={p}>Ce lien de feedback n'est plus valide. Contactez votre cabinet si besoin.</p>
         </div>
         <Footer />
       </div>
     )
   }
 
-  // ─── Loading / Redirecting ───────────────────────────────────────────────
-  if (status === 'loading' || status === 'redirecting') {
+  // ─── Redirecting ────────────────────────────────────────────────────────
+  if (status === 'redirecting') {
     return (
       <div style={pageWrap}>
         <Logo />
         <div style={card}>
-          <div style={{ fontSize: 48, textAlign: 'center', marginBottom: 16 }}>⏳</div>
+          <div style={{ fontSize: 48, textAlign: 'center', marginBottom: 16 }}>🙏</div>
+          <h1 style={h1}>Merci ! Redirection…</h1>
+          <p style={p}>Nous vous ouvrons Google pour laisser un avis.</p>
+        </div>
+        <Footer />
+      </div>
+    )
+  }
+
+  // ─── Thanks (score < 8 ou ≥ 8 sans link) ────────────────────────────────
+  if (status === 'thanks') {
+    const lowScore = (score ?? 10) <= 7
+    return (
+      <div style={pageWrap}>
+        <Logo />
+        <div style={card}>
+          <div style={{ fontSize: 56, textAlign: 'center', marginBottom: 16 }}>
+            {lowScore ? '💙' : '🙏'}
+          </div>
           <h1 style={h1}>
-            {status === 'redirecting' ? 'Merci ! Redirection…' : 'Enregistrement…'}
+            {lowScore ? "Merci d'avoir partagé" : 'Merci pour votre retour !'}
           </h1>
-          {status === 'redirecting' && (
-            <p style={p}>Nous vous ouvrons Google pour laisser un avis 🙏</p>
-          )}
-        </div>
-        <Footer />
-      </div>
-    )
-  }
-
-  // ─── Oui sans googleMapsLink → remerciement simple ───────────────────────
-  if (status === 'thanks_oui') {
-    return (
-      <div style={pageWrap}>
-        <Logo />
-        <div style={card}>
-          <div style={{ fontSize: 56, textAlign: 'center', marginBottom: 16 }}>🙏</div>
-          <h1 style={h1}>Merci pour votre retour !</h1>
           <p style={p}>
-            Nous sommes ravis que votre séance se soit bien passée.<br />
-            À très bientôt au cabinet !
+            {lowScore
+              ? "Votre praticien en est informé et reviendra vers vous pour adapter votre prise en charge."
+              : "Votre avis nous aide à améliorer nos soins. À très bientôt au cabinet !"}
           </p>
         </div>
         <Footer />
@@ -135,40 +159,108 @@ export default function FeedbackPage() {
     )
   }
 
-  // ─── Non → remerciement empathique ───────────────────────────────────────
-  if (status === 'thanks_non') {
+  // ─── Erreur ──────────────────────────────────────────────────────────────
+  if (status === 'error') {
     return (
       <div style={pageWrap}>
         <Logo />
         <div style={card}>
-          <div style={{ fontSize: 56, textAlign: 'center', marginBottom: 16 }}>💙</div>
-          <h1 style={h1}>Merci d'avoir partagé</h1>
-          <p style={p}>
-            Nous sommes désolés que cette séance ne vous ait pas pleinement
-            satisfait(e). Votre praticien en est informé et reviendra vers
-            vous pour adapter votre prise en charge.
-          </p>
+          <div style={{ fontSize: 48, textAlign: 'center', marginBottom: 16 }}>⚠️</div>
+          <h1 style={h1}>Une erreur est survenue</h1>
+          <p style={p}>{errorMsg || 'Veuillez réessayer dans un instant.'}</p>
         </div>
         <Footer />
       </div>
     )
   }
 
-  // ─── Erreur ───────────────────────────────────────────────────────────────
+  // ─── Saisie du score ─────────────────────────────────────────────────────
+  const loading = status === 'loading'
   return (
     <div style={pageWrap}>
       <Logo />
       <div style={card}>
-        <div style={{ fontSize: 48, textAlign: 'center', marginBottom: 16 }}>⚠️</div>
-        <h1 style={h1}>Une erreur est survenue</h1>
-        <p style={p}>{errorMsg || 'Veuillez réessayer dans un instant.'}</p>
+        <h1 style={{ ...h1, marginBottom: 8 }}>Comment s'est passée votre séance ?</h1>
+        <p style={{ ...p, marginBottom: 24 }}>
+          Notez votre satisfaction de 1 à 10
+        </p>
+
+        {/* Grille 1-10 — adaptée mobile (5x2) */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(5, 1fr)',
+          gap: 8,
+          marginBottom: 20,
+        }}>
+          {Array.from({ length: 10 }, (_, i) => i + 1).map(n => {
+            const active = score === n
+            const baseColor = n >= 8 ? '#16A34A' : n >= 5 ? '#F59E0B' : '#DC2626'
+            return (
+              <button
+                key={n}
+                disabled={loading}
+                onClick={() => setScore(n)}
+                style={{
+                  aspectRatio: '1',
+                  borderRadius: 10,
+                  border: active ? `2px solid ${baseColor}` : '1px solid #E2E8F0',
+                  background: active ? baseColor : '#F8FAFC',
+                  color: active ? 'white' : '#475569',
+                  fontSize: 18,
+                  fontWeight: 700,
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.15s',
+                  transform: active ? 'scale(1.05)' : 'scale(1)',
+                  boxShadow: active ? `0 4px 12px ${baseColor}55` : 'none',
+                }}
+              >
+                {n}
+              </button>
+            )
+          })}
+        </div>
+
+        {score !== null && (
+          <p style={{
+            textAlign: 'center', margin: '0 0 20px',
+            color: score >= 8 ? '#16A34A' : score >= 5 ? '#D97706' : '#DC2626',
+            fontWeight: 600, fontSize: 14,
+          }}>
+            {score >= 8 ? '😊 Très satisfait(e)'
+              : score >= 5 ? '😐 Mitigé(e)'
+              : '😞 Insatisfait(e)'} — {score}/10
+          </p>
+        )}
+
+        <button
+          onClick={handleSubmit}
+          disabled={!score || loading}
+          style={{
+            width: '100%',
+            padding: '13px',
+            borderRadius: 10,
+            border: 'none',
+            background: !score ? '#E2E8F0' : '#2563EB',
+            color: !score ? '#94A3B8' : 'white',
+            fontSize: 15,
+            fontWeight: 700,
+            cursor: !score || loading ? 'not-allowed' : 'pointer',
+            transition: 'all 0.2s',
+          }}
+        >
+          {loading ? '⏳ Envoi…' : '✉️ Envoyer mon avis'}
+        </button>
+
+        <p style={{ textAlign: 'center', color: '#94A3B8', fontSize: 11, marginTop: 12 }}>
+          Votre avis est confidentiel et ne sera partagé qu'avec votre praticien.
+        </p>
       </div>
       <Footer />
     </div>
   )
 }
 
-// ─── UI helpers ────────────────────────────────────────────────────────────
+// ─── UI helpers ─────────────────────────────────────────────────────────────
 
 function Logo() {
   return (
@@ -206,18 +298,18 @@ const pageWrap: React.CSSProperties = {
 const card: React.CSSProperties = {
   background: 'white',
   borderRadius: 16,
-  padding: '32px 28px',
+  padding: '28px 24px',
   boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
   width: '100%',
-  maxWidth: 520,
+  maxWidth: 480,
 }
 
 const h1: React.CSSProperties = {
   textAlign: 'center', color: '#0F172A',
-  fontSize: 22, fontWeight: 700, margin: '0 0 12px',
+  fontSize: 20, fontWeight: 700, margin: '0 0 12px',
 }
 
 const p: React.CSSProperties = {
   textAlign: 'center', color: '#64748B',
-  fontSize: 15, lineHeight: 1.6, margin: 0,
+  fontSize: 14, lineHeight: 1.6, margin: 0,
 }

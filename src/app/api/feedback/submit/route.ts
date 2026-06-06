@@ -5,27 +5,31 @@ import { publicLimiter, checkRateLimit } from '@/lib/rate-limit'
 /**
  * POST /api/feedback/submit
  *
- * Nouveau flux : réponse binaire Oui/Non issue des liens dans le message
- * WhatsApp (cf. msgFeedbackAuto). Le score numérique 1-10 est supprimé.
+ * Body : { token: string, score: number (1-10) }.
  *
- * Stockage sans migration :
- *   - Feedback.score (Int requis) : Oui → 10, Non → 1. Conserve la
- *     compatibilité avec scoreCategory (>=8 excellent, <5 difficile)
- *     utilisé par les stats historiques du WhatsApp Center.
- *   - Seance.scorePatient : même mapping.
- *   - Seance.feedbackStatus : 'satisfait' | 'non_satisfait'.
+ * Stockage :
+ *   - Feedback.score    : score 1-10 brut.
+ *   - Seance.scorePatient : idem.
+ *   - Seance.feedbackStatus = 'sent', feedbackEnvoye = true,
+ *     dateFeedback = now().
  *
- * Idempotence : si le feedback est déjà soumis (feedbackEnvoye=true), on
- * renvoie 200 avec la réponse persistée + googleMapsLink (utile pour le cas
- * où le patient reclique le lien Oui après une 1re soumission).
+ * Idempotence : si déjà soumis, on renvoie 200 avec l'état persisté +
+ *   googleMapsLink (utile si le patient retombe sur la page).
+ *
+ * Réponse : { success, score, googleMapsLink, alreadySubmitted? }.
+ *   Le client redirige vers googleMapsLink si score >= 8 ET URL valide.
+ *
+ * La clé `googleMapsLink` est un identifiant de transport (contrat client).
+ * La source DB est Cabinet.googleReviewLink (cf. commit 9723ca9 / 63609e0).
  */
 export async function POST(request: NextRequest) {
   const rl = await checkRateLimit(request, publicLimiter); if (rl) return rl
   try {
     const body = await request.json()
-    const { token, reponse } = body as { token?: unknown; reponse?: unknown }
+    const { token, score } = body as { token?: unknown; score?: unknown }
 
-    if (typeof token !== 'string' || (reponse !== 'oui' && reponse !== 'non')) {
+    if (typeof token !== 'string' || typeof score !== 'number'
+        || !Number.isInteger(score) || score < 1 || score > 10) {
       return NextResponse.json({ error: 'Données invalides' }, { status: 400 })
     }
 
@@ -37,27 +41,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Lien invalide ou expiré' }, { status: 404 })
     }
 
-    // Source : Cabinet.googleReviewLink (colonne alimentée par le formulaire
-    // /parametres/cabinet). La clé JSON de réponse reste `googleMapsLink`
-    // pour ne pas casser les clients existants.
     const cab = await prisma.cabinet.findUnique({
       where: { id: seance.cabinetId },
       select: { googleReviewLink: true },
     })
     const googleMapsLink = cab?.googleReviewLink ?? null
 
-    // Idempotence : déjà soumis → on renvoie l'état actuel sans recréer.
+    // Idempotence : déjà soumis → retourne l'état persisté.
     if (seance.feedbackEnvoye) {
-      const satisfied = seance.feedbackStatus === 'satisfait'
       return NextResponse.json(
-        { success: true, alreadySubmitted: true, satisfied, googleMapsLink },
+        {
+          success: true,
+          alreadySubmitted: true,
+          score: seance.scorePatient ?? score,
+          googleMapsLink,
+        },
         { status: 200 },
       )
     }
-
-    const satisfied = reponse === 'oui'
-    const score = satisfied ? 10 : 1
-    const feedbackStatus = satisfied ? 'satisfait' : 'non_satisfait'
 
     const feedback = await prisma.feedback.create({
       data: {
@@ -73,7 +74,7 @@ export async function POST(request: NextRequest) {
     await prisma.seance.update({
       where: { id: seance.id },
       data: {
-        feedbackStatus,
+        feedbackStatus:  'sent',
         feedbackEnvoye:  true,
         dateFeedback:    new Date(),
         scorePatient:    score,
@@ -81,7 +82,7 @@ export async function POST(request: NextRequest) {
     })
 
     return NextResponse.json(
-      { success: true, satisfied, googleMapsLink, feedback },
+      { success: true, score, googleMapsLink, feedback },
       { status: 201 },
     )
   } catch (error) {
