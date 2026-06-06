@@ -22,6 +22,14 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search') || ''
     const statut = searchParams.get('statut') || ''
+    // Pagination — bornée par défaut pour éviter les payloads géants quand
+    // un cabinet a beaucoup de patients. `?take=all` désactive la borne
+    // (utilisé par les dropdowns qui ont vraiment besoin de la liste complète).
+    const takeParam = searchParams.get('take')
+    const skipParam = searchParams.get('skip')
+    const take = takeParam === 'all' ? undefined
+      : Math.max(1, Math.min(500, parseInt(takeParam ?? '100', 10) || 100))
+    const skip = Math.max(0, parseInt(skipParam ?? '0', 10) || 0)
 
     const patients = await prisma.patient.findMany({
       where: {
@@ -38,11 +46,16 @@ export async function GET(request: NextRequest) {
           statut === 'inactif' ? { actif: false } : {},
         ],
       },
+      // _count.seances remplace l'ancien `seances: { select: { id: true } }`
+      // qui ramenait potentiellement des dizaines de rows par patient pour
+      // un simple .length côté client.
       include: {
-        seances:    { select: { id: true } },
+        _count:     { select: { seances: true } },
         rendezVous: { orderBy: { date: 'desc' }, take: 1 },
       },
       orderBy: { createdAt: 'desc' },
+      ...(take !== undefined ? { take } : {}),
+      ...(skip > 0 ? { skip } : {}),
     })
 
     return NextResponse.json(patients)

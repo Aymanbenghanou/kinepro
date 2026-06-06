@@ -24,6 +24,17 @@ export async function GET(request: NextRequest) {
     const praticienId = searchParams.get('praticienId')
     const statutRaw   = searchParams.get('statut')
     const statut      = statutRaw && statutRaw in SeanceStatut ? statutRaw as SeanceStatut : null
+    const from        = searchParams.get('from')
+    const to          = searchParams.get('to')
+    const takeParam   = searchParams.get('take')
+    const skipParam   = searchParams.get('skip')
+    const take = takeParam === 'all' ? undefined
+      : Math.max(1, Math.min(1000, parseInt(takeParam ?? '200', 10) || 200))
+    const skip = Math.max(0, parseInt(skipParam ?? '0', 10) || 0)
+
+    const dateFilter = (from || to)
+      ? { date: { ...(from ? { gte: new Date(from) } : {}), ...(to ? { lte: new Date(to) } : {}) } }
+      : {}
 
     const seances = await prisma.seance.findMany({
       where: {
@@ -31,12 +42,15 @@ export async function GET(request: NextRequest) {
         ...(patientId   ? { patientId }   : {}),
         ...(praticienId ? { praticienId } : {}),
         ...(statut      ? { statut }      : {}),
+        ...dateFilter,
       },
       include: {
         patient:   { select: { id: true, nom: true, prenom: true } },
         praticien: { select: { id: true, nom: true, prenom: true, couleur: true } },
       },
       orderBy: { date: 'desc' },
+      ...(take !== undefined ? { take } : {}),
+      ...(skip > 0 ? { skip } : {}),
     })
     return NextResponse.json(seances)
   } catch (error) {

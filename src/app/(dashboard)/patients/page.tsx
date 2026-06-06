@@ -147,7 +147,7 @@ export default function PatientsPage() {
                   </td>
                   <td style={{ padding: '14px 16px' }}>
                     <span style={{ background: '#DBEAFE', color: '#2563EB', padding: '2px 8px', borderRadius: 999, fontSize: 12, fontWeight: 600 }}>
-                      {p.seances?.length || 0}
+                      {p._count?.seances ?? p.seances?.length ?? 0}
                     </span>
                   </td>
                   <td style={{ padding: '14px 16px' }}><StatusBadge actif={p.actif} /></td>

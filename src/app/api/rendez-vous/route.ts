@@ -28,21 +28,31 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const date          = searchParams.get('date')
     const queryPraticien = searchParams.get('praticienId')
+    const from          = searchParams.get('from')
+    const to            = searchParams.get('to')
+    const takeParam     = searchParams.get('take')
+    const skipParam     = searchParams.get('skip')
+    const take = takeParam === 'all' ? undefined
+      : Math.max(1, Math.min(1000, parseInt(takeParam ?? '300', 10) || 300))
+    const skip = Math.max(0, parseInt(skipParam ?? '0', 10) || 0)
 
     // PRATICIEN : on ignore le filtre client, on impose son propre id.
     const effectivePraticienFilter = role === 'PRATICIEN'
       ? sessionPraticienId
       : queryPraticien
 
+    // `date` (jour exact) reste prioritaire ; sinon une plage `from`/`to`
+    // optionnelle peut être passée par les nouveaux call sites paginés.
+    const dateFilter = date
+      ? { date: { gte: new Date(date + 'T00:00:00'), lte: new Date(date + 'T23:59:59') } }
+      : (from || to)
+        ? { date: { ...(from ? { gte: new Date(from) } : {}), ...(to ? { lte: new Date(to) } : {}) } }
+        : {}
+
     const rendezVous = await prisma.rendezVous.findMany({
       where: {
         cabinetId,
-        ...(date ? {
-          date: {
-            gte: new Date(date + 'T00:00:00'),
-            lte: new Date(date + 'T23:59:59'),
-          }
-        } : {}),
+        ...dateFilter,
         ...(effectivePraticienFilter ? { praticienId: effectivePraticienFilter } : {}),
       },
       include: {
@@ -50,6 +60,8 @@ export async function GET(request: NextRequest) {
         praticien: { select: { id: true, nom: true, prenom: true, couleur: true } },
       },
       orderBy: { date: 'asc' },
+      ...(take !== undefined ? { take } : {}),
+      ...(skip > 0 ? { skip } : {}),
     })
     // include source & patientNotes in output (already in the model, returned by default)
     return NextResponse.json(rendezVous)
