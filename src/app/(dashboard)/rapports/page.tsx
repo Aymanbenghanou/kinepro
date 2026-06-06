@@ -481,7 +481,7 @@ export default function RapportsPage() {
 
             {/* ── SECTION 6: Performance par praticien ───────── */}
             {sortedPraticiens.length > 0 && (
-              <Section title="🩺 Performance par praticien">
+              <Section title="\u{1F464} Performance par praticien">
                 <Card>
                   <div style={{ overflowX: 'auto' }}>
                     <table style={tableStyle}>

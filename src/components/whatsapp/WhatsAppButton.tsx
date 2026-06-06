@@ -44,10 +44,6 @@ export default function WhatsAppButton({
     } catch {}
     setSent(true)
     setTimeout(() => setSent(false), 3000)
-    // [WA-DIAG] TEMPORAIRE — à retirer après diagnostic emojis.
-    console.log('[WA-DIAG] WhatsAppButton type=', type, '| message brut:', JSON.stringify(message))
-    console.log('[WA-DIAG] WhatsAppButton codepoints:',
-      Array.from(message).map(c => c.codePointAt(0)!.toString(16)).join(' '))
     window.open(buildWhatsAppUrl(phone, message), '_blank')
   }
 

@@ -25,7 +25,7 @@ function DashboardMockup() {
         <div style={{ display: 'flex' }}>
           {/* Mini sidebar */}
           <div style={{ width: 48, background: '#1E3A5F', padding: '16px 8px', display: 'flex', flexDirection: 'column', gap: 16, alignItems: 'center' }}>
-            {['🏠','📅','👥','🩺','💳','📊'].map((icon, i) => (
+            {['🏠','📅','👥','\u{1F464}','💳','📊'].map((icon, i) => (
               <div key={i} style={{ width: 32, height: 32, borderRadius: 8, background: i === 0 ? '#2563EB' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, cursor: 'pointer' }}>
                 {icon}
               </div>

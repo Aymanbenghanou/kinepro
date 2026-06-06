@@ -302,7 +302,7 @@ export default function PatientDetailPage() {
                 {patient.pathologie && (
                   <div style={{ marginTop: 8 }}>
                     <span style={{ background: '#FEF3C7', color: '#92400E', padding: '4px 12px', borderRadius: 999, fontSize: 12, fontWeight: 500 }}>
-                      🩺 {patient.pathologie}
+                      {'\u{1F464}'} {patient.pathologie}
                     </span>
                   </div>
                 )}
@@ -400,7 +400,7 @@ export default function PatientDetailPage() {
             {/* Infos médicales */}
             <div style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, padding: 24 }}>
               <h3 style={{ fontSize: 15, fontWeight: 600, color: '#0F172A', marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid #E2E8F0' }}>
-                🩺 Informations médicales
+                {'\u{1F464}'} Informations médicales
               </h3>
               <InfoRow label="Pathologie" value={patient.pathologie} />
               <InfoRow label="Médecin référent" value={patient.medecinReferent} />

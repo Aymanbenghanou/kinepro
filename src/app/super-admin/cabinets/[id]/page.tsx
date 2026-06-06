@@ -43,7 +43,7 @@ export default async function CabinetDetailPage({ params }: { params: Promise<{ 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
         {[
           { label: 'Patients',   value: cabinet._count.patients,   icon: '👥' },
-          { label: 'Séances',    value: seancesCount,               icon: '🩺' },
+          { label: 'Séances',    value: seancesCount,               icon: '\u{1F464}' },
           { label: 'Factures',   value: facturesCount,              icon: '💰' },
           { label: 'Praticiens', value: cabinet._count.praticiens,  icon: '👨‍⚕️' },
         ].map(s => (
