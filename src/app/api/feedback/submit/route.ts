@@ -37,11 +37,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Lien invalide ou expiré' }, { status: 404 })
     }
 
+    // Source de vérité : Cabinet.googleReviewLink (colonne alimentée par le
+     // formulaire /parametres/cabinet). Cabinet.googleMapsLink existe au
+     // schéma mais n'est jamais écrit par l'UI → dette à nettoyer séparément.
     const cab = await prisma.cabinet.findUnique({
       where: { id: seance.cabinetId },
-      select: { googleMapsLink: true },
+      select: { googleReviewLink: true },
     })
-    const googleMapsLink = cab?.googleMapsLink ?? null
+    const googleMapsLink = cab?.googleReviewLink ?? null
 
     // Idempotence : déjà soumis → on renvoie l'état actuel sans recréer.
     if (seance.feedbackEnvoye) {
