@@ -6,18 +6,22 @@ import { assertNotWalled } from '@/lib/plan-server'
 import { validateBody } from '@/lib/validate'
 import { terminerSeanceSchema } from '@/lib/schemas/medical'
 import { Prisma, SeanceStatut, RdvStatut } from '@prisma/client'
+import crypto from 'crypto'
 
 /**
  * PATCH /api/seances/[id]/terminer
  *
  * Finalise une séance planifiee vers l'un des 3 statuts terminaux :
  *   - 'realisee' : set scores + seanceEndTime (= completedAt sémantique pour la
- *     fenêtre d'édition 24h) + feedbackStatus 'pending' + bascule RDV → realise.
+ *     fenêtre d'édition 24h) + feedbackStatus 'ready' + feedbackToken généré
+ *     + feedbackReadyAt = now() + bascule RDV → realise. Le lien feedback est
+ *     immédiatement disponible côté WhatsApp Center (pas de délai 20 min).
  *   - 'no_show'  : seanceEndTime + scores + feedback restent null ; aucun
  *     changement du RDV lié (RdvStatut n'a pas de no_show, cf. AGENTS.md §8).
  *   - 'annulee'  : seanceEndTime + scores + feedback restent null ; RDV → annule.
  *
  * Idempotence : si la séance n'est plus planifiee → 409 statut_already_set.
+ * La double-finalisation est ainsi impossible — un seul feedbackToken généré.
  */
 export async function PATCH(
   request: NextRequest,
@@ -57,8 +61,11 @@ export async function PATCH(
     const seanceData: Record<string, unknown> = { statut: body.statut }
 
     if (body.statut === SeanceStatut.realisee) {
-      seanceData.seanceEndTime  = new Date()
-      seanceData.feedbackStatus = 'pending'
+      const now = new Date()
+      seanceData.seanceEndTime   = now
+      seanceData.feedbackStatus  = 'ready'
+      seanceData.feedbackToken   = crypto.randomBytes(32).toString('hex')
+      seanceData.feedbackReadyAt = now
       if ('douleurScore'     in body) seanceData.douleurScore     = body.douleurScore     ?? null
       if ('mobiliteScore'    in body) seanceData.mobiliteScore    = body.mobiliteScore    ?? null
       if ('forceScore'       in body) seanceData.forceScore       = body.forceScore       ?? null
@@ -68,6 +75,8 @@ export async function PATCH(
       // no_show / annulee : aucun score, pas de finalisation, pas de feedback.
       seanceData.seanceEndTime    = null
       seanceData.feedbackStatus   = null
+      seanceData.feedbackToken    = null
+      seanceData.feedbackReadyAt  = null
       seanceData.douleurScore     = null
       seanceData.mobiliteScore    = null
       seanceData.forceScore       = null

@@ -446,12 +446,6 @@ export default function SeancesPage() {
               )}
 
               {/* Feedback status indicator */}
-              {selectedSeance.feedbackStatus === 'pending' && (
-                <div style={{ background: '#FEF3C7', border: '1px solid #FCD34D', borderRadius: 8, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span>⏳</span>
-                  <span style={{ fontSize: 13, color: '#92400E', fontWeight: 500 }}>Feedback en préparation (prêt dans ~20 min)</span>
-                </div>
-              )}
               {selectedSeance.feedbackStatus === 'ready' && !selectedSeance.feedbackEnvoye && (
                 <div style={{ background: '#F5F3FF', border: '1px solid #DDD6FE', borderRadius: 8, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

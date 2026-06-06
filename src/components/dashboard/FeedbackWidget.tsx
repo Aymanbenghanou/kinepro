@@ -5,10 +5,9 @@ import Link from 'next/link'
 
 /**
  * Carte dashboard read-only : compte des séances dont le feedback est
- * "prêt à envoyer" (token public généré 20 min après la séance) et de
- * celles encore "en préparation". Tout envoi WhatsApp se fait depuis le
- * WhatsApp Center (`/whatsapp?tab=ready`) — cette carte ne fait que
- * rediriger.
+ * "prêt à envoyer" (token public généré immédiatement à la finalisation
+ * de la séance). Tout envoi WhatsApp se fait depuis le WhatsApp Center
+ * (`/whatsapp?tab=ready`) — cette carte ne fait que rediriger.
  */
 export default function FeedbackWidget() {
   const [readyCount, setReadyCount]   = useState(0)

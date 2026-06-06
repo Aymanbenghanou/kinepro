@@ -1,13 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
-import { sendPushToCabinet } from '@/lib/push'
-import crypto from 'crypto'
 
 export const dynamic = 'force-dynamic'
 
-const DELAY_MS = 20 * 60 * 1000 // 20 minutes
-
+/**
+ * GET /api/feedback/ready
+ *
+ * Renvoie la liste des séances "prêtes à envoyer" pour le cabinet
+ * connecté. Depuis le commit qui supprime le délai 20 min, la transition
+ * pending → ready n'existe plus : `/api/seances/[id]/terminer` pose
+ * directement `feedbackStatus='ready'` + `feedbackToken` + `feedbackReadyAt`
+ * au moment de la finalisation de la séance. Cette route n'est plus qu'un
+ * SELECT — pas de promotion, pas de push (notification déjà inutile car
+ * c'est le kiné qui termine la séance et voit l'effet immédiatement).
+ *
+ * Conservée car consommée par 3 composants UI :
+ *   - whatsapp/page.tsx tab "Feedback prêt"
+ *   - components/dashboard/FeedbackWidget.tsx (carte dashboard)
+ *   - components/layout/FeedbackNotificationBar.tsx
+ *
+ * Pas de cron Vercel ne l'appelle (cf. vercel.json).
+ */
 export async function GET(_request: NextRequest) {
   const session = await auth()
   if (!session?.user?.cabinetId) {
@@ -16,53 +30,6 @@ export async function GET(_request: NextRequest) {
   const { cabinetId } = session.user
 
   try {
-    const cutoff = new Date(Date.now() - DELAY_MS)
-
-    // Lazy promotion: pending séances for this cabinet that have passed the delay
-    const toPromote = await prisma.seance.findMany({
-      where: {
-        cabinetId,
-        feedbackStatus: 'pending',
-        seanceEndTime: { lte: cutoff },
-      },
-      include: { patient: { select: { prenom: true, nom: true } } },
-    })
-
-    if (toPromote.length > 0) {
-      // Promote all to "ready" with unique tokens
-      await Promise.all(
-        toPromote.map((s) =>
-          prisma.seance.update({
-            where: { id: s.id },
-            data: {
-              feedbackStatus:  'ready',
-              feedbackToken:   crypto.randomBytes(32).toString('hex'),
-              feedbackReadyAt: new Date(),
-            },
-          })
-        )
-      )
-
-      // Send push notification for the batch
-      const names = toPromote.map((s) => `${s.patient.prenom} ${s.patient.nom}`)
-      const body  = toPromote.length === 1
-        ? `${names[0]} — Séance terminée il y a 20 min`
-        : `${names.slice(0, 2).join(', ')}${toPromote.length > 2 ? ` +${toPromote.length - 2}` : ''}`
-
-      await sendPushToCabinet(cabinetId, {
-        title:              '⏰ Feedback prêt à envoyer',
-        body,
-        tag:                'feedback-ready',
-        requireInteraction: true,
-        data:               { url: '/whatsapp?tab=ready' },
-        actions: [
-          { action: 'open_whatsapp', title: '📱 Ouvrir WhatsApp' },
-          { action: 'dismiss',       title: 'Plus tard' },
-        ],
-      }).catch(() => {}) // don't fail if push fails (no subscriptions yet)
-    }
-
-    // Return all ready séances for this cabinet
     const ready = await prisma.seance.findMany({
       where: {
         cabinetId,
@@ -74,7 +41,6 @@ export async function GET(_request: NextRequest) {
       },
       orderBy: { feedbackReadyAt: 'desc' },
     })
-
     return NextResponse.json(ready)
   } catch (error) {
     console.error('[feedback/ready]', error)

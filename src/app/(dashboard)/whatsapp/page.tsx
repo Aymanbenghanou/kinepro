@@ -100,8 +100,6 @@ export default function WhatsAppCenterPage() {
     s.scorePatient !== null && s.scorePatient !== undefined && s.scorePatient <= 4
   )
 
-  const pendingSeances = seances.filter(s => s.feedbackStatus === 'pending')
-
   const tabs: { id: Tab; label: string; badge?: number; highlight?: boolean }[] = [
     { id: 'envoyer',    label: '📤 À envoyer aujourd\'hui', badge: rdvsAujourdhui.length },
     { id: 'rappels',    label: '🔔 Rappels demain',         badge: rdvsDemain.length },
@@ -262,21 +260,6 @@ export default function WhatsAppCenterPage() {
             {/* ── Tab 3: Feedback prêt ── */}
             {tab === 'ready' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {/* Pending counter */}
-                {pendingSeances.length > 0 && (
-                  <div style={{ background: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: 10, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 18 }}>⏳</span>
-                    <div>
-                      <p style={{ margin: 0, fontWeight: 600, color: '#92400E', fontSize: 13 }}>
-                        {pendingSeances.length} séance{pendingSeances.length > 1 ? 's' : ''} en préparation
-                      </p>
-                      <p style={{ margin: 0, color: '#B45309', fontSize: 12 }}>
-                        Le feedback sera prêt ~20 min après la fin de la séance.
-                      </p>
-                    </div>
-                  </div>
-                )}
-
                 <h2 style={{ fontSize: 15, fontWeight: 700, color: '#0F172A', margin: 0 }}>
                   ⭐ Prêts à envoyer — {readySeances.length} patient{readySeances.length !== 1 ? 's' : ''}
                 </h2>
@@ -285,7 +268,7 @@ export default function WhatsAppCenterPage() {
                   <div style={{ padding: 40, background: 'white', border: '1px solid #E2E8F0', borderRadius: 12, color: '#64748B', fontSize: 14, textAlign: 'center' }}>
                     <div style={{ fontSize: 36, marginBottom: 12 }}>✅</div>
                     <p style={{ margin: 0, fontWeight: 500 }}>Aucun feedback prêt pour le moment</p>
-                    <p style={{ margin: '6px 0 0', fontSize: 13 }}>Terminez une séance pour déclencher le minuteur de 20 min</p>
+                    <p style={{ margin: '6px 0 0', fontSize: 13 }}>Terminez une séance pour générer un lien de feedback.</p>
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

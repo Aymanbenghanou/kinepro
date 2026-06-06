@@ -95,7 +95,7 @@ export default function NotificationSettings() {
   }
 
   const notifTypes = [
-    { key: 'feedback',  emoji: '⭐', label: 'Feedbacks prêts à envoyer',     desc: "20 min après la fin d'une séance" },
+    { key: 'feedback',  emoji: '⭐', label: 'Feedbacks prêts à envoyer',     desc: "Dès qu'une séance est terminée" },
     { key: 'rdv',       emoji: '📅', label: 'Nouveaux rendez-vous',           desc: 'Quand un RDV est confirmé' },
     { key: 'trial',     emoji: '⚠️', label: "Rappel fin d'essai gratuit",    desc: '3 jours avant expiration' },
     { key: 'summary',   emoji: '📋', label: 'Résumé quotidien',               desc: 'Chaque matin à 7h00' },
