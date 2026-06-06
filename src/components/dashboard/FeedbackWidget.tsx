@@ -39,49 +39,58 @@ export default function FeedbackWidget() {
 
   if (loading) {
     return (
-      <div style={cardStyle}>
-        <div style={{ color: '#94A3B8', fontSize: 13, textAlign: 'center', padding: 20 }}>Chargement...</div>
+      <div className="dash-card dash-card-violet" style={{ padding: 22 }}>
+        <div className="dash-card__head">
+          <h2 className="dash-card__title">
+            <span className="dash-card__title-emoji" aria-hidden>⭐</span>
+            Feedback patients
+          </h2>
+          <span className="dash-skeleton" style={{ width: 140, height: 14 }} />
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 14 }}>
+          {[0, 1, 2].map(i => (
+            <div key={i} className="dash-skeleton" style={{ height: 64 }} />
+          ))}
+        </div>
+        <div className="dash-skeleton" style={{ height: 38, borderRadius: 10 }} />
       </div>
     )
   }
 
   return (
-    <div style={cardStyle}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <h2 style={{ fontSize: 16, fontWeight: 600, color: '#0F172A', margin: 0 }}>⭐ Feedback patients</h2>
-        <Link href="/whatsapp?tab=ready" style={{ fontSize: 12, color: '#7C3AED', fontWeight: 600, textDecoration: 'none' }}>
-          Ouvrir WhatsApp Center →
+    <div className="dash-card dash-card-violet" style={{ padding: 22 }}>
+      <div className="dash-card__head">
+        <h2 className="dash-card__title">
+          <span className="dash-card__title-emoji" aria-hidden>⭐</span>
+          Feedback patients
+        </h2>
+        <Link href="/whatsapp?tab=ready" className="dash-link">
+          Ouvrir WhatsApp Center <span className="dash-link__arrow">→</span>
         </Link>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 12 }}>
-        <div style={kpiBox('#F5F3FF', '#7C3AED')}>
-          <p style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>{readyCount}</p>
-          <p style={{ fontSize: 11, margin: 0, opacity: 0.8 }}>Prêts à envoyer</p>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 14 }}>
+        <div className="dash-kpi" style={kpiBg('#F5F3FF', '#A78BFA', '#7C3AED')}>
+          <p className="dash-kpi__value" style={{ color: '#6D28D9' }}>{readyCount}</p>
+          <p className="dash-kpi__label" style={{ color: '#6D28D9' }}>Prêts à envoyer</p>
         </div>
-        <div style={kpiBox('#FEF3C7', '#D97706')}>
-          <p style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>{pending}</p>
-          <p style={{ fontSize: 11, margin: 0, opacity: 0.8 }}>En préparation</p>
+        <div className="dash-kpi" style={kpiBg('#FEF3C7', '#FCD34D', '#D97706')}>
+          <p className="dash-kpi__value" style={{ color: '#B45309' }}>{pending}</p>
+          <p className="dash-kpi__label" style={{ color: '#B45309' }}>En préparation</p>
         </div>
-        <div style={kpiBox('#DCFCE7', '#16A34A')}>
-          <p style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>
+        <div className="dash-kpi" style={kpiBg('#DCFCE7', '#86EFAC', '#16A34A')}>
+          <p className="dash-kpi__value" style={{ color: '#15803D' }}>
             {avgScore !== null ? avgScore.toFixed(1) : '—'}
           </p>
-          <p style={{ fontSize: 11, margin: 0, opacity: 0.8 }}>Score moy.</p>
+          <p className="dash-kpi__label" style={{ color: '#15803D' }}>Score moy.</p>
         </div>
       </div>
 
       {readyCount > 0 ? (
-        <Link
-          href="/whatsapp?tab=ready"
-          style={{
-            display: 'block', textAlign: 'center',
-            background: '#7C3AED', color: 'white',
-            padding: '8px 12px', borderRadius: 8,
-            fontSize: 13, fontWeight: 600, textDecoration: 'none',
-          }}
-        >
-          📲 Envoyer {readyCount} lien{readyCount > 1 ? 's' : ''} de feedback
+        <Link href="/whatsapp?tab=ready" className="dash-cta">
+          <span aria-hidden>📲</span>
+          Envoyer {readyCount} lien{readyCount > 1 ? 's' : ''} de feedback
+          <span className="dash-cta__icon" aria-hidden>→</span>
         </Link>
       ) : (
         <p style={{ color: '#94A3B8', fontSize: 12, textAlign: 'center', margin: '4px 0 0' }}>
@@ -92,19 +101,9 @@ export default function FeedbackWidget() {
   )
 }
 
-const cardStyle: React.CSSProperties = {
-  background: 'white',
-  border: '1px solid #E2E8F0',
-  borderRadius: 12,
-  padding: 20,
-}
-
-function kpiBox(bg: string, color: string): React.CSSProperties {
+function kpiBg(bg: string, ringColor: string, _txtColor: string): React.CSSProperties {
   return {
     background: bg,
-    borderRadius: 8,
-    padding: '10px 12px',
-    textAlign: 'center',
-    color,
+    boxShadow: `inset 0 0 0 1px ${ringColor}40`,
   }
 }
