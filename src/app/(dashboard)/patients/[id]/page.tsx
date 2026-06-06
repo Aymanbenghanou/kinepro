@@ -9,19 +9,27 @@ import {
   Calendar, Plus, X, User, CreditCard, Target, Clock, Download, BarChart2, QrCode,
   Sparkles, Send,
 } from 'lucide-react'
-import ExercicesModal from '@/components/whatsapp/ExercicesModal'
-import { generateDossierPatientPDF } from '@/lib/pdf-utils'
 import { useCabinetFull } from '@/lib/use-cabinet-nom'
-import ProgressionTab from '@/components/patients/ProgressionTab'
-import DocumentsTab from '@/components/patients/DocumentsTab'
-import EditPatientModal from '@/components/patients/EditPatientModal'
-import DeletePatientModal from '@/components/patients/DeletePatientModal'
-import ExerciseProgramModal from '@/components/exercise-program/ExerciseProgramModal'
 import { formatWhatsAppMessage, waUrl } from '@/lib/exercise-program'
 import Toast from '@/components/ui/Toast'
 import { useCan } from '@/lib/use-permissions'
 import { Edit2, Trash2 } from 'lucide-react'
 import dynamic from 'next/dynamic'
+
+// Lazy-load — chacun n'est téléchargé qu'au moment où il est rendu.
+// ssr: false car ce sont des composants client (modals / onglets riches).
+const ExercicesModal       = dynamic(() => import('@/components/whatsapp/ExercicesModal'),            { ssr: false })
+const ProgressionTab       = dynamic(() => import('@/components/patients/ProgressionTab'),            { ssr: false })
+const DocumentsTab         = dynamic(() => import('@/components/patients/DocumentsTab'),              { ssr: false })
+const EditPatientModal     = dynamic(() => import('@/components/patients/EditPatientModal'),          { ssr: false })
+const DeletePatientModal   = dynamic(() => import('@/components/patients/DeletePatientModal'),        { ssr: false })
+const ExerciseProgramModal = dynamic(() => import('@/components/exercise-program/ExerciseProgramModal'), { ssr: false })
+
+// jsPDF + autoTable = bundle lourd. Chargé seulement au 1er clic "Exporter PDF".
+async function loadAndGeneratePDF(patient: any, cabinet: any) {
+  const { generateDossierPatientPDF } = await import('@/lib/pdf-utils')
+  return generateDossierPatientPDF(patient, cabinet)
+}
 
 const QrCodeModal = dynamic(() => import('@/components/qr/QrCodeModal'), { ssr: false })
 
@@ -317,7 +325,7 @@ export default function PatientDetailPage() {
                 style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'white', color: '#374151', border: '1px solid #E2E8F0', borderRadius: 10, padding: '10px 14px', cursor: 'pointer', fontWeight: 500, fontSize: 14 }}>
                 <QrCode size={15} /> QR Code
               </button>
-              <button onClick={() => generateDossierPatientPDF(patient, cabinet)}
+              <button onClick={() => loadAndGeneratePDF(patient, cabinet)}
                 style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'white', color: '#374151', border: '1px solid #E2E8F0', borderRadius: 10, padding: '10px 16px', cursor: 'pointer', fontWeight: 500, fontSize: 14 }}>
                 <Download size={15} /> Exporter PDF
               </button>
