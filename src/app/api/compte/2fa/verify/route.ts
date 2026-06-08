@@ -5,12 +5,18 @@ import { TOTP, Secret } from 'otpauth'
 import { decryptSecret } from '@/lib/crypto'
 import { validateBody } from '@/lib/validate'
 import { verify2faSchema } from '@/lib/schemas/auth'
+import { checkRateLimit, authLimiter } from '@/lib/rate-limit'
 
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : 'Erreur inconnue'
 }
 
 export async function POST(request: NextRequest) {
+  // Rate-limit défensif : 5 tentatives / 10 min par IP (authLimiter Upstash).
+  // L'enrôlement 2FA exige déjà une session valide ; on ajoute ce filet pour
+  // éviter qu'un attaquant qui aurait volé une session bruteforce des codes
+  // TOTP arbitraires (8M possibilités) dans la fenêtre 30s.
+  const rl = await checkRateLimit(request, authLimiter); if (rl) return rl
   try {
     const session = await auth()
     if (!session?.user?.id) {
