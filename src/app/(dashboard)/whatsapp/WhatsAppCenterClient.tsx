@@ -9,8 +9,7 @@ import {
   buildWhatsAppUrl, scoreColor, scoreBadge, scoreCategory,
 } from '@/lib/whatsapp'
 import { useCabinet } from '@/lib/use-cabinet-nom'
-
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://kinepro-omega.vercel.app'
+import { APP_URL } from '@/lib/app-url'
 
 type Tab = 'envoyer' | 'rappels' | 'ready' | 'historique'
 

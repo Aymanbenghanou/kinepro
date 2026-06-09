@@ -3,8 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Topbar from '@/components/layout/Topbar'
 import { QrCode, Download, Printer, Share2, ExternalLink } from 'lucide-react'
-
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://kinepro-omega.vercel.app'
+import { APP_URL } from '@/lib/app-url'
 
 export default function CabinetQrPage() {
   const [token, setToken] = useState<string | null>(null)

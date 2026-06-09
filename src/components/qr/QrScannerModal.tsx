@@ -48,7 +48,7 @@ export default function QrScannerModal({ onClose }: QrScannerModalProps) {
             stopped = true
 
             // Extract patient token from URL
-            // Expected: https://kinepro-omega.vercel.app/patient-public/[token]
+            // Expected: <APP_URL>/patient-public/[token]
             const match = text.match(/\/patient-public\/([a-f0-9]{32})/)
             if (match) {
               // Find patient by token and redirect to their detail page

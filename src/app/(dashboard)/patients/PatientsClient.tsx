@@ -7,10 +7,9 @@ import { formatDate } from '@/lib/utils'
 import { Plus, Search, QrCode } from 'lucide-react'
 import NewPatientWizard from '@/components/patients/NewPatientWizard'
 import dynamic from 'next/dynamic'
+import { APP_URL } from '@/lib/app-url'
 
 const QrCodeModal = dynamic(() => import('@/components/qr/QrCodeModal'), { ssr: false })
-
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://kinepro-omega.vercel.app'
 
 function StatusBadge({ actif }: { actif: boolean }) {
   return (

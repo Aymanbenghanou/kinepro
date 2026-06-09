@@ -10,6 +10,7 @@ import { generateFacturePDF } from '@/lib/pdf-utils'
 import { STATUT_LABELS, type FactureStatut } from '@/lib/facture-statut'
 import PaymentModal from '@/components/facturation/PaymentModal'
 import { useCabinetFull } from '@/lib/use-cabinet-nom'
+import { APP_URL } from '@/lib/app-url'
 
 const QrCodeModal = dynamic(() => import('@/components/qr/QrCodeModal'), { ssr: false })
 
@@ -175,7 +176,6 @@ export default function FacturationPage() {
   }
 
   async function exportPDF(f: any) {
-    const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://kinepro-omega.vercel.app'
     const qrUrl = f.patient?.publicToken ? `${APP_URL}/scan/${f.patient.publicToken}` : undefined
     await generateFacturePDF(f, cabinet, qrUrl)
   }

@@ -10,6 +10,7 @@ import {
   Sparkles, Send,
 } from 'lucide-react'
 import { useCabinetFull } from '@/lib/use-cabinet-nom'
+import { APP_URL } from '@/lib/app-url'
 import { formatWhatsAppMessage, waUrl } from '@/lib/exercise-program'
 import Toast from '@/components/ui/Toast'
 import { useCan } from '@/lib/use-permissions'
@@ -32,8 +33,6 @@ async function loadAndGeneratePDF(patient: any, cabinet: any) {
 }
 
 const QrCodeModal = dynamic(() => import('@/components/qr/QrCodeModal'), { ssr: false })
-
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://kinepro-omega.vercel.app'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type TabId = 'informations' | 'seances' | 'plan' | 'facturation' | 'progression' | 'documents' | 'programmes'

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import MobileTopbar from '@/components/mobile/MobileTopbar'
 import { QrCode, Download } from 'lucide-react'
 import { uploadPatientFile } from '@/lib/upload-client'
+import { APP_URL } from '@/lib/app-url'
 
 const AVATAR_COLORS = [
   { bg: '#DBEAFE', text: '#1D4ED8' },
@@ -20,7 +21,6 @@ const TABS = ['Infos', 'Séances', 'Factures', 'Progrès', 'Docs', 'QR'] as cons
 type TabId = typeof TABS[number]
 
 const MAX_SIZE_MB = 10
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://kinepro-omega.vercel.app'
 
 function fmtDate(d: string | Date): string {
   return new Date(d).toLocaleDateString('fr-MA', { day: '2-digit', month: '2-digit', year: 'numeric' })

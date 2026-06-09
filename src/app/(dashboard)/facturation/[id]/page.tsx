@@ -12,8 +12,7 @@ import DeleteFactureModal from '@/components/facturation/DeleteFactureModal'
 import { useCan } from '@/lib/use-permissions'
 import { useRouter } from 'next/navigation'
 import { useCabinetFull } from '@/lib/use-cabinet-nom'
-
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'https://kinepro-omega.vercel.app'
+import { APP_URL } from '@/lib/app-url'
 
 export default function FactureDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = usePromise(params)
