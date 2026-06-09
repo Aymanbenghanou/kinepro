@@ -6,6 +6,7 @@ import { assertNotWalled } from '@/lib/plan-server'
 import { validateBody } from '@/lib/validate'
 import { updateSeanceSchema } from '@/lib/schemas/medical'
 import { SeanceStatut } from '@prisma/client'
+import { getOwnedOr404 } from '@/lib/tenant'
 
 const EDIT_WINDOW_MS = 24 * 60 * 60 * 1000
 const CLINICAL_FIELDS = ['douleurScore', 'mobiliteScore', 'forceScore', 'notesProgression', 'notesInternes'] as const
@@ -15,25 +16,21 @@ function errMsg(e: unknown): string {
 }
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth()
-    if (!session?.user?.cabinetId) {
-      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
-    }
-    const { cabinetId } = session.user
     const { id } = await params
-
-    const seance = await prisma.seance.findFirst({
-      where: { id, cabinetId },
+    // Démo du helper tenant `getOwnedOr404` (cf. src/lib/tenant.ts).
+    // Équivaut au pattern manuel auth() + findFirst({id, cabinetId}) + 404.
+    const seance = await getOwnedOr404(prisma.seance, id, {
       include: {
         patient:   { select: { id: true, nom: true, prenom: true, telephone: true } },
         praticien: { select: { id: true, nom: true, prenom: true } },
       },
+      notFoundMessage: 'Séance non trouvée',
     })
-    if (!seance) return NextResponse.json({ error: 'Séance non trouvée' }, { status: 404 })
+    if (seance instanceof NextResponse) return seance
     return NextResponse.json(seance)
   } catch (error) {
     console.error('[GET /api/seances/[id]]', error)

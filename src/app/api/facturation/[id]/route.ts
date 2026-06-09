@@ -8,18 +8,17 @@ import { auth } from '@/auth'
 import { computeStatut } from '@/lib/facture-statut'
 import { requirePermission } from '@/lib/permissions-server'
 import { assertNotWalled } from '@/lib/plan-server'
+import { getOwnedOr404 } from '@/lib/tenant'
 
 function errMsg(e: unknown): string {
   return e instanceof Error ? e.message : 'Erreur inconnue'
 }
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth()
-  if (!session?.user?.cabinetId) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
   const { id } = await params
-
-  const f = await prisma.facture.findFirst({
-    where: { id, cabinetId: session.user.cabinetId },
+  // Démo du helper tenant `getOwnedOr404` (cf. src/lib/tenant.ts).
+  // Équivaut au pattern manuel auth() + findFirst({id, cabinetId}) + 404.
+  const f = await getOwnedOr404(prisma.facture, id, {
     include: {
       patient:   { select: { id: true, nom: true, prenom: true, telephone: true, email: true, publicToken: true } },
       seance:    {
@@ -31,9 +30,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       },
       paiements: { orderBy: { datePaiement: 'desc' } },
     },
+    notFoundMessage: 'Facture introuvable',
   })
+  if (f instanceof NextResponse) return f
 
-  if (!f) return NextResponse.json({ error: 'Facture introuvable' }, { status: 404 })
   const statut = computeStatut(f.montant, f.montantPaye, f.dateEmise)
   const reste  = Math.max(0, f.montant - f.montantPaye)
   return NextResponse.json({ ...f, statut, reste })
