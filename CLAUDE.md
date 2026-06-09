@@ -132,6 +132,7 @@ Client UI uses `<ProLockOverlay feature="..." />` which covers a `position: rela
 - **`unstable_cache` profile arg** : in Next 16, `revalidateTag(tag, profile)` takes 2 args; use `updateTag(tag)` for the old 1-arg behavior.
 - **The 5pm-7pm Supabase windows can return `P1001`** (DB unreachable). Retry, don't panic.
 - **Mobile users redirected to `/abonnement` (desktop)** from `(mobile)/layout.tsx` historically caused UA-detection loops; this layout now redirects to `/m/abonnement`.
+- **RLS policies are NOT in `schema.prisma`** — Prisma doesn't manage them. The current state is `deny_all` (USING false, WITH CHECK false) on all 15 public tables (migration `20260609224245_rls_deny_all`). Prisma still works because the `postgres` role has `BYPASSRLS=true`. **Do NOT overwrite these policies** in future SQL migrations unless you explicitly want to add a per-cabinet policy; PostgREST + anon key would re-leak immediately. If you add a new table to the schema, append a `DROP POLICY IF EXISTS / CREATE POLICY deny_all` block for it in a new SQL migration — `prisma migrate` alone won't enable RLS or create the deny policy.
 
 ## Scripts and one-shots
 
