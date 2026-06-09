@@ -31,7 +31,12 @@ export default async function middleware(req: NextRequest) {
   // peut soumettre vers `/api/feedback/submit` que si l'API est aussi
   // publique. Les routes API conservent leur rate-limit (publicLimiter)
   // et un check de validité du token côté handler.
-  const openPaths = ['/cabinet', '/scan', '/booking', '/checkin', '/patient-public', '/feedback', '/api/feedback', '/legal', '/privacy', '/terms']
+  // Routes publiques (aucune session requise). Le matching est un startsWith :
+  // toute entrée ici ouvre AUSSI ses sous-paths (ex: '/feedback' ouvre
+  // '/feedback/<token>') et tout préfixe accidentel (ex: '/booking' aurait
+  // ouvert '/booking-system'). N'ajouter une entrée qu'après vérification
+  // qu'une vraie page/route racine correspondante existe sous src/app/.
+  const openPaths = ['/scan', '/checkin', '/patient-public', '/feedback', '/api/feedback', '/legal', '/privacy', '/terms']
   if (openPaths.some(p => pathname.startsWith(p))) {
     return NextResponse.next()
   }
