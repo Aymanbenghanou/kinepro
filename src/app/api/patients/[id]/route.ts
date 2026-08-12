@@ -209,7 +209,6 @@ export async function DELETE(
           mutuelle:         null,
           numeroPolice:     null,
           objectifsTraitement: null,
-          publicToken:      null, // void les liens publics (/patient-public, /scan)
           // Flag anonymisation
           deletedAt:        new Date(),
         },
