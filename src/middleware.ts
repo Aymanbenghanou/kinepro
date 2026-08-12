@@ -36,7 +36,7 @@ export default async function middleware(req: NextRequest) {
   // '/feedback/<token>') et tout préfixe accidentel (ex: '/booking' aurait
   // ouvert '/booking-system'). N'ajouter une entrée qu'après vérification
   // qu'une vraie page/route racine correspondante existe sous src/app/.
-  const openPaths = ['/scan', '/checkin', '/patient-public', '/feedback', '/api/feedback', '/legal', '/privacy', '/terms']
+  const openPaths = ['/feedback', '/api/feedback', '/legal', '/privacy', '/terms']
   if (openPaths.some(p => pathname.startsWith(p))) {
     return NextResponse.next()
   }

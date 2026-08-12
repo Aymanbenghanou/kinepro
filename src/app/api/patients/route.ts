@@ -3,7 +3,6 @@ import { prisma } from '@/lib/prisma'
 import { auth } from '@/auth'
 import { requirePermission } from '@/lib/permissions-server'
 import { assertNotWalled } from '@/lib/plan-server'
-import { randomBytes } from 'crypto'
 import { validateBody } from '@/lib/validate'
 import { createPatientSchema } from '@/lib/schemas/medical'
 
@@ -82,7 +81,6 @@ export async function POST(request: NextRequest) {
     const patient = await prisma.patient.create({
       data: {
         cabinetId,
-        publicToken:         randomBytes(16).toString('hex'),
         nom:                 body.nom.trim(),
         prenom:              body.prenom.trim(),
         dateNaissance:       body.dateNaissance       ? new Date(body.dateNaissance) : null,

@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
     let factures = await prisma.facture.findMany({
       where,
       include: {
-        patient: { select: { id: true, nom: true, prenom: true, telephone: true, email: true, publicToken: true } },
+        patient: { select: { id: true, nom: true, prenom: true, telephone: true, email: true } },
         seance:  {
           select: {
             id: true, typeSeance: true, date: true, praticienId: true,

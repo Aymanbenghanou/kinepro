@@ -20,7 +20,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   // Équivaut au pattern manuel auth() + findFirst({id, cabinetId}) + 404.
   const f = await getOwnedOr404(prisma.facture, id, {
     include: {
-      patient:   { select: { id: true, nom: true, prenom: true, telephone: true, email: true, publicToken: true } },
+      patient:   { select: { id: true, nom: true, prenom: true, telephone: true, email: true } },
       seance:    {
         select: {
           id: true, typeSeance: true, date: true, duree: true,

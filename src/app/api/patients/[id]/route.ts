@@ -131,12 +131,12 @@ export async function PUT(
  *   - CONSERVÉS via lien vers Patient anonymisé : Seance (notes médicales,
  *     scores), Facture (audit comptable), Paiement (audit comptable).
  *   - PII EFFACÉES sur la row Patient elle-même : nom='Patient supprimé',
- *     prenom='', tous les autres champs identifiants → null, publicToken →
- *     null (rend les liens publics inaccessibles), deletedAt=now().
+ *     prenom='', tous les autres champs identifiants → null,
+ *     deletedAt=now().
  *
  * Une fois anonymisé, le filtre `deletedAt: null` sur les GET et la liste
- * empêche d'y arriver depuis l'UI. Les routes publiques (patient-public,
- * scan) retournent 404 naturellement (publicToken vidé).
+ * empêche d'y arriver depuis l'UI. (Les anciennes routes publiques
+ * /patient-public et /scan ont été supprimées avec la feature QR.)
  */
 export async function DELETE(
   request: NextRequest,

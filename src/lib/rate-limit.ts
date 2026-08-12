@@ -54,7 +54,7 @@ export function authLimiter(): Ratelimit | null {
   return _authLimiter
 }
 
-/** 20 req / 1 min — booking, feedback, checkin, patient-public, scan, etc. */
+/** 20 req / 1 min — endpoints publics rate-limités (feedback, etc.). */
 export function publicLimiter(): Ratelimit | null {
   if (_publicLimiter) return _publicLimiter
   _publicLimiter = buildLimiter(20, 60, 'rl:public')

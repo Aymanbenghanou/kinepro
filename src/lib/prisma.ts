@@ -18,8 +18,7 @@ function createPrismaClient(): PrismaClient {
     idleTimeoutMillis: 30_000,    // release idle connection after 30 s
     // 15 s pour couvrir un cold-start Supabase Free tier après pause
     // (le projet peut être en pause après ~7j d'inactivité et le réveil
-    // dépasse largement 5 s). Un timeout court transformait ces réveils
-    // en 404 côté /patient-public → confusion "dossier introuvable".
+    // dépasse largement 5 s).
     connectionTimeoutMillis: 15_000,
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
   })
