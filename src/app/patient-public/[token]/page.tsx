@@ -22,22 +22,59 @@ function isToday(dateStr: string) {
     d.getFullYear() === now.getFullYear()
 }
 
+type ErrorKind = 'not_found' | 'service_unavailable' | 'network' | 'server_error'
+
 export default function PatientPublicPage() {
   const { token } = useParams<{ token: string }>()
   const [data, setData] = useState<any>(null)
-  const [error, setError] = useState('')
+  const [errorKind, setErrorKind] = useState<ErrorKind | ''>('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // On mappe explicitement le status HTTP + code d'erreur vers un ErrorKind
+    // pour afficher un message qui reflète la vraie cause (service DB down vs
+    // dossier réellement introuvable) — cf. src/lib/db-errors.ts côté API.
     fetch(`/api/patient-public/${token}`)
-      .then(r => r.json())
-      .then(d => {
-        if (d.error) setError(d.error)
-        else setData(d)
+      .then(async r => {
+        if (r.ok) {
+          setData(await r.json())
+          return
+        }
+        const body = await r.json().catch(() => ({}))
+        if (r.status === 503) setErrorKind('service_unavailable')
+        else if (r.status === 404 || body?.error === 'not_found') setErrorKind('not_found')
+        else setErrorKind('server_error')
       })
-      .catch(() => setError('Erreur de connexion'))
+      .catch(() => setErrorKind('network'))
       .finally(() => setLoading(false))
   }, [token])
+
+  // Contenu du panneau d'erreur selon la cause.
+  const errorContent = errorKind === 'service_unavailable'
+    ? {
+        icon: '⏳',
+        title: 'Service momentanément indisponible',
+        body: 'Nos serveurs redémarrent. Merci de réessayer dans quelques instants.',
+      }
+    : errorKind === 'network'
+    ? {
+        icon: '📡',
+        title: 'Pas de connexion',
+        body: 'Vérifiez votre connexion internet puis réessayez.',
+      }
+    : errorKind === 'server_error'
+    ? {
+        icon: '⚠️',
+        title: 'Une erreur est survenue',
+        body: 'Merci de réessayer, ou contactez votre cabinet si le problème persiste.',
+      }
+    : errorKind === 'not_found'
+    ? {
+        icon: '🔍',
+        title: 'Dossier introuvable',
+        body: 'Ce lien ne correspond à aucun dossier. Contactez votre cabinet pour obtenir un nouveau QR code.',
+      }
+    : null
 
   return (
     <div style={{
@@ -67,15 +104,15 @@ export default function PatientPublicPage() {
         <div style={{ color: 'white', fontSize: 18, marginTop: 40 }}>Chargement...</div>
       )}
 
-      {error && (
+      {errorContent && (
         <div style={{
           background: 'rgba(255,255,255,0.12)', borderRadius: 16, padding: '32px 24px',
           maxWidth: 380, width: '100%', textAlign: 'center',
         }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>⚠️</div>
-          <p style={{ color: 'white', fontSize: 18, fontWeight: 600, margin: '0 0 8px' }}>Dossier introuvable</p>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>{errorContent.icon}</div>
+          <p style={{ color: 'white', fontSize: 18, fontWeight: 600, margin: '0 0 8px' }}>{errorContent.title}</p>
           <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14, margin: 0 }}>
-            Ce QR code n'est pas valide ou a expiré.
+            {errorContent.body}
           </p>
         </div>
       )}

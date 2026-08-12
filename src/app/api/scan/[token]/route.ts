@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { publicLimiter, checkRateLimit } from '@/lib/rate-limit'
+import { isDbConnectivityError } from '@/lib/db-errors'
 
 // Rate limit centralisé via Upstash (cf. src/lib/rate-limit.ts).
 // L'ancien rate limiter en-mémoire (par token) ne survivait pas entre
@@ -11,7 +12,8 @@ export async function GET(
   { params }: { params: Promise<{ token: string }> }
 ) {
   const rl = await checkRateLimit(req, publicLimiter); if (rl) return rl
-  const { token } = await params
+  const { token: rawToken } = await params
+  const token = (rawToken ?? '').trim()
 
   try {
     const patient = await prisma.patient.findUnique({
@@ -44,12 +46,24 @@ export async function GET(
     })
 
     if (!patient) {
-      return NextResponse.json({ error: 'Patient introuvable' }, { status: 404 })
+      const suffix = token.length >= 4 ? token.slice(-4) : token
+      console.error(`[GET /api/scan/[token]] 404 not_found (token …${suffix})`)
+      return NextResponse.json({ error: 'not_found' }, { status: 404 })
     }
 
     return NextResponse.json(patient)
   } catch (err) {
+    // Distinction connectivité DB (Supabase paused, timeout, cold-start) vs
+    // bug applicatif — cf. src/lib/db-errors.ts et le patch équivalent sur
+    // /api/patient-public/[token].
+    if (isDbConnectivityError(err)) {
+      console.error('[GET /api/scan/[token]] DB unreachable:', err)
+      return NextResponse.json(
+        { error: 'service_unavailable' },
+        { status: 503, headers: { 'Retry-After': '10' } },
+      )
+    }
     console.error('[GET /api/scan/[token]]', err)
-    return NextResponse.json({ error: 'Erreur serveur' }, { status: 500 })
+    return NextResponse.json({ error: 'server_error' }, { status: 500 })
   }
 }
