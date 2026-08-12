@@ -3,9 +3,8 @@
 import { useState, useEffect, useCallback, useMemo, useRef, use as usePromise } from 'react'
 import Link from 'next/link'
 import MobileTopbar from '@/components/mobile/MobileTopbar'
-import { QrCode, Download } from 'lucide-react'
+import { Download } from 'lucide-react'
 import { uploadPatientFile } from '@/lib/upload-client'
-import { APP_URL } from '@/lib/app-url'
 
 const AVATAR_COLORS = [
   { bg: '#DBEAFE', text: '#1D4ED8' },
@@ -17,7 +16,7 @@ const AVATAR_COLORS = [
 ]
 const avatarColor = (n: string) => AVATAR_COLORS[(n?.charCodeAt(0) ?? 0) % AVATAR_COLORS.length]
 
-const TABS = ['Infos', 'Séances', 'Factures', 'Progrès', 'Docs', 'QR'] as const
+const TABS = ['Infos', 'Séances', 'Factures', 'Progrès', 'Docs'] as const
 type TabId = typeof TABS[number]
 
 const MAX_SIZE_MB = 10
@@ -175,7 +174,6 @@ export default function MobilePatientDetailPage({ params }: { params: Promise<{ 
 
   const age = patient.dateNaissance ? Math.floor((Date.now() - new Date(patient.dateNaissance).getTime()) / (365.25 * 86400000)) : null
   const av = avatarColor(patient.nom)
-  const qrUrl = patient.publicToken ? `${APP_URL}/patient-public/${patient.publicToken}` : null
 
   return (
     <div>
@@ -271,15 +269,9 @@ export default function MobilePatientDetailPage({ params }: { params: Promise<{ 
             {/* Mode lecture seule : seules les actions de consultation sont conservées.
                 "Exercices" (génère programme) et "Planifier" (crée RDV) retirées. */}
             <div style={{
-              display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+              display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)',
               gap: 8, padding: 12, borderTop: '0.5px solid #F1F5F9',
             }}>
-              <button type="button" onClick={() => setActiveTab('QR')} style={{
-                ...actionBtn({ bg: 'white', color: '#2563EB', border: '0.5px solid #BFDBFE' }),
-                cursor: 'pointer',
-              }}>
-                <QrCode size={14} /> QR Code
-              </button>
               <Link href={`/patients/${id}`} style={actionBtn({ bg: 'white', color: '#DC2626', border: '0.5px solid #FECACA' })}>
                 <Download size={14} /> PDF
               </Link>
@@ -705,50 +697,6 @@ export default function MobilePatientDetailPage({ params }: { params: Promise<{ 
         </div>
       )}
 
-      {/* ── QR TAB ──────────────────────────────────────────────────────── */}
-      {activeTab === 'QR' && (
-        <div style={{ padding: '12px 16px' }}>
-          <div style={{ background: 'white', borderRadius: 16, border: '0.5px solid #E2E8F0', padding: 24, textAlign: 'center' }}>
-            <p style={{ fontSize: 14, fontWeight: 500, color: '#0F172A', margin: '0 0 16px' }}>QR Code patient</p>
-            {qrUrl ? (
-              <>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(qrUrl)}`}
-                  alt="QR Code patient" width={160} height={160}
-                  style={{ display: 'inline-block', borderRadius: 8 }}
-                />
-                <p style={{ fontSize: 15, fontWeight: 500, color: '#0F172A', margin: '12px 0 2px' }}>
-                  {patient.prenom} {patient.nom}
-                </p>
-                <p style={{ fontSize: 12, color: '#94A3B8', margin: 0 }}>
-                  Patient #{patient.id.slice(-4)}
-                </p>
-                <div style={{ marginTop: 16, display: 'flex', gap: 8, justifyContent: 'center' }}>
-                  <a href={`https://api.qrserver.com/v1/create-qr-code/?size=512x512&data=${encodeURIComponent(qrUrl)}&download=1`}
-                    download={`qr-${patient.prenom}-${patient.nom}.png`}
-                    style={{
-                      background: '#EFF6FF', color: '#2563EB',
-                      padding: '8px 18px', borderRadius: 12,
-                      fontSize: 12, fontWeight: 500, textDecoration: 'none',
-                    }}>
-                    📥 Télécharger
-                  </a>
-                  <Link href={`/patients/${id}`} style={{
-                    background: '#F1F5F9', color: '#475569',
-                    padding: '8px 18px', borderRadius: 12,
-                    fontSize: 12, fontWeight: 500, textDecoration: 'none',
-                  }}>
-                    🖨️ Imprimer
-                  </Link>
-                </div>
-              </>
-            ) : (
-              <p style={{ fontSize: 12, color: '#94A3B8' }}>QR non disponible pour ce patient.</p>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   )
 }

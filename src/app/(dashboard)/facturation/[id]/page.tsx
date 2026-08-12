@@ -45,8 +45,7 @@ export default function FactureDetailPage({ params }: { params: Promise<{ id: st
 
   async function exportPDF() {
     if (!facture) return
-    const qrUrl = facture.patient?.publicToken ? `${APP_URL}/scan/${facture.patient.publicToken}` : undefined
-    await generateFacturePDF(facture, cabinet, qrUrl)
+    await generateFacturePDF(facture, cabinet)
   }
 
   if (loading) return <div><Topbar title="Facture" /><div style={{ padding: 40, textAlign: 'center', color: '#94A3B8' }}>Chargement…</div></div>

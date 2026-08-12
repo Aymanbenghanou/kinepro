@@ -17,7 +17,6 @@ export type CabinetClient = {
   whatsappNumber: string | null
   googleReviewLink: string | null
   logoUrl: string | null
-  publicToken: string | null
 } | null
 
 const CabinetContext = createContext<CabinetClient>(null)

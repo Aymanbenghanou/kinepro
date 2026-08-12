@@ -6,11 +6,10 @@ import { formatDate, formatTime, formatMoney } from '@/lib/utils'
 import Topbar from '@/components/layout/Topbar'
 import {
   ArrowLeft, Phone, Mail, MapPin, Activity, FileText,
-  Calendar, Plus, X, User, CreditCard, Target, Clock, Download, BarChart2, QrCode,
+  Calendar, Plus, X, User, CreditCard, Target, Clock, Download, BarChart2,
   Sparkles, Send,
 } from 'lucide-react'
 import { useCabinetFull } from '@/lib/use-cabinet-nom'
-import { APP_URL } from '@/lib/app-url'
 import { formatWhatsAppMessage, waUrl } from '@/lib/exercise-program'
 import Toast from '@/components/ui/Toast'
 import { useCan } from '@/lib/use-permissions'
@@ -31,8 +30,6 @@ async function loadAndGeneratePDF(patient: any, cabinet: any) {
   const { generateDossierPatientPDF } = await import('@/lib/pdf-utils')
   return generateDossierPatientPDF(patient, cabinet)
 }
-
-const QrCodeModal = dynamic(() => import('@/components/qr/QrCodeModal'), { ssr: false })
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type TabId = 'informations' | 'seances' | 'plan' | 'facturation' | 'progression' | 'documents' | 'programmes'
@@ -198,27 +195,12 @@ export default function PatientDetailPage() {
   const [activeTab, setActiveTab] = useState<TabId>('informations')
   const [showPlanifier, setShowPlanifier] = useState(false)
   const [showExercices, setShowExercices] = useState(false)
-  const [showQr, setShowQr] = useState(false)
-  const [qrToken, setQrToken] = useState<string | null>(null)
-  const [qrLoading, setQrLoading] = useState(false)
   const [showEdit, setShowEdit] = useState(false)
   const [showDelete, setShowDelete] = useState(false)
   const [toast, setToast]       = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
   const can      = useCan()
   const canEdit  = can('patients')
-
-  async function openQr() {
-    setShowQr(true)
-    if (qrToken) return
-    setQrLoading(true)
-    try {
-      const res = await fetch(`/api/patients/${id}/qr-token`)
-      const data = await res.json()
-      setQrToken(data.token)
-    } catch {}
-    setQrLoading(false)
-  }
 
   const fetchPatient = useCallback(async () => {
     try {
@@ -320,10 +302,6 @@ export default function PatientDetailPage() {
                   <Edit2 size={15} /> Modifier
                 </button>
               )}
-              <button onClick={openQr}
-                style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'white', color: '#374151', border: '1px solid #E2E8F0', borderRadius: 10, padding: '10px 14px', cursor: 'pointer', fontWeight: 500, fontSize: 14 }}>
-                <QrCode size={15} /> QR Code
-              </button>
               <button onClick={() => loadAndGeneratePDF(patient, cabinet)}
                 style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'white', color: '#374151', border: '1px solid #E2E8F0', borderRadius: 10, padding: '10px 16px', cursor: 'pointer', fontWeight: 500, fontSize: 14 }}>
                 <Download size={15} /> Exporter PDF
@@ -644,23 +622,6 @@ export default function PatientDetailPage() {
         />
       )}
 
-      {/* QR Code modal */}
-      {showQr && (
-        qrLoading ? (
-          <div className="modal-overlay" style={{ zIndex: 200 }}>
-            <div className="modal-sheet" style={{ padding: 40, width: 300, textAlign: 'center' }}>
-              <p style={{ color: '#64748B', margin: 0 }}>Génération du QR code...</p>
-            </div>
-          </div>
-        ) : qrToken && patient ? (
-          <QrCodeModal
-            url={`${APP_URL}/patient-public/${qrToken}`}
-            title={`${patient.prenom} ${patient.nom}`}
-            subtitle={`Patient · ${qrToken.slice(0, 8)}...`}
-            onClose={() => setShowQr(false)}
-          />
-        ) : null
-      )}
     </div>
   )
 }

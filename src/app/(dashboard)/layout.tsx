@@ -61,7 +61,7 @@ export default async function DashboardLayout({
       select: {
         id: true, nom: true, adresse: true, ville: true,
         telephone: true, email: true, whatsappNumber: true,
-        googleReviewLink: true, logoUrl: true, publicToken: true,
+        googleReviewLink: true, logoUrl: true,
         plan: true, planStatus: true, trialEndsAt: true, createdAt: true,
       },
     })
@@ -85,7 +85,7 @@ export default async function DashboardLayout({
         telephone: cabinet.telephone, email: cabinet.email,
         whatsappNumber: cabinet.whatsappNumber,
         googleReviewLink: cabinet.googleReviewLink,
-        logoUrl: cabinet.logoUrl, publicToken: cabinet.publicToken,
+        logoUrl: cabinet.logoUrl,
       }
     }
   }

@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
-import dynamic from 'next/dynamic'
 import Topbar from '@/components/layout/Topbar'
 import { formatDate, formatMoney } from '@/lib/utils'
 import { Plus, X, Download, Search, RotateCcw, Wallet, Eye, CheckCircle2 } from 'lucide-react'
@@ -10,9 +9,6 @@ import { generateFacturePDF } from '@/lib/pdf-utils'
 import { STATUT_LABELS, type FactureStatut } from '@/lib/facture-statut'
 import PaymentModal from '@/components/facturation/PaymentModal'
 import { useCabinetFull } from '@/lib/use-cabinet-nom'
-import { APP_URL } from '@/lib/app-url'
-
-const QrCodeModal = dynamic(() => import('@/components/qr/QrCodeModal'), { ssr: false })
 
 function StatutBadge({ statut }: { statut: string }) {
   const s = STATUT_LABELS[statut as FactureStatut] ?? { label: statut, bg: '#F1F5F9', color: '#64748B', icon: '' }
@@ -64,7 +60,6 @@ export default function FacturationPage() {
   const [patientSeances, setPatientSeances] = useState<any[]>([])
   const [seancesLoading, setSeancesLoading] = useState(false)
 
-  const [qrFacture, setQrFacture] = useState<{ url: string; title: string } | null>(null)
   const [paymentFor, setPaymentFor] = useState<any>(null)
   const [toast, setToast] = useState<string | null>(null)
 
@@ -176,8 +171,7 @@ export default function FacturationPage() {
   }
 
   async function exportPDF(f: any) {
-    const qrUrl = f.patient?.publicToken ? `${APP_URL}/scan/${f.patient.publicToken}` : undefined
-    await generateFacturePDF(f, cabinet, qrUrl)
+    await generateFacturePDF(f, cabinet)
   }
 
   return (
@@ -419,11 +413,6 @@ export default function FacturationPage() {
           onClose={() => setPaymentFor(null)}
           onSuccess={(msg) => { showToast(msg); fetchFactures() }}
         />
-      )}
-
-      {/* QR modal */}
-      {qrFacture && (
-        <QrCodeModal url={qrFacture.url} title={qrFacture.title} subtitle="Patient" onClose={() => setQrFacture(null)} />
       )}
 
       {/* Toast */}
